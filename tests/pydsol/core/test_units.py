@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from pydsol.core.units import Duration, Length
+from pydsol.core.units import Duration, Length, Area, Speed, Quantity
 
 
 def test_assign():
@@ -29,6 +29,7 @@ def test_assign():
     assert dd.unit == 'day'
     assert dd.displayvalue == 14.0
     assert str(dd) == '14.0day'
+    assert repr(dd) == '14.0day'
     assert f"{ds}" == '2.0s'
     assert f"{Duration(9, 'mus')}" == '9.0\u03BCs'
     d1 = Duration(3.0)
@@ -41,7 +42,9 @@ def test_assign():
         Length(1 + 2j, 'm')
     with pytest.raises(ValueError):
         Length(1.0, 'xyz')
-        
+    with pytest.raises(ValueError):
+        Length(1.0, 'mile').as_unit("x")
+
 
 def test_add_sub():
     ds = Duration(2.0, 's')
@@ -66,6 +69,10 @@ def test_add_sub():
         ds += 'x'
     with pytest.raises(ValueError):
         ds -= 3 + 5j
+    with pytest.raises(ValueError):
+        ds = 2.0 + Length(1.0)
+    with pytest.raises(ValueError):
+        ds = 2.0 - Length(1.0)
 
 
 def test_mul_div():
@@ -121,9 +128,60 @@ def test_math():
     assert math.floor(x) == L(15.0, 'cm')
     assert round(x) == L(15.0, 'cm')
     assert round(x * 2.0) == L(31.0, 'cm')
+    assert math.ceil(a) == L(-15.0, 'cm')
+    assert math.floor(a) == L(-16.0, 'cm')
+    assert math.trunc(a) == L(-15.0, 'cm')
+    assert math.trunc(-a) == L(15.0, 'cm')
+    assert L(10, 'cm') // 3 == L(3.0, 'cm')
+    assert L(10, 'cm') % 3 == L(1.0, 'cm')
+    with pytest.raises(ValueError):
+        L(10, 'cm') // L(3, 'cm')
+    with pytest.raises(ValueError):
+        L(10, 'cm') % L(3, 'cm')
+    assert L(10, 'cm') // 3.5 == L(2.0, 'cm')
+    assert L(10, 'cm') % 3.5 == L(3.0, 'cm')
+    assert -L(10, 'cm') == L(-10, 'cm')
+    assert +L(10, 'cm') == L(10, 'cm')
+    assert -L(-10, 'cm') == L(10, 'cm')
+    assert +L(-10, 'cm') == L(-10, 'cm')
+    assert Area(5.0, 'km^2') ** 2 == Area(25.0, 'km^2')
+    assert Speed(2.0, 'mi/h') ** 3 == Speed(8.0, 'mi/h')
+    with pytest.raises(ValueError):
+        L(10, 'cm') ** L(3, 'cm')
+
+
+def test_siunits():
+    assert Length.siunits() == 'm'
+    assert Duration.siunits() == 's'
+    assert Speed.siunits() == 'm/s'
+    assert Area.siunits() == 'm2'
+    
+    assert Speed.siunits(div=False) == 'ms-1'
+    assert Speed.siunits(div=False, dot='.') == 'm.s-1'
+    assert Speed.siunits(div=False, hat='^') == 'ms^-1'
+    assert Speed.siunits(div=False, hat='^', dot='.') == 'm.s^-1'
+    assert Area.siunits(hat='^') == 'm^2'
+    
+    assert Quantity._siunits({'kg': 1, 'm': 1, 's':-2},
+            div=True, hat='^', dot='.') == "kg.m/s^2"
+    assert Quantity._siunits({'kg': 1, 'm': 1, 's':-2},
+            div=False, hat='^', dot='.') == "kg.m.s^-2"
+    assert Quantity._siunits({'kg': 1, 'm': 1, 's':-2, 'A':-1},
+            div=True, hat='^', dot='.') == "kg.m/s^2.A"
+    assert Quantity._siunits({'kg': 1, 'm': 1, 's':-2, 'A':-1},
+            div=False, hat='^', dot='.') == "kg.m.s^-2.A^-1"
+    assert Quantity._siunits({'kg': 1, 'm': 1, 's':-2, 'A':-1},
+            div=True, hat='^', dot='') == "kgm/s^2A"
+    assert Quantity._siunits({'kg': 1, 'm': 1, 's':-2, 'A':-1},
+            div=False, hat='', dot=' ') == "kg m s-2 A-1"
+    assert Quantity._siunits({'s':-2},
+            div=True, hat='^', dot='.') == "1/s^2"
+    assert Quantity._siunits({},
+            div=True, hat='^', dot='.') == "1"
     
     
 def test_duration():
+    assert Duration(5) == Duration(5.0, 's')
     assert Duration(1, 's').si == 1.0
     assert Duration(1, 's').unit == 's'
     assert Duration(1, 'min').si == 60.0
@@ -138,9 +196,13 @@ def test_duration():
     for unit in types:
         assert Duration(1, unit).si == types[unit]
         assert Duration(1, unit).unit == unit
+    assert Duration.siunits() == 's'
+    assert Duration(1, 'day').siunits() == 's'
+    assert f"{Duration(2, 'mus')}" == '2.0\u03BCs'
 
 
 def test_length():
+    assert Length(5) == Length(5.0, 'm')
     inch = 39.3700787402
     types = {'m': 1, 'dm': 0.1, 'cm': 0.01, 'mm': 0.001, 'mum': 1E-6,
              'nm': 1E-9, 'dam': 10, 'hm': 100, 'km': 1000, 'Mm': 1E6,
@@ -152,6 +214,64 @@ def test_length():
     for unit in types:
         assert abs(Length(1, unit).si - types[unit]) < 1E-6
         assert Length(1, unit).unit == unit
+    assert Length.siunits() == 'm'
+    assert Length(10, 'mi').siunits() == 'm'
+    assert f"{Length(2, 'mum')}" == '2.0\u03BCm'
+
+
+def test_speed():
+    assert Speed(5) == Speed(5.0, 'm/s')
+    inch = 39.3700787402
+    types = {'m/s': 1, 'dm/s': 0.1, 'cm/s': 0.01, 'mm/s': 0.001,
+             'mum/s': 1E-6, 'nm/s': 1E-9, 'dam/s': 10, 'hm/s': 100,
+             'km/s': 1000, 'km/h': 1.0 / 3.6,
+             'in/s': 1.0 / inch, 'inch/second': 1.0 / inch,
+             'ft/s': 12.0 / inch, 'foot/second': 12.0 / inch,
+             'yd/s': 36.0 / inch, 'yard/second': 36.0 / inch,
+             'mi/s': 1760.0 * 36.0 / inch, 'mile/second': 1760.0 * 36.0 / inch,
+             'mi/h': 17.60 / inch, 'mile/hour': 17.6 / inch}
+    for unit in types:
+        assert abs(Speed(1, unit).si - types[unit]) < 1E-6
+        assert Speed(1, unit).unit == unit
+    assert Speed.siunits() == 'm/s'
+    assert Speed(10, 'mi/h').siunits() == 'm/s'
+    assert f"{Speed(2, 'mum/s')}" == '2.0\u03BCm/s'
+
+
+def test_area():
+    assert Area(5) == Area(5.0, 'm^2')
+    inch = 39.3700787402
+    types = {'m^2': 1, 'dm^2': 1E-2, 'cm^2': 1E-4, 'mm^2': 1E-6,
+             'mum^2': 1E-12, 'nm^2': 1E-18, 'dam^2': 100, 'hm^2': 1E4,
+             'km^2': 1E6,
+             'in^2': 1.0 / inch / inch, 'ft^2': 12.0 * 12.0 / inch / inch,
+             'yd^2': 36.0 * 36.0 / inch / inch,
+             'mi^2': (1760.0 * 36.0 / inch) ** 2}
+    for unit in types:
+        if unit == 'mi^2':
+            assert abs(Area(1, unit).si - types[unit]) < 1E-3
+        else:
+            assert abs(Area(1, unit).si - types[unit]) < 1E-6
+        assert Area(1, unit).unit == unit
+    assert Area.siunits() == 'm2'
+    assert Area(10, 'ft^2').siunits() == 'm2'
+    assert f"{Area(2, 'mum^2')}" == '2.0\u03BCm^2'
+
+
+def test_combine():
+    l = Length(2.0, 'm')
+    assert l / l == 1.0
+    assert Length(2.0, 'm') * Length(300, 'cm') == Area(6.0, 'm^2')
+    
+    t = Duration(4.0, 's')
+    assert t / t == 1.0
+    assert l / t == Speed(0.5, 'm/s')
+    
+    s = Speed(3.0, 'm/s')
+    assert s / s == 1.0
+    
+    a = Area(10.0, 'm^2')
+    assert a / a == 1.0
 
 
 if __name__ == '__main__':
