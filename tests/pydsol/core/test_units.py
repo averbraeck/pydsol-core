@@ -110,6 +110,7 @@ def test_mul_div():
         ln = Length(1.0, 'hm')
         ln /= (3 + 5j)
 
+
 def test_math():
     L = Length
     a = L(-15.4, 'cm')
