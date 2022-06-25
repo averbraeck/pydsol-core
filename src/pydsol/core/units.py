@@ -23,6 +23,8 @@ Q = TypeVar('Q')
 
 class Quantity(Generic[Q], ABC, float):
     
+    __unitlist = ('rad', 'sr', 'kg', 'm', 's', 'A', 'K', 'mol', 'cd')
+
     @classmethod
     @abstractmethod
     def baseunit(cls) -> str:
@@ -196,9 +198,10 @@ class Quantity(Generic[Q], ABC, float):
         """
         Return the nearest integer value above the value of this quantity.
         Note that this function works on the display value of the quantity
-        and not on the internal si-value.When we want to calculate the
+        and not on the internal si-value. When we want to calculate the
         ceiling of 10.4 cm, we expect 11 cm, and not 100 cm (the nearest 
-        integer value above 0.104 m is 1 m = 100 cm). 
+        integer value above 0.104 m is 1 m = 100 cm). Note that the ceil of 
+        -3.5 is -3.
         """
         return self.instantiate(self.displayvalue.__ceil__(), self._unit)
     
@@ -206,77 +209,233 @@ class Quantity(Generic[Q], ABC, float):
         """
         Return the nearest integer value below the value of this quantity.
         Note that this function works on the display value of the quantity
-        and not on the internal si-value.When we want to calculate the
+        and not on the internal si-value. When we want to calculate the
         floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
-        value below 0.104 m is 0 m). 
+        value below 0.104 m is 0 m). Note that the floor of -3.5 is -4.
         """
         return self.instantiate(self.displayvalue.__floor__(), self._unit)
     
     def __floordiv__(self, other):
+        """
+        Return the nearest integer value below the value of the division of 
+        this quantity by the provided float or integer value. Note that 
+        this function works on the display value of the quantity and
+        not on the internal si-value. When we want to calculate 
+        (10.0 cm // 3), we expect 3 cm, and not 0 cm (the nearest integer
+        value below the result of 0.1 // 3 in the si unit meter is 0 m). 
+        """
         if not (other.__class__ == float or other.__class__ == int):
             raise ValueError("// operator needs float or int")
-        return self._val(float(self) // other)
+        return self.instantiate(self.displayvalue // other, self._unit)
     
     def __mod__(self, other):
+        """
+        Return the remainder of the integer division of  this quantity 
+        by the provided float or integer value. Note that this function 
+        works on the display value of the quantity and not on the internal 
+        si-value. When we want to calculate (10.0 cm % 3), we expect 1 cm, 
+        and not 0.1 m (the remainder of 0.1 % 3 in the si unit meter). 
+        """
         if not (other.__class__ == float or other.__class__ == int):
             raise ValueError("% operator needs float or int")
-        return self._val(float(self) % other)
+        return self.instantiate(self.displayvalue % other, self._unit)
 
     def __mul__(self, other):
+        """
+        Return a new quantity containing the multiplication of this quantity 
+        by the provided factor (where the factor comes last in the 
+        multiplication). The factor has to be of type float or int. 
+        The result of Area(25.0, 'm^2') * 2 = Area(50.0, 'm^2).
+        
+        Raises
+        ------
+        ValueError
+            when the multiplication factor is not a float or an int
+        """
         if not (other.__class__ == float or other.__class__ == int):
             raise ValueError("* operator needs float or int")
         return self._val(float(self) * other)
 
     def __neg__(self):
+        """
+        Return a new quantity containing the negation of the value of the
+        quantity. A Duration of 10 seconds becomes a Duration of -10 
+        seconds. The __neg__ function implements the behavior of the
+        unary "-" behavior in front of a number. 
+        """
         return self._val(-float(self))
 
     def __pos__(self):
+        """
+        Return the quantity, since the unary "+" operator (placing a "+"
+        sign in front of a number or quantity) has no effect.
+        """
         return self
 
     def __radd__(self, other):
+        """
+        Return a new quantity containing the sum of this quantity and the
+        other quantity. radd is called for 2.0 + Length(1.0, 'm'),
+        where the left hand side is not a Quantity, and the right hand 
+        side is a Quantity. Since (a + b) == (b + a), the add function
+        is used for the implementation. Typically, the radd function will 
+        lead to a ValueError 
+        
+        Raises
+        ------
+        ValueError
+            when the other is of a different type than self
+        """
         return self.__add__(other)
 
     def __rmul__(self, other):
+        """
+        Return a new quantity containing the multiplication of this quantity 
+        by the provided factor (where the factor comes first in the
+        multiplication). The factor has to be of type float or int. 
+        The result of 2.0 * Area(25.0, 'm^2') = Area(50.0, 'm^2).
+        
+        Raises
+        ------
+        ValueError
+            when the multiplication factor is not a float or an int
+        """
         return self.__mul__(other)
     
     def __round__(self) -> Q:
         """
         Return the nearest integer value for the value of this quantity.
         Note that this function works on the display value of the quantity
-        and not on the internal si-value.When we want to calculate the
+        and not on the internal si-value. When we want to calculate the
         round(10.4 cm), we expect 10 cm, and not 0 cm (the rounded value of
         0.104 m). 
         """
         return self.instantiate(self.displayvalue.__round__(), self._unit)
 
     def __rsub__(self, other):
+        """
+        Return a new quantity containing the difference of the other value
+        and this quantity. rsub is called for 2.0 - Length(1.0, 'm'),
+        where the left hand side is not a Quantity, and the right hand 
+        side is a Quantity. Typically, the rsub function will lead to a
+        ValueError 
+        
+        Raises
+        ------
+        ValueError
+            when the other is of a different type than self
+        """
         return self.__add__(other.__neg__())
 
     def __sub__(self, other):
+        """
+        Return a new quantity containing the difference of this quantity 
+        and the other quantity.
+        
+        Raises
+        ------
+        ValueError
+            when the two quantities are of different types
+        """
         if (self.__class__ != other.__class__):
             raise ValueError("subtracting incompatible quantities")
         return self._val(float(self) - float(other))
 
     def __truediv__(self, other):
+        """
+        Return a new quantity containing the division of this quantity 
+        by the provided divisor. The factor has to be of type float or int. 
+        The result of Area(50.0, 'm^2') / 2 = Area(25.0, 'm^2).
+        
+        Raises
+        ------
+        ValueError
+            when the divisor is not a float or an int
+        """
+        if self.__class__ == other.__class__:
+            return float(self) / float(other)
         if not (other.__class__ == float or other.__class__ == int):
             raise ValueError("/ operator needs float or int")
         return self._val(float(self) / other)
 
     def __trunc__(self):
-        return self._val(float(self).__trunc__())
+        """
+        Return the nearest integer value below the value of this quantity,
+        where the direction for negative numbers is towards zero. The trunc 
+        of -3.5 is therefore -3, symmetric with the trunc of +3.5.
+        Note that this function works on the display value of the quantity
+        and not on the internal si-value. When we want to calculate the
+        floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
+        value below 0.104 m is 0 m). 
+        """
+        return self.instantiate(self.displayvalue.__trunc__(), self._unit)
     
     def __pow__(self, power):
+        """
+        Return a new quantity containing the value of this quantity to the
+        provided power. The power has to be of type float or int. Note that 
+        this function works on the display value of the quantity and not
+        on the internal si-value.
+        The result of Area(5.0, 'km^2') ** 2 = Area(25.0, 'km^2).
+        
+        Raises
+        ------
+        ValueError
+            when the multiplication factor is not a float or an int
+        """
         if not (power.__class__ == float or power.__class__ == int):
             raise ValueError("** operator needs float or int")
-        return self._val(float(self) ** power)
+        return self.instantiate(self.displayvalue ** power, self._unit)
 
     def __str__(self):
+        """
+        Return a string representation of the quantity, where the chosen unit 
+        follows the value without a space.
+        """
         return str(self.displayvalue) + self.displayunits().get(self._unit,
                 self._unit)
 
     def __repr__(self):
+        """
+        Return a string representation of the quantity, where the chosen unit 
+        follows the value without a space.
+        """
         return str(self.displayvalue) + self.displayunits().get(self._unit,
                 self._unit)
+
+    @classmethod
+    def siunits(cls, div:bool=True, hat:str='', dot:str='') -> str:
+        return Quantity._siunits(cls.sisig(), div, hat, dot)
+    
+    @staticmethod
+    def _siunits(sistr: dict[str, int], div:bool=True, hat:str='',
+                 dot:str='') -> str:
+        s = ""
+        t = ""
+        for unit in Quantity.__unitlist:
+            if unit in sistr:
+                v: int = sistr[unit]
+                if v > 0 or (v < 0 and not div):
+                    if len(s) > 0:
+                        s += dot
+                    s += unit
+                    if v > 1 or v < 0:
+                        s += hat + str(v)
+        if div:
+            for unit in Quantity.__unitlist:
+                if unit in sistr:
+                    v: int = sistr[unit]
+                    if v < 0:
+                        if len(t) > 0:
+                            t += dot
+                        t += unit
+                        if v < -1:
+                            t += hat + str(-v)
+        if len(s) == 0:
+            s = "1"
+        if len(t) > 0:
+            s += "/" + t
+        return s
 
 
 class Duration(Quantity['Duration']):
@@ -350,24 +509,22 @@ class Length(Quantity['Length']):
     def __truediv__(self, other):
         if isinstance(other, Duration):
             return Speed(float(self) / float(other), "m/s")
-        elif isinstance(other, Length):
-            return float(self) / float(other)
         else:
             return super().__truediv__(other)
 
 
 class Speed(Quantity['Speed']):
     __baseunit = 'm/s'
-    __units = {'m/s': 1, 'mm/s': 1E-3, 'cm/s': 0.01, 'dm/s':0.1, 'dam/s': 10,
-               'hm/s':100, 'km/s':1000, 'km/h': 1000.0 / 3600.0,
-               'in/s': 1.0 / 39.37, 'inch/second': 1.0 / 39.37,
-               'ft/s': 12.0 / 39.37, 'foot/second': 12.0 / 39.37,
-               'yd/s': 36.0 / 39.37, 'yard/second': 36.0 / 39.37,
-               'mi/s': 63360.0 / 39.37, 'mile/second': 63360.0 / 39.37,
-               'mi/h': 63360.0 / (39.37 * 3600),
-               'mile/hour': 63360.0 / (39.37 * 3600)}
-    __displayunits = {}
-    __sisig = {'m': 1, 's': -1}
+    __units = {'m/s': 1, 'mm/s': 1E-3, 'cm/s': 0.01, 'dm/s':0.1,
+               'mum/s': 1E-6, 'nm/s': 1E-9, 'dam/s': 10,
+               'hm/s': 100, 'km/s':1000, 'km/h': 1000.0 / 3600.0,
+               'in/s': 0.0254, 'inch/second': 0.0254,
+               'ft/s': 0.3048, 'foot/second': 0.3048,
+               'yd/s': 0.9144, 'yard/second': 0.9144,
+               'mi/s': 1609.344, 'mile/second': 1609.344,
+               'mi/h': 0.44704, 'mile/hour': 0.44704}
+    __displayunits = {'mum/s': '\u03BCm/s'}
+    __sisig = {'m': 1, 's':-1}
 
     @classmethod
     def baseunit(cls) -> str:
@@ -391,14 +548,14 @@ class Speed(Quantity['Speed']):
 
 
 class Area(Quantity):
-    __baseunit = 'm'
+    __baseunit = 'm^2'
     __units = {'m^2': 1, 'nm^2': 1E-18, 'mum^2': 1E-12, 'mm^2': 1E-6,
                'cm^2': 1E-4, 'dm^2':0.01, 'dam^2': 100,
                'hm^2': 1E4, 'km^2': 1E6,
-               'in^2': 1.0 / (39.37 * 39.37),
-               'ft^2': 144.0 / (39.37 * 39.37),
-               'yd^2': 36.0 * 36.0 / (39.37 * 39.37),
-               'mi^2': 63360.0 * 63360.0 / (39.37 * 39.37)}
+               'in^2': 0.0254 * 0.0254,
+               'ft^2': 0.3048 * 0.3048,
+               'yd^2': 0.9144 * 0.9144,
+               'mi^2': 1609.344 * 1609.344}
     __displayunits = {'mum^2': '\u03BCm^2'}
     __sisig = {'m': 2}
     
@@ -421,7 +578,3 @@ class Area(Quantity):
     @classmethod
     def instantiate(cls, value, unit: str=None, **kwargs):
         return Area(value, unit, **kwargs)
-
-
-if __name__ == "__main__":
-    print(f"{Duration(9, 'mus')}")
