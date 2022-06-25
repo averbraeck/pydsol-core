@@ -12,7 +12,7 @@ from pydsol.core.simulator import DEVSSimulatorFloat
 
 
 class OrderModel(DSOLModel):
-    """Contruction of the model: Creating a Customer"""
+    """Construction of the model: Scheduling order generation"""
                 
     def construct_model(self):
         print("\nReplication starts...")
