@@ -1,3 +1,7 @@
+"""
+Test the classes that implement the event list for discrete-event simulation 
+""" 
+
 import pytest
 
 from pydsol.core.eventlist import EventListHeap, EventListInterface

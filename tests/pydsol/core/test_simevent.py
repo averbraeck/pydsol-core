@@ -1,3 +1,7 @@
+"""
+Test the classes that define simulation events
+""" 
+
 from pydsol.core.exceptions import DSOLError
 from pydsol.core.simevent import SimEvent, SimEventInterface
 import pytest

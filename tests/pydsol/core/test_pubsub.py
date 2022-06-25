@@ -1,3 +1,7 @@
+"""
+Test the event classes that implement the publish/subscribe mechanism
+""" 
+
 import pytest
 
 from pydsol.core.exceptions import EventError
