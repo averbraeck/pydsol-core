@@ -26,11 +26,12 @@ What is pydsol?
 Implemented formalisms
 ======================
     
-At the moment, the event scheduling formalism has been implemented in 
+At the moment, only the event scheduling formalism has been implemented in 
 pydsol-core. The process interaction, differential equations, flow modeling, 
 classical DEVS, Port-based DEVS, hierarchical DEVS, and agent-based modeling
-are all possible as extensions and will be added shortly. The Java version
-of DSOL has differential equations as well as various DEVS   
+are all possible as extensions and will be added shortly. In the Java version
+of DSOL, differential equations, process modeling, and various DEVS variants 
+were implemented, which will be ported to Python.
 
 
 DSOL license
