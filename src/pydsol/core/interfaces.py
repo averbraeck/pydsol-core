@@ -129,7 +129,7 @@ class ReplicationInterface(ABC, Generic[TIME]):
     
     START_REPLICATION_EVENT: EventType = EventType("START_REPLICATION_EVENT")
     END_REPLICATION_EVENT: EventType = EventType("END_REPLICATION_EVENT")
-    WARMUP_EVENT: EventType = EventType("WARMUL_EVENT")
+    WARMUP_EVENT: EventType = EventType("WARMUP_EVENT")
     
     @property
     @abstractmethod
