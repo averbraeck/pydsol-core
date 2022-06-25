@@ -78,7 +78,7 @@ class EventType:
 
     Methods
     -------
-    name() : str
+    name : str
         return the human readable name of the event type
     defining_class : str
         return the name of the class in which the event type has been defined
