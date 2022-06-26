@@ -179,6 +179,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._run_state: RunState = RunState.NOT_INITIALIZED
         self._replication_state = ReplicationState.NOT_INITIALIZED
         self.__worker: Thread = None
+        self._initial_time = initial_time
         self._initial_methods: list[SimEventInterface] = [] 
         
     @property
@@ -196,9 +197,10 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         """return the current absolute time of the simulator"""
         return self._simulator_time
 
-    @abstractmethod
-    def zero_time(self) -> TIME:
+    @property
+    def initial_time(self) -> TIME:
         """return the first possible time of the used time type"""
+        return self._initial_time
         
     @property
     def replication(self) -> ReplicationInterface:
@@ -239,7 +241,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         initialize has been called, and solved the problem that,
         for discrete event simulators, the scheduleEvent(...) methods 
         cannot be called before initialize()."""
-        self._initial_methods.append(SimEvent(self.zero_time(),
+        self._initial_methods.append(SimEvent(self.initial_time,
                 target, method, kwargs))
         
     def cleanup(self):
@@ -382,6 +384,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         initialized, or when the model has not yet started.""" 
         return not self.is_starting_or_running()
     
+    @property
     def replication_state(self) -> ReplicationState:
         """return the replication state"""
         return self._replication_state
@@ -533,18 +536,12 @@ class DEVSSimulatorFloat(DEVSSimulator[float]):
     
     def __init__(self, name:str):
         super().__init__(name, float, 0.0)
-    
-    def zero_time(self):
-        return 0.0
 
 
 class DEVSSimulatorInt(DEVSSimulator[int]):
     
     def __init__(self, name:str):
         super().__init__(name, int, 0)
-    
-    def zero_time(self):
-        return 0
 
 
 class DEVSSimulatorDuration(DEVSSimulator[Duration]):
@@ -552,6 +549,3 @@ class DEVSSimulatorDuration(DEVSSimulator[Duration]):
     def __init__(self, name: str, display_unit: str='s'):
         super().__init__(name, Duration, Duration(0.0, display_unit))
         self._display_unit = display_unit
-    
-    def zero_time(self):
-        return Duration(0.0, self._display_unit)
