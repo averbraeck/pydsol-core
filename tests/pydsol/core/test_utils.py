@@ -22,9 +22,9 @@ def test_assert():
     with pytest.raises(DSOLError,
             match="parameter s is not an instance of \\['int', 'float'\\]"):
         Assert.anytype(s, 's', [int, float])
-    Assert.that(f == 4.0, "f should be 4")
+    Assert.that(f == 4.0, DSOLError, "f should be 4")
     with pytest.raises(DSOLError, match="f should be 3"):
-        Assert.that(f == 3.0, "f should be 3")
+        Assert.that(f == 3.0, DSOLError, "f should be 3")
 
     Assert.istype(f, 'f', float, TypeError)
     with pytest.raises(TypeError, match="parameter s is not of type int"):
@@ -37,9 +37,9 @@ def test_assert():
     with pytest.raises(TypeError,
             match="parameter s is not an instance of \\['int', 'float'\\]"):
         Assert.anytype(s, 's', [int, float], TypeError)
-    Assert.that(f == 4.0, "f should be 4", TypeError)
+    Assert.that(f == 4.0, TypeError, "f should be 4")
     with pytest.raises(TypeError, match="f should be 3"):
-        Assert.that(f == 3.0, "f should be 3", TypeError)
+        Assert.that(f == 3.0, TypeError, "f should be 3")
 
 
 if __name__ == '__main__':

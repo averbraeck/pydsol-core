@@ -117,9 +117,8 @@ class Assert():
             f"parameter {varname} is not an instance of {s}")
 
     @staticmethod
-    def that(condition: bool, message: str, 
-             error_class: Exception=DSOLError,
-             *args, **kwargs):
+    def that(condition: bool, error_class: Exception, 
+             message: str, *args, **kwargs):
         """
         Assert that a certain condition is met, otherwise raise an error.
         
@@ -127,10 +126,10 @@ class Assert():
         ----------
         condition: bool
             the condition as an outcome of a check
-        types: message: str
-            the message to print in the error in case of failure
-        error_class: Exception, optional
+        error_class: Exception
             the exception to throw; defaults to DSOLError
+        message: str
+            the message to print in the error in case of failure
         *args
             arguments to use in the formatting of the error string
         **kwargs
@@ -138,4 +137,3 @@ class Assert():
         """
         if not condition:
             raise error_class(message.format(*args, **kwargs))
-
