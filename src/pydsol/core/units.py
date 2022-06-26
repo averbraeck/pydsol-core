@@ -16,10 +16,10 @@ This module has been based on the Java DJUNITS project (Delft Java units), as
 documented at https://djunits.org. 
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TypeVar, Generic
 
-from pydsol.core.utils import get_module_logger
+from pydsol.core.utils import get_module_logger, Assert
 
 logger = get_module_logger('units')
 
@@ -67,13 +67,6 @@ class Quantity(Generic[Q], ABC, float):
     __unitlist = ('rad', 'sr', 'kg', 'm', 's', 'A', 'K', 'mol', 'cd')
     """ SI units in the order they will be displayed, plus rad and sr""" 
 
-    @classmethod
-    @abstractmethod
-    def instantiate(cls, value, unit: str=None, **kwargs) -> Q:
-        """
-        Instantiate a new quantity of the right type.
-        """
-    
     def __new__(cls, value, unit: str=None, **kwargs):
         """
         The __new__ method created a Quantity instance of the right type. 
@@ -155,7 +148,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not newunit in self._units:
             raise ValueError(f"unit {newunit} not defined")
-        ret = self.instantiate(self.si, self._baseunit)
+        ret = self.__class__(self.si, self._baseunit)
         ret._unit = newunit
         return ret
     
@@ -165,7 +158,7 @@ class Quantity(Generic[Q], ABC, float):
         of the current quantity. So, if _val(80) is called on Area(10, "ha"),
         the returning value will be 
         """
-        q = self.instantiate(si, self._baseunit)
+        q = self.__class__(si, self._baseunit)
         q._unit = self._unit
         return q
 
@@ -199,7 +192,7 @@ class Quantity(Generic[Q], ABC, float):
         integer value above 0.104 m is 1 m = 100 cm). Note that the ceil of 
         -3.5 is -3.
         """
-        return self.instantiate(self.displayvalue.__ceil__(), self._unit)
+        return self.__class__(self.displayvalue.__ceil__(), self._unit)
     
     def __floor__(self) -> Q:
         """
@@ -209,7 +202,7 @@ class Quantity(Generic[Q], ABC, float):
         floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
         value below 0.104 m is 0 m). Note that the floor of -3.5 is -4.
         """
-        return self.instantiate(self.displayvalue.__floor__(), self._unit)
+        return self.__class__(self.displayvalue.__floor__(), self._unit)
     
     def __floordiv__(self, other):
         """
@@ -222,7 +215,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not (other.__class__ == float or other.__class__ == int):
             raise ValueError("// operator needs float or int")
-        return self.instantiate(self.displayvalue // other, self._unit)
+        return self.__class__(self.displayvalue // other, self._unit)
     
     def __mod__(self, other):
         """
@@ -234,7 +227,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not (other.__class__ == float or other.__class__ == int):
             raise ValueError("% operator needs float or int")
-        return self.instantiate(self.displayvalue % other, self._unit)
+        return self.__class__(self.displayvalue % other, self._unit)
 
     def __mul__(self, other):
         """
@@ -253,8 +246,8 @@ class Quantity(Generic[Q], ABC, float):
             return self._val(float(self) * other)
         if other.__class__ in self.__class__._mul:
             newclass = self.__class__._mul[other.__class__]
-            return newclass.instantiate(float(self) * float(other),
-                                        newclass._baseunit)
+            return newclass(float(self) * float(other),
+                            newclass._baseunit)
         raise ValueError("* operator not defined for %s * %s",
                          self, other)
         
@@ -313,7 +306,7 @@ class Quantity(Generic[Q], ABC, float):
         round(10.4 cm), we expect 10 cm, and not 0 cm (the rounded value of
         0.104 m). 
         """
-        return self.instantiate(self.displayvalue.__round__(), self._unit)
+        return self.__class__(self.displayvalue.__round__(), self._unit)
 
     def __rsub__(self, other):
         """
@@ -360,8 +353,8 @@ class Quantity(Generic[Q], ABC, float):
             return self._val(float(self) / other)
         if other.__class__ in self.__class__._div:
             newclass = self.__class__._div[other.__class__]
-            return newclass.instantiate(float(self) / float(other),
-                                        newclass._baseunit)
+            return newclass(float(self) / float(other),
+                            newclass._baseunit)
         raise ValueError("/ operator not defined for %s * %s",
                          self, other)
 
@@ -375,7 +368,7 @@ class Quantity(Generic[Q], ABC, float):
         floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
         value below 0.104 m is 0 m). 
         """
-        return self.instantiate(self.displayvalue.__trunc__(), self._unit)
+        return self.__class__(self.displayvalue.__trunc__(), self._unit)
     
     def __pow__(self, power):
         """
@@ -392,8 +385,84 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not (power.__class__ == float or power.__class__ == int):
             raise ValueError("** operator needs float or int")
-        return self.instantiate(self.displayvalue ** power, self._unit)
+        return self.__class__(self.displayvalue ** power, self._unit)
 
+    def __eq__(self, other) -> bool:
+        """
+        Return whether this quantity is equal to the other quantity.
+        False will be returned when the types are different.
+        """
+        if self.__class__ != other.__class__:
+            return False
+        return float(self) == float(other)
+
+    def __ne__(self, other) -> bool:
+        """
+        Return whether this quantity is not equal to the other quantity.
+        True will be returned when the types are different.
+        """
+        if self.__class__ != other.__class__:
+            return True
+        return float(self) != float(other)
+         
+    def __lt__(self, other) -> bool:
+        """
+        Return whether this quantity is less than the other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(self.__class__ == other.__class__, TypeError,
+            "comparing incompatible quantities {0} and {1}", 
+                    self.__class__.__name__, other.__class__.__name__)
+        return float(self) < float(other)
+         
+    def __le__(self, other) -> bool:
+        """
+        Return whether this quantity is less than or equal to the 
+        other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(self.__class__ == other.__class__, TypeError,
+            "comparing incompatible quantities {0} and {1}", 
+                    self.__class__.__name__, other.__class__.__name__)
+        return float(self) <= float(other)
+         
+    def __gt__(self, other) -> bool:
+        """
+        Return whether this quantity is greater than the other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(self.__class__ == other.__class__, TypeError,
+            "comparing incompatible quantities {0} and {1}", 
+                    self.__class__.__name__, other.__class__.__name__)
+        return float(self) > float(other)
+         
+    def __ge__(self, other) -> bool:
+        """
+        Return whether this quantity is greater than or equal to the 
+        other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(self.__class__ == other.__class__, TypeError,
+            "comparing incompatible quantities {0} and {1}", 
+                    self.__class__.__name__, other.__class__.__name__)
+        return float(self) >= float(other)
+         
     def __str__(self):
         """
         Return a string representation of the quantity, where the chosen unit 
@@ -456,9 +525,20 @@ class Duration(Quantity['Duration']):
     _mul = {}
     _div = {}
 
-    @classmethod
-    def instantiate(cls, value, unit: str=None, **kwargs):
-        return Duration(value, unit, **kwargs)
+
+class Frequency(Quantity['Frequency']):
+    _baseunit = 'Hz'
+    _units = {'Hz': 1, 'kHz': 1000, 'MHz': 1E6, 'GHz': 1E9, 'THz': 1E12,
+              '/s': 1, '/ms': 1E3, '/mus': 1E6, '/ns': 1E9,
+              '/min': 1. / 60, '/minute': 1. / 60,
+              '/hr': 1. / 3600, '/hour': 1. / 3600, '/h': 1. / 3600,
+              '/day': 1. / (24 * 60 * 60), '/d': 1. / (24 * 60 * 60),
+              '/w': 1. / (7.0 * 86400.0), '/wk': 1. / (7.0 * 86400.0),
+              '/week': 1. / (7.0 * 86400.0) }
+    _displayunits = {'/mus': '/\u03BCs'}
+    _sisig = {'s':-1}
+    _mul = {}
+    _div = {}
 
 
 class Length(Quantity['Length']):
@@ -474,10 +554,6 @@ class Length(Quantity['Length']):
     _sisig = {'m': 1}
     _mul = {}
     _div = {}
-
-    @classmethod
-    def instantiate(cls, value, unit: str=None, **kwargs):
-        return Length(value, unit, **kwargs)
     
 
 class Speed(Quantity['Speed']):
@@ -495,10 +571,6 @@ class Speed(Quantity['Speed']):
     _mul = {}
     _div = {}
 
-    @classmethod
-    def instantiate(cls, value, unit: str=None, **kwargs):
-        return Speed(value, unit, **kwargs)
-
 
 class Area(Quantity):
     _baseunit = 'm^2'
@@ -514,9 +586,20 @@ class Area(Quantity):
     _mul = {}
     _div = {}
 
-    @classmethod
-    def instantiate(cls, value, unit: str=None, **kwargs):
-        return Area(value, unit, **kwargs)
+
+class Volume(Quantity):
+    _baseunit = 'm^3'
+    _units = {'m^3': 1, 'mum^3': 1E-18, 'mm^3': 1E-9,
+               'cm^3': 1E-6, 'dm^3':1E-3, 'dam^3': 1E3,
+               'hm^3': 1E6, 'km^3': 1E9,
+               'in^3': 0.0254 * 0.0254 * 0.0254,
+               'ft^3': 0.3048 * 0.3048 * 0.3048,
+               'yd^3': 0.9144 * 0.9144 * 0.9144,
+               'mi^3': 1609.344 * 1609.344 * 1609.344}
+    _displayunits = {'mum^3': '\u03BCm^3'}
+    _sisig = {'m': 3}
+    _mul = {}
+    _div = {}
 
 
 class Dimensionless(Quantity):
@@ -526,23 +609,45 @@ class Dimensionless(Quantity):
     _sisig = {}
     _mul = {}
     _div = {}
-    
-    @classmethod
-    def instantiate(cls, value, unit: str=None, **kwargs):
-        return Dimensionless(value, unit, **kwargs)
+
+
+class SI(Quantity):
+    _baseunit = ''
+    _units = {'': 1}
+    _displayunits = {}
+    _sisig = {}
+    _mul = {}
+    _div = {}
     
 # -----------------------------------------------------------------------------
 # Multiplication and division of units to create new units
 # -----------------------------------------------------------------------------
 
 
-Duration._div = {Duration: Dimensionless}
+QUANTITES = [Duration, Frequency, Length, Speed, Area, Volume, Dimensionless]
 
-Length._mul = {Length: Area}
-Length._div = {Length: Dimensionless, Duration: Speed}
+Duration._mul = {}
+Duration._div = {}
+
+Length._mul = {Length: Area, Area: Volume}
+Length._div = {Duration: Speed}
 
 Speed._mul = {Duration: Length}
-Speed._div = {Speed: Dimensionless}
+Speed._div = {}
 
-# Area._mul = {Length: Volume}
-Area._div = {Area: Dimensionless, Length: Length}
+Frequency._mul = {Length: Speed}
+Frequency._div = {Length: Frequency}
+
+Area._mul = {Length: Volume}
+Area._div = {Length: Length}
+
+Volume._mul = {}
+Volume._div = {Length: Area, Area: Length}
+
+Dimensionless._mul = {q: q for q in QUANTITES}
+Dimensionless._div = {Duration: Frequency, Frequency: Duration}
+
+for q in QUANTITES:
+    q._mul[Dimensionless] = q
+    q._div[Dimensionless] = q
+    q._div[q] = Dimensionless

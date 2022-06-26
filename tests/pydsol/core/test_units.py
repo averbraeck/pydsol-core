@@ -6,7 +6,8 @@ import math
 
 import pytest
 
-from pydsol.core.units import Duration, Length, Area, Speed, Quantity
+from pydsol.core.units import Duration, Length, Area, Speed, Quantity, \
+    Frequency, Dimensionless, Volume
 
 
 def test_assign():
@@ -44,6 +45,11 @@ def test_assign():
         Length(1.0, 'xyz')
     with pytest.raises(ValueError):
         Length(1.0, 'mile').as_unit("x")
+        
+def test_cmp():
+    assert Length(10, 'm') == Length(10, 'm')
+    assert Length(10, 'm') != Duration(10.0, 's')
+    assert Length(10.0, 'm') != Volume(5.0, 'm^3')
 
 
 def test_add_sub():
@@ -123,7 +129,7 @@ def test_math():
     a = L(-15.4, 'cm')
     x = abs(a)
     assert x == L(15.4, 'cm')
-    assert math.fabs(x) == L(15.4, 'cm')
+    assert abs(x) == L(15.4, 'cm')
     assert math.ceil(x) == L(16.0, 'cm')
     assert math.floor(x) == L(15.0, 'cm')
     assert round(x) == L(15.0, 'cm')
@@ -260,19 +266,21 @@ def test_area():
 
 def test_combine():
     l = Length(2.0, 'm')
-    assert l / l == 1.0
+    assert l / l == Dimensionless(1.0)
     assert Length(2.0, 'm') * Length(300, 'cm') == Area(6.0, 'm^2')
     
     t = Duration(4.0, 's')
-    assert t / t == 1.0
+    assert t / t == Dimensionless(1.0)
     assert l / t == Speed(0.5, 'm/s')
     
     s = Speed(3.0, 'm/s')
-    assert s / s == 1.0
+    assert s / s == Dimensionless(1.0)
     
     a = Area(10.0, 'm^2')
-    assert a / a == 1.0
+    assert a / a == Dimensionless(1.0)
 
+    assert Dimensionless(1) / Duration(2, 's') == Frequency(0.5, 'Hz')
+    # TODO: assert 1 / Duration(0.1, 's') == Frequency(10, 'Hz')
 
 if __name__ == '__main__':
     pytest.main()
