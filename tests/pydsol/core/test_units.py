@@ -107,11 +107,7 @@ def test_mul_div():
     assert ld.si == 100.0
     assert ld.unit == 'hm'
     assert ld.displayvalue == 1.0
-    # not a unit
-    ln = 1.0 / l2
-    assert type(ln) != Length
-    assert type(ln) == float
-    assert ln == 1.0 / 0.9
+    # check errors
     with pytest.raises(ValueError):
         Length(1.0) * 'x'
     with pytest.raises(ValueError):
@@ -280,7 +276,8 @@ def test_combine():
     assert a / a == Dimensionless(1.0)
 
     assert Dimensionless(1) / Duration(2, 's') == Frequency(0.5, 'Hz')
-    # TODO: assert 1 / Duration(0.1, 's') == Frequency(10, 'Hz')
+    assert 1 / Duration(0.1, 's') == Frequency(10, 'Hz')
+    assert 1 / Frequency(10, 'Hz') == Duration(0.1, 's')
 
 if __name__ == '__main__':
     pytest.main()

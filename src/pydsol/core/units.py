@@ -148,7 +148,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not newunit in self._units:
             raise ValueError(f"unit {newunit} not defined")
-        ret = self.__class__(self.si, self._baseunit)
+        ret = type(self)(self.si, self._baseunit)
         ret._unit = newunit
         return ret
     
@@ -158,7 +158,7 @@ class Quantity(Generic[Q], ABC, float):
         of the current quantity. So, if _val(80) is called on Area(10, "ha"),
         the returning value will be 
         """
-        q = self.__class__(si, self._baseunit)
+        q = type(self)(si, self._baseunit)
         q._unit = self._unit
         return q
 
@@ -179,7 +179,7 @@ class Quantity(Generic[Q], ABC, float):
         ValueError
             when the two quantities are of different types
         """
-        if (self.__class__ != other.__class__):
+        if (type(self) != type(other)):
             raise ValueError("adding incompatible quantities")
         return self._val(float(self) + float(other))
     
@@ -192,7 +192,7 @@ class Quantity(Generic[Q], ABC, float):
         integer value above 0.104 m is 1 m = 100 cm). Note that the ceil of 
         -3.5 is -3.
         """
-        return self.__class__(self.displayvalue.__ceil__(), self._unit)
+        return type(self)(self.displayvalue.__ceil__(), self._unit)
     
     def __floor__(self) -> Q:
         """
@@ -202,7 +202,7 @@ class Quantity(Generic[Q], ABC, float):
         floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
         value below 0.104 m is 0 m). Note that the floor of -3.5 is -4.
         """
-        return self.__class__(self.displayvalue.__floor__(), self._unit)
+        return type(self)(self.displayvalue.__floor__(), self._unit)
     
     def __floordiv__(self, other):
         """
@@ -213,9 +213,9 @@ class Quantity(Generic[Q], ABC, float):
         (10.0 cm // 3), we expect 3 cm, and not 0 cm (the nearest integer
         value below the result of 0.1 // 3 in the si unit meter is 0 m). 
         """
-        if not (other.__class__ == float or other.__class__ == int):
+        if not (type(other) == float or type(other) == int):
             raise ValueError("// operator needs float or int")
-        return self.__class__(self.displayvalue // other, self._unit)
+        return type(self)(self.displayvalue // other, self._unit)
     
     def __mod__(self, other):
         """
@@ -225,9 +225,9 @@ class Quantity(Generic[Q], ABC, float):
         si-value. When we want to calculate (10.0 cm % 3), we expect 1 cm, 
         and not 0.1 m (the remainder of 0.1 % 3 in the si unit meter). 
         """
-        if not (other.__class__ == float or other.__class__ == int):
+        if not (type(other) == float or type(other) == int):
             raise ValueError("% operator needs float or int")
-        return self.__class__(self.displayvalue % other, self._unit)
+        return type(self)(self.displayvalue % other, self._unit)
 
     def __mul__(self, other):
         """
@@ -242,14 +242,14 @@ class Quantity(Generic[Q], ABC, float):
             when the multiplication factor is not a float or an int, and the
             multiplication is not between quantities
         """
-        if other.__class__ == float or other.__class__ == int:
+        if type(other) == float or type(other) == int:
             return self._val(float(self) * other)
-        if other.__class__ in self.__class__._mul:
-            newclass = self.__class__._mul[other.__class__]
+        if type(other) in type(self)._mul:
+            newclass = type(self)._mul[type(other)]
             return newclass(float(self) * float(other),
                             newclass._baseunit)
-        raise ValueError("* operator not defined for %s * %s",
-                         self, other)
+        raise ValueError("* operator not defined for {} * {}".format(
+                         self, other))
         
     def __neg__(self):
         """
@@ -306,7 +306,7 @@ class Quantity(Generic[Q], ABC, float):
         round(10.4 cm), we expect 10 cm, and not 0 cm (the rounded value of
         0.104 m). 
         """
-        return self.__class__(self.displayvalue.__round__(), self._unit)
+        return type(self)(self.displayvalue.__round__(), self._unit)
 
     def __rsub__(self, other):
         """
@@ -333,7 +333,7 @@ class Quantity(Generic[Q], ABC, float):
         ValueError
             when the two quantities are of different types
         """
-        if (self.__class__ != other.__class__):
+        if (type(self) != type(other)):
             raise ValueError("subtracting incompatible quantities")
         return self._val(float(self) - float(other))
 
@@ -347,16 +347,34 @@ class Quantity(Generic[Q], ABC, float):
         ------
         ValueError
             when the divisor is not a float or an int, and the division
-            is not between two quantities
+            between two quantities is not defined
         """
-        if other.__class__ == float or other.__class__ == int:
+        if type(other) == float or type(other) == int:
             return self._val(float(self) / other)
-        if other.__class__ in self.__class__._div:
-            newclass = self.__class__._div[other.__class__]
+        if type(other) in type(self)._div:
+            newclass = type(self)._div[type(other)]
             return newclass(float(self) / float(other),
                             newclass._baseunit)
-        raise ValueError("/ operator not defined for %s * %s",
-                         self, other)
+        raise ValueError("/ operator not defined for {} * {}".format(
+                         self, other))
+
+    def __rtruediv__(self, other):
+        """
+        Return a new quantity containing the division of the other quantity 
+        or value by the self object. If other is a Quantity, 
+        __truediv__(other, self) can be called. If other is a number, 
+        __truediv__(Domensionless, self) will be called instead.
+        
+        Raises
+        ------
+        ValueError
+            when other is not a float or an int, and the division between 
+            the two quantities is not defined
+        """
+        if type(other) == float or type(other) == int:
+            return Dimensionless(other).__truediv__(self)
+        raise ValueError("/ operator not defined for {} * {}".format(
+                         other, self))
 
     def __trunc__(self):
         """
@@ -368,7 +386,7 @@ class Quantity(Generic[Q], ABC, float):
         floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
         value below 0.104 m is 0 m). 
         """
-        return self.__class__(self.displayvalue.__trunc__(), self._unit)
+        return type(self)(self.displayvalue.__trunc__(), self._unit)
     
     def __pow__(self, power):
         """
@@ -383,16 +401,16 @@ class Quantity(Generic[Q], ABC, float):
         ValueError
             when the multiplication factor is not a float or an int
         """
-        if not (power.__class__ == float or power.__class__ == int):
+        if not (type(power) == float or type(power) == int):
             raise ValueError("** operator needs float or int")
-        return self.__class__(self.displayvalue ** power, self._unit)
+        return type(self)(self.displayvalue ** power, self._unit)
 
     def __eq__(self, other) -> bool:
         """
         Return whether this quantity is equal to the other quantity.
         False will be returned when the types are different.
         """
-        if self.__class__ != other.__class__:
+        if type(self) != type(other):
             return False
         return float(self) == float(other)
 
@@ -401,7 +419,7 @@ class Quantity(Generic[Q], ABC, float):
         Return whether this quantity is not equal to the other quantity.
         True will be returned when the types are different.
         """
-        if self.__class__ != other.__class__:
+        if type(self) != type(other):
             return True
         return float(self) != float(other)
          
@@ -414,9 +432,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(self.__class__ == other.__class__, TypeError,
-            "comparing incompatible quantities {0} and {1}", 
-                    self.__class__.__name__, other.__class__.__name__)
+        Assert.that(type(self) == type(other), TypeError,
+            "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
         return float(self) < float(other)
          
     def __le__(self, other) -> bool:
@@ -429,9 +447,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(self.__class__ == other.__class__, TypeError,
-            "comparing incompatible quantities {0} and {1}", 
-                    self.__class__.__name__, other.__class__.__name__)
+        Assert.that(type(self) == type(other), TypeError,
+            "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
         return float(self) <= float(other)
          
     def __gt__(self, other) -> bool:
@@ -443,9 +461,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(self.__class__ == other.__class__, TypeError,
-            "comparing incompatible quantities {0} and {1}", 
-                    self.__class__.__name__, other.__class__.__name__)
+        Assert.that(type(self) == type(other), TypeError,
+            "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
         return float(self) > float(other)
          
     def __ge__(self, other) -> bool:
@@ -458,9 +476,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(self.__class__ == other.__class__, TypeError,
-            "comparing incompatible quantities {0} and {1}", 
-                    self.__class__.__name__, other.__class__.__name__)
+        Assert.that(type(self) == type(other), TypeError,
+            "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
         return float(self) >= float(other)
          
     def __str__(self):
