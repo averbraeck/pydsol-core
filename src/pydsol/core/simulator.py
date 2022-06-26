@@ -425,10 +425,12 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
     def initialize(self, model:ModelInterface, replication:ReplicationInterface):
         self._eventlist.clear()
         super().initialize(model, replication)
+        # schedule end_replication AFTER events at end time
         self.schedule_event_abs(self.replication.end_sim_time, 
-            self, "end_replication")
+            self, "end_replication", priority=SimEventInterface.MIN_PRIORITY)
+        # schedule warmup BEFORE events at warmup time
         self.schedule_event_abs(self.replication.warmup_sim_time, 
-            self, "warmup")
+            self, "warmup", priority=SimEventInterface.MAX_PRIORITY)
         
     def set_pause_on_error(self, pause: bool):
         """Indicate whether the simulation has to pause when the 
