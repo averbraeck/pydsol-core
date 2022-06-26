@@ -64,7 +64,7 @@ class OrderApp(EventListener):
     
     def notify(self, event: Event):
         if event.event_type == ReplicationInterface.END_REPLICATION_EVENT:
-            sys.exit(0)
+            print("Simulation ended. Here we can look at the statistics")
 
 
 """main just creates the Application class"""

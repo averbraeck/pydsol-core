@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from pydsol.core.exceptions import DSOLError
+from pydsol.core.utils import DSOLError
 from pydsol.core.interfaces import SimulatorInterface, ModelInterface
 
 

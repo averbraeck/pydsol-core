@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from inspect import isfunction, ismethod
 from typing import Union
 
-from pydsol.core.exceptions import DSOLError
+from pydsol.core.utils import DSOLError
 
 
 __all__ = [

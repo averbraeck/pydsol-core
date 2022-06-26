@@ -1,6 +1,6 @@
 from typing import TypeVar, Generic
 
-from pydsol.core.exceptions import DSOLError
+from pydsol.core.utils import DSOLError
 from pydsol.core.interfaces import SimulatorInterface, ModelInterface, \
     ReplicationInterface, ExperimentInterface
 

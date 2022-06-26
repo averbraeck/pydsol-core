@@ -2,7 +2,9 @@
 Test the interface classes that prevent circular referencing. Note that the 
 static events are defined here so they are accessible to all other classes.
 """ 
-from pydsol.core.interfaces import SimulatorInterface, ReplicationInterface,\
+import pytest
+
+from pydsol.core.interfaces import SimulatorInterface, ReplicationInterface, \
     ExperimentInterface, ModelInterface
 from pydsol.core.pubsub import EventType
 
