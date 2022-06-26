@@ -48,8 +48,16 @@ def test_assign():
         
 def test_cmp():
     assert Length(10, 'm') == Length(10, 'm')
+    assert Length(10, 'm') != Length(10, 'cm')
     assert Length(10, 'm') != Duration(10.0, 's')
+    assert not Length(10, 'm') == Duration(10.0, 's')
     assert Length(10.0, 'm') != Volume(5.0, 'm^3')
+    assert Area(10.0, 'km^2') > Area(5.0, 'km^2')
+    assert Area(10.0, 'km^2') >= Area(5.0, 'km^2')
+    assert Area(10.0, 'km^2') >= Area(10.0, 'km^2')
+    assert Area(10.0, 'm^2') < Area(5.0, 'km^2')
+    assert Area(10.0, 'm^2') <= Area(5.0, 'km^2')
+    assert Area(10.0, 'm^2') <= Area(10.0, 'm^2')
 
 
 def test_add_sub():
@@ -278,6 +286,10 @@ def test_combine():
     assert Dimensionless(1) / Duration(2, 's') == Frequency(0.5, 'Hz')
     assert 1 / Duration(0.1, 's') == Frequency(10, 'Hz')
     assert 1 / Frequency(10, 'Hz') == Duration(0.1, 's')
+    
+    with pytest.raises(ValueError):
+        'x' / Length(10.0, 'm')
+
 
 if __name__ == '__main__':
     pytest.main()
