@@ -55,7 +55,8 @@ def test_eventlist():
             if e.priority == last_priority:
                 assert e.id > last_id
             else:
-                assert e.priority > last_priority
+                # note that a high priority is an earlier event
+                assert e.priority < last_priority
         else:
             assert e.time >= last_time
         last_time = e.time

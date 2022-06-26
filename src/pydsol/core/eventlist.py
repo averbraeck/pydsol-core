@@ -98,8 +98,11 @@ class EventListHeap(EventListInterface):
     
     Events in an event list are sorted on absolute execution time, with
     priority as a tie breaker, and an unique id for an event as the second
-    tie breaker. The key for the events is a a tuple (time, priority, id)
+    tie breaker. The key for the events is a a tuple (time, -priority, id)
     that is always unique, because every simulation event has a unique id.
+    Note the minus sign in front of priority. This is because a HIGHER 
+    priority means an EARLIER event. This is consistent with the comparison
+    methods in the SimEvent class.
     
     Attributes
     ----------
@@ -143,7 +146,7 @@ class EventListHeap(EventListInterface):
         event : SimEventInterface
             the event to store on the event list
         """
-        heapq.heappush(self._event_list, (event.time, event.priority,
+        heapq.heappush(self._event_list, (event.time, -event.priority,
                                           event._id, event))
         self._number_events += 1
     
@@ -201,7 +204,7 @@ class EventListHeap(EventListInterface):
         """
         if self.is_empty():
             return False
-        return self._event_list.count((event.time, event.priority,
+        return self._event_list.count((event.time, -event.priority,
                                        event._id, event)) > 0
         
     def remove(self, event: SimEventInterface) -> bool:
@@ -219,7 +222,7 @@ class EventListHeap(EventListInterface):
         the event list.
         """
         if (self.contains(event)):
-            self._event_list.remove((event.time, event.priority,
+            self._event_list.remove((event.time, -event.priority,
                                      event._id, event))
             self._number_events -= 1
             return True
@@ -243,7 +246,7 @@ class EventListHeap(EventListInterface):
     def __str__(self) -> str:
         s = "["
         for e in self._event_list:
-            s += "(" + str(e[0]) + ", " + str(e[1]) + ") "
+            s += "(" + str(e[0]) + ", " + str(-e[1]) + ") "
         s += "]"
         return s
     

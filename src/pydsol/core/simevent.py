@@ -178,8 +178,10 @@ class SimEvent(SimEventInterface):
             return -1
         if (self._absolute_time > other._absolute_time):
             return 1
+        # lower priority means LATER event
         if (self._priority < other._priority):
             return -1
+        # higher priority means EARIER event
         if (self._priority > other._priority):
             return 1
         if (self._id < other._id):
