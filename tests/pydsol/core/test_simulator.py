@@ -82,7 +82,7 @@ def test_initialize():
         simulator.cleanup()
 
 
-def test_run():
+def test_start():
 
     class Model(DSOLModel):
 
@@ -172,7 +172,58 @@ def test_step():
         raise e
     finally:
         simulator.cleanup()
-    
+
+
+def test_stop():
+
+    class Model(DSOLModel):
+
+        def __init__(self, simulator: SimulatorInterface):
+            super().__init__(simulator)
+            self.constructed = False
+            self.count = 0
+            
+        def construct_model(self):
+            self.constructed = True
+            self.simulator.schedule_event_now(self, "inc")
+            
+        def inc(self):
+            self.count += 1
+            self.simulator.schedule_event_rel(10.0, self, "inc")
+
+    simulator: DEVSSimulator = DEVSSimulator('sim', float, 0.0)
+    model: ModelInterface = Model(simulator)
+    replication: ReplicationInterface = SingleReplication(
+        'rep', 0.0, 10.0, 1E15)
+    try:
+        assert not model.constructed
+        simulator.initialize(model, replication)
+        assert model.count == 0
+        simulator.start()
+        sleep(0.5) # seconds
+        assert simulator.simulator_time > 0
+        assert simulator.is_starting_or_running()
+        assert not simulator.is_stopping_or_stopped()
+        assert simulator.run_state == RunState.STARTED
+        assert simulator.replication_state == ReplicationState.STARTED
+        # cannot start simulator that is running
+        with pytest.raises(DSOLError):
+            simulator.start()
+        # cannot step simulator that is running
+        with pytest.raises(DSOLError):
+            simulator.step()
+        # but we can stop!
+        simulator.stop()
+        sleep(0.1) # seconds
+        assert not simulator.is_starting_or_running()
+        assert simulator.is_stopping_or_stopped()
+        assert simulator.run_state == RunState.STOPPED
+        assert simulator.replication_state == ReplicationState.STARTED
+    except Exception as e:
+        raise e
+    finally:
+        simulator.cleanup()
+
     
 def test_devs_simulator():
     pass
