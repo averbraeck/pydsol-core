@@ -11,9 +11,9 @@ import traceback
 from typing import TypeVar, Generic
 
 from pydsol.core.eventlist import EventListInterface, EventListHeap
-from pydsol.core.exceptions import DSOLError
+from pydsol.core.utils import DSOLError
 from pydsol.core.interfaces import ModelInterface, SimulatorInterface
-from pydsol.core.interfaces import ReplicationInterface as RI 
+from pydsol.core.interfaces import ReplicationInterface
 from pydsol.core.pubsub import EventProducer
 from pydsol.core.simevent import SimEventInterface, SimEvent
 from pydsol.core.units import Duration
@@ -126,27 +126,31 @@ class SimulatorWorkerThread(Thread):
             # wait till wakeup, e.g., to start the simulation
             self.__wakeup_flag.wait()
             if not self._finalized:
-                if not self._job._replication_state != ReplicationState.ENDING:
+                if self._job._replication_state != ReplicationState.ENDING:
                     self.running = True
                     try:
                         if self._job._replication_state != ReplicationState.INITIALIZED:
-                            self.job.fire_timed(RI.START_REPLICATION_EVENT)
-                            self.job._replication_state = ReplicationState.STARTED
-                        self.job.fire_timed(Simulator.START_EVENT)
-                        self.job._run_state = RunState.STARTED
-                        self.job.run()
-                        self.job.stopImpl()
-                        self.job.fire_timed(Simulator.STOP_EVENT)
-                        self.job._run_state = RunState.STOPPED
+                            self._job.fire_timed(self._job.simulator_time,
+                                ReplicationInterface.START_REPLICATION_EVENT, None)
+                            self._job._replication_state = ReplicationState.STARTED
+                        self._job.fire_timed(self._job.simulator_time,
+                            Simulator.START_EVENT, None)
+                        self._job._run_state = RunState.STARTED
+                        self._job._run()
+                        self._job._stop_impl()
+                        self._job.fire_timed(self._job.simulator_time,
+                            Simulator.STOP_EVENT, None)
+                        self._job._run_state = RunState.STOPPED
                     except Exception as e:
                         print("Simulator run interrupted by exception:")
                         print(str(e))
                         traceback.print_exc()
                 self._running = False
-                if self.job._replication_state == ReplicationState.ENDING:
-                    self.job._replication_state = ReplicationState.ENDED
-                    self.job._run_state = RunState.ENDED
-                    self.job.fire_timed(RI.END_REPLICATION_EVENT)
+                if self._job._replication_state == ReplicationState.ENDING:
+                    self._job._replication_state = ReplicationState.ENDED
+                    self._job._run_state = RunState.ENDED
+                    self._job.fire_timed(self._job.simulator_time,
+                        ReplicationInterface.END_REPLICATION_EVENT, None)
                     self._finalized = True
             self.__wakeup_flag.clear()
         # end while
@@ -168,7 +172,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._simulator_time: TIME = initial_time
         self._run_until_time: TIME = None
         self._run_until_including: bool = True
-        self._replication: RI = None
+        self._replication: ReplicationInterface = None
         self._model: ModelInterface = None
         self._run_state: RunState = RunState.NOT_INITIALIZED
         self._replication_state = ReplicationState.NOT_INITIALIZED
@@ -195,7 +199,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         """return the first possible time of the used time type"""
         
     @property
-    def replication(self) -> RI:
+    def replication(self) -> ReplicationInterface:
         """return the replication with which the simulator has been 
         initialized, or None when initialize has not yet been called"""
         return self._replication
@@ -206,11 +210,11 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         initialize for a model has not yet been called"""
         return self._model
         
-    def initialize(self, model: ModelInterface, replication: RI):
+    def initialize(self, model: ModelInterface, replication: ReplicationInterface):
         """initialize the simulator with a replication for a model"""
         if not isinstance(model, ModelInterface):
             raise DSOLError(f"model {model} not valid")
-        if not isinstance(replication, RI):
+        if not isinstance(replication, ReplicationInterface):
             raise DSOLError(f"replication {replication} not valid")
         if self.is_starting_or_running():
             raise DSOLError("cannot initialize a running simulation")
@@ -265,13 +269,18 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._run_state = RunState.STARTING
         if self._replication_state == ReplicationState.INITIALIZED:
             self.fire_timed(self._simulator_time,
-                            RI.START_REPLICATION_EVENT, None)
+                ReplicationInterface.START_REPLICATION_EVENT, None)
             self._replication_state = ReplicationState.STARTED
         self.fire(Simulator.STARTING_EVENT, None)
-        if threading.current_thread().name == self.name:
-            self.__worker.wakeup()
-        else:
-            self.run()
+        # counter = 0
+        # while not self.__worker.is_alive():
+        #     sleep(0.001)
+        #     if counter > 1000:
+        #         raise DSOLError("worker thread not started")
+        # TODO: if threading.current_thread().name == self.name:
+        self.__worker.wakeup()
+        # else:
+        #    self._run()
         
     def start(self):
         """Starts the simulator, and fire a START_EVENT that the simulator 
@@ -347,7 +356,8 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._start_impl()
     
     def warmup(self):
-        self.fire_timed(self.simulator_time, RI.WARMUP_EVENT, None)
+        self.fire_timed(self.simulator_time, 
+                        ReplicationInterface.WARMUP_EVENT, None)
 
     @property
     def run_state(self) -> RunState:
@@ -382,7 +392,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
             self._simulator_time = self._replication.end_sim_time
         
     @abstractmethod
-    def run(self):
+    def _run(self):
         """
         The run method defines the actual time step mechanism of the 
         simulator. The implementation of this method depends on the
@@ -406,6 +416,14 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         super().__init__(name, time_type, initial_time)
         self._eventlist: EventListInterface = EventListHeap()
         self._pause_on_error = True
+    
+    def initialize(self, model:ModelInterface, replication:ReplicationInterface):
+        self._eventlist.clear()
+        super().initialize(model, replication)
+        self.schedule_event_abs(self.replication.end_sim_time, 
+            self, "end_replication")
+        self.schedule_event_abs(self.replication.warmup_sim_time, 
+            self, "warmup")
         
     def set_pause_on_error(self, pause: bool):
         """Indicate whether the simulation has to pause when the 
@@ -453,7 +471,7 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         if time < self._simulator_time:
             raise DSOLError("cannot schedule event in the past")
         return self.schedule_event(SimEvent(time,
-                 target, method, priority, kwargs))
+                 target, method, priority, **kwargs))
 
     def cancel_event(self, event: SimEventInterface):
         """remove the provided event from the event list"""
@@ -477,12 +495,12 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         super().end_replication()
         self.eventlist().clear()
         
-    def run(self):
+    def _run(self):
         while not self.is_stopping_or_stopped():
             # check if we are done
-            if (self.eventlist().peek_first().time > self._run_until_time \
-                or (self.eventlist().peek_first().time == self._run_until_time \
-                    and self._run_until_including)):
+            t = self.eventlist().peek_first().time
+            if (t > self._run_until_time or (t == self._run_until_time \
+                    and not self._run_until_including)):
                 self._simulator_time = self._run_until_time
                 self._run_state = RunState.STOPPING
                 return;
@@ -496,7 +514,7 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
                 event.execute()
                 if self.eventlist().is_empty():
                     self._simulator_time = self._run_until_time
-                    self._run_state - RunState.STOPPING
+                    self._run_state = RunState.STOPPING
                     return;
             except Exception as e:
                 print("Simulator run interrupted by exception:")
