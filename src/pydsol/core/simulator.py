@@ -11,12 +11,12 @@ import traceback
 from typing import TypeVar, Generic
 
 from pydsol.core.eventlist import EventListInterface, EventListHeap
-from pydsol.core.utils import DSOLError
 from pydsol.core.interfaces import ModelInterface, SimulatorInterface
 from pydsol.core.interfaces import ReplicationInterface
 from pydsol.core.pubsub import EventProducer
 from pydsol.core.simevent import SimEventInterface, SimEvent
 from pydsol.core.units import Duration
+from pydsol.core.utils import DSOLError, get_module_logger
 
 
 __all__ = [
@@ -29,6 +29,8 @@ __all__ = [
     "ReplicationState",
     "SimulatorWorkerThread",
     ]
+
+logger = get_module_logger('simulator')
 
 # The TypeVar for time is used for type hinting for simulator time types
 TIME = TypeVar("TIME", float, int)

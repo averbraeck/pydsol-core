@@ -15,8 +15,13 @@ float class, and the actual unit is stored in the Quantity class as a str.
 This module has been based on the Java DJUNITS project (Delft Java units), as
 documented at https://djunits.org. 
 """
-from typing import TypeVar, Generic
+
 from abc import ABC, abstractmethod
+from typing import TypeVar, Generic
+
+from pydsol.core.utils import get_module_logger
+
+logger = get_module_logger('units')
 
 Q = TypeVar('Q')
 

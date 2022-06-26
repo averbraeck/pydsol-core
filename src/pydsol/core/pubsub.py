@@ -31,6 +31,7 @@ from abc import ABC, abstractmethod
 from typing import Type, Optional, Any, Union
 
 import inspect
+from pydsol.core.utils import get_module_logger
 
 __all__ = [
     "EventType",
@@ -39,6 +40,8 @@ __all__ = [
     "EventListener",
     "EventProducer",
     ]
+
+logger = get_module_logger('pubsub')
 
 
 class EventError(Exception):
@@ -537,15 +540,15 @@ class EventProducer:
         EventError
             if the event is not of the right type
         """
-        print(event)
         if not isinstance(event, Event):
             raise EventError("event {event} not of type Event")
-        # a copy() is used to avoid concurrent modification error in case 
-        # the notification would unsubscribe a listener to this event (!)
+        logger.debug("fire %s to %s", event, 
+                     self._listeners.get(event.event_type))
         if event.event_type not in self._listeners:
             return
+        # a copy() is used to avoid concurrent modification error in case 
+        # the notification would unsubscribe a listener to this event (!)
         for listener in self._listeners.get(event.event_type).copy():
-            print("   to: " + str(type(listener)))
             listener.notify(event)
  
     def fire(self, event_type: EventType, content, check: bool=True):
@@ -590,15 +593,15 @@ class EventProducer:
         EventError
             if the timed_event is not of the right type
         """
-        print(timed_event)
         if not isinstance(timed_event, TimedEvent):
             raise EventError("event {event} not of type TimedEvent")
-        # a copy() is used to avoid concurrent modification error in case 
-        # the notification would unsubscribe a listener to this event (!)
+        logger.debug("fire %s to %s", timed_event, 
+                     self._listeners.get(timed_event.event_type))
         if timed_event.event_type not in self._listeners:
             return
+        # a copy() is used to avoid concurrent modification error in case 
+        # the notification would unsubscribe a listener to this event (!)
         for listener in self._listeners.get(timed_event.event_type).copy():
-            print("   to: " + str(listener))
             listener.notify(timed_event)
 
     def fire_timed(self, time: Union[int, float], event_type: EventType,

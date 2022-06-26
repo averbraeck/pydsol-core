@@ -1,8 +1,9 @@
 from typing import TypeVar, Generic
 
-from pydsol.core.utils import DSOLError
 from pydsol.core.interfaces import SimulatorInterface, ModelInterface, \
     ReplicationInterface, ExperimentInterface
+from pydsol.core.utils import DSOLError, get_module_logger
+
 
 __all__ = [
     "RunControl",
@@ -12,6 +13,8 @@ __all__ = [
     "ExperimentReplication",
     "Experiment",
     ]
+
+logger = get_module_logger('pubsub')
 
 # The TypeVar for time is used for type hinting for simulator time types
 TIME = TypeVar("TIME", float, int)

@@ -18,6 +18,10 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Generic
 
 from pydsol.core.pubsub import EventType
+from pydsol.core.utils import get_module_logger
+
+
+logger = get_module_logger('interfaces')
 
 # The TypeVar for time is used for type hinting for simulator time types
 TIME = TypeVar("TIME", float, int)

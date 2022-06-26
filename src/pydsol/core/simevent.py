@@ -13,13 +13,15 @@ from abc import ABC, abstractmethod
 from inspect import isfunction, ismethod
 from typing import Union
 
-from pydsol.core.utils import DSOLError
+from pydsol.core.utils import DSOLError, get_module_logger
 
 
 __all__ = [
     "SimEventInterface",
     "SimEvent",
     ]
+
+logger = get_module_logger('simevent')
 
 
 class SimEventInterface(ABC):

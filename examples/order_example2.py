@@ -7,13 +7,14 @@ This example uses a full object-oriented way of creating and
 implementing the simulation, with notification of the application object on
 the completion of the simuation.
 """
-import sys
 
+from pydsol.core import pubsub
 from pydsol.core.experiment import SingleReplication, Replication
 from pydsol.core.interfaces import ReplicationInterface
 from pydsol.core.model import DSOLModel
 from pydsol.core.pubsub import EventListener, Event
 from pydsol.core.simulator import DEVSSimulatorFloat, DEVSSimulator
+import logging
 
 
 class Order:
@@ -69,4 +70,5 @@ class OrderApp(EventListener):
 
 """main just creates the Application class"""
 if __name__ == "__main__":
+    pubsub.logger.setLevel(logging.DEBUG)
     OrderApp()

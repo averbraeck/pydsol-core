@@ -1,7 +1,9 @@
 from abc import abstractmethod
 
-from pydsol.core.utils import DSOLError
 from pydsol.core.interfaces import SimulatorInterface, ModelInterface
+from pydsol.core.utils import DSOLError, get_module_logger
+
+logger = get_module_logger('model')
 
 
 class DSOLModel(ModelInterface):

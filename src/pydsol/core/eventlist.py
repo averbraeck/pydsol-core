@@ -12,15 +12,19 @@ The EventListInterface in this module allows other implementations of the
 event list, which will be recognized by the simulators and other classes.
 """
 
-from pydsol.core.simevent import SimEventInterface
+from abc import ABC, abstractmethod
 import heapq
 
-from abc import ABC, abstractmethod
+from pydsol.core.simevent import SimEventInterface
+from pydsol.core.utils import get_module_logger
+
 
 __all__ = [
     "EventListInterface",
     "EventListHeap",
     ]
+
+logger = get_module_logger('eventlist')
 
 
 class EventListInterface(ABC):
