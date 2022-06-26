@@ -127,7 +127,7 @@ class EventType:
         """
         if not isinstance(name, str):
             raise EventError("name {name} is not a str")
-        self._defining_class: str = inspect.stack()[1][3]
+        self._defining_class: str = inspect.stack()[1][0].f_code.co_name
         self._name = name
         key = self._defining_class + "." + self._name;
         if key in EventType.__defined_types:
