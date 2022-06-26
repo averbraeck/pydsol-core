@@ -62,7 +62,7 @@ class Assert():
         error_class: Exception, optional
             the exception to throw; defaults to DSOLError
         """
-        if var.__class__ == type_:
+        if type(var) == type_:
             return
         raise error_class(\
             f"parameter {varname} is not of type {type_.__name__}")
@@ -127,7 +127,7 @@ class Assert():
         condition: bool
             the condition as an outcome of a check
         error_class: Exception
-            the exception to throw; defaults to DSOLError
+            the exception to throw
         message: str
             the message to print in the error in case of failure
         *args
