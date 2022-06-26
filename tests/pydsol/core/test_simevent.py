@@ -89,8 +89,8 @@ def test_compare():
     assert e15a <= e15a
     assert e25 > e15a
     assert e15a < e25
-    assert e24 < e25
-    assert e26 > e25
+    assert e24 > e25  # prio 4 < prio 5, so prio 4 comes LATER
+    assert e26 < e25  # prio 6 > prio 5, so prio 6 comes EARLIER
     assert e26 == e26
 
     
