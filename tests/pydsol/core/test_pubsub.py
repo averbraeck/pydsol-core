@@ -4,9 +4,10 @@ Test the event classes that implement the publish/subscribe mechanism
 
 import pytest
 
-from pydsol.core.exceptions import EventError
+from pydsol.core.pubsub import EventError
 from pydsol.core.pubsub import EventType, Event, TimedEvent, EventProducer, \
     EventListener
+from pydsol.core.utils import DSOLError
 
 
 class Defs:
@@ -63,6 +64,10 @@ def test_event():
     assert e.content == "abc"
     e = Event(Defs.EVENT, ['a', 'b'])
     assert e.content == ['a', 'b']
+    assert "EVENT" in str(e)
+    assert "Event[" in str(e)
+    assert "EVENT" in repr(e)
+    assert "Event[" in repr(e)
     
     # event with error
     with pytest.raises(EventError):
@@ -84,6 +89,23 @@ def test_event():
         Event(Defs.EVENTDICT, {"i": 3, "s": "abc", "j": 5})
     with pytest.raises(EventError):
         Event(Defs.EVENTDICT, {"i": "3", "s": "abc"})
+
+
+def test_str_errors():
+
+    class Err():
+
+        def __str__(self):
+            raise DSOLError("this goes wrong")
+
+        def __repr__(self):
+            raise DSOLError("this goes wrong")
+
+    et: EventType = EventType("EVENT")
+    assert "cannot print Err" in str(Event(et, Err()))
+    assert "cannot print Err" in repr(Event(et, Err()))
+    assert "cannot print Err" in str(TimedEvent(2.0, et, Err()))
+    assert "cannot print Err" in repr(TimedEvent(2.0, et, Err()))
     
     
 def test_timed_event():
@@ -98,6 +120,10 @@ def test_timed_event():
     e = TimedEvent(0, Defs.EVENT, ['a', 'b'])
     assert e.content == ['a', 'b']
     assert e.timestamp == 0
+    assert "EVENT" in str(e)
+    assert "TimedEvent[" in str(e)
+    assert "EVENT" in repr(e)
+    assert "TimedEvent[" in repr(e)
 
     # event with error
     with pytest.raises(EventError):
@@ -277,6 +303,7 @@ def test_pub_sub_event():
     producer.fire(R.EVENT_TYPE_NOT, 7)
     assert listener1.value == 1
     assert listener2.value == 4
+
 
 def test_pub_sub_timed():
     

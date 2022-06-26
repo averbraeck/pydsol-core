@@ -30,9 +30,7 @@ executed at a later point in time.
 from abc import ABC, abstractmethod
 from typing import Type, Optional, Any, Union
 
-from pydsol.core.exceptions import EventError
 import inspect
-
 
 __all__ = [
     "EventType",
@@ -41,6 +39,11 @@ __all__ = [
     "EventListener",
     "EventProducer",
     ]
+
+
+class EventError(Exception):
+    """General Exception for working with Events and publish/subscribe"""
+    pass
 
 
 class EventType:
@@ -161,7 +164,7 @@ class EventType:
     
     def __repr__(self):
         return f"EventType[{self._defining_class}.{self._name} " \
-            + "metadata={self._metadata}]"
+            +"metadata={self._metadata}]"
     
 
 class Event:
@@ -245,6 +248,22 @@ class Event:
         """returns the payload of the event; can be of any type"""
         return self._content
     
+    def __str__(self):
+        c = ""
+        try:
+            c = str(self._content)
+        except:
+            c = f"[cannot print {type(self._content).__name__}"
+        return f"Event[{self._event_type.name}: {c}]"
+    
+    def __repr__(self):
+        c = ""
+        try:
+            c = str(self._content)
+        except:
+            c = f"[cannot print {type(self._content).__name__}"
+        return f"Event[{self._event_type.name}: {c}]"
+
 
 class TimedEvent(Event):
     """
@@ -316,6 +335,22 @@ class TimedEvent(Event):
     def timestamp(self) -> Union[int, float]:
         """returns the timestamp of the event; typically the simulator time"""
         return self._timestamp
+    
+    def __str__(self):
+        c = ""
+        try:
+            c = str(self._content)
+        except:
+            c = f"[cannot print {type(self._content).__name__}"
+        return f"TimedEvent[t={self.timestamp}, {self._event_type.name}: {c}]"
+    
+    def __repr__(self):
+        c = ""
+        try:
+            c = str(self._content)
+        except:
+            c = f"[cannot print {type(self._content).__name__}"
+        return f"TimedEvent[t={self.timestamp}, {self._event_type.name}: {c}]"
 
 
 class EventListener(ABC):
@@ -502,6 +537,7 @@ class EventProducer:
         EventError
             if the event is not of the right type
         """
+        print(event)
         if not isinstance(event, Event):
             raise EventError("event {event} not of type Event")
         # a copy() is used to avoid concurrent modification error in case 
@@ -509,6 +545,7 @@ class EventProducer:
         if event.event_type not in self._listeners:
             return
         for listener in self._listeners.get(event.event_type).copy():
+            print("   to: " + str(type(listener)))
             listener.notify(event)
  
     def fire(self, event_type: EventType, content, check: bool=True):
@@ -553,6 +590,7 @@ class EventProducer:
         EventError
             if the timed_event is not of the right type
         """
+        print(timed_event)
         if not isinstance(timed_event, TimedEvent):
             raise EventError("event {event} not of type TimedEvent")
         # a copy() is used to avoid concurrent modification error in case 
@@ -560,6 +598,7 @@ class EventProducer:
         if timed_event.event_type not in self._listeners:
             return
         for listener in self._listeners.get(timed_event.event_type).copy():
+            print("   to: " + str(listener))
             listener.notify(timed_event)
 
     def fire_timed(self, time: Union[int, float], event_type: EventType,
