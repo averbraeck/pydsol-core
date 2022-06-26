@@ -116,6 +116,8 @@ class SimulatorWorkerThread(Thread):
     
     def cleanup(self):
         self._running = False
+        self._finalized = True
+        self.wakeup()  # just to be sure...
         
     def is_running(self) -> bool:
         return self._running
@@ -242,7 +244,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         for discrete event simulators, the scheduleEvent(...) methods 
         cannot be called before initialize()."""
         self._initial_methods.append(SimEvent(self.initial_time,
-                target, method, kwargs))
+                target, method, **kwargs))
         
     def cleanup(self):
         """clean up after a replication has finished, and prepare for the
