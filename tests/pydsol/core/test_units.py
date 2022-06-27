@@ -25,7 +25,7 @@ def test_assign():
     assert dc.si == dm.si
     assert dc.unit == 's'
     assert dc.displayvalue == 180
-    dd = Duration(2, 'w').as_unit('day')
+    dd = Duration(2, 'wk').as_unit('day')
     assert dd.si == 14.0 * 86400.0
     assert dd.unit == 'day'
     assert dd.displayvalue == 14.0
@@ -39,12 +39,12 @@ def test_assign():
     assert d1.displayvalue == 3.0
     with pytest.raises(ValueError):
         Length('x', 'm')
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         Length(1 + 2j, 'm')
     with pytest.raises(ValueError):
         Length(1.0, 'xyz')
     with pytest.raises(ValueError):
-        Length(1.0, 'mile').as_unit("x")
+        Length(1.0, 'mi').as_unit("x")
         
 def test_cmp():
     assert Length(10, 'm') == Length(10, 'm')
@@ -200,7 +200,7 @@ def test_duration():
     assert Duration(1, 'h').unit == 'h'
     assert Duration(1, 'day').si == 86400.0
     assert Duration(1, 'day').unit == 'day'
-    types = {'s': 1, 'min': 60, 'h': 3600, 'hr': 3600, 'd': 86400,
+    types = {'s': 1, 'min': 60, 'h': 3600, 'hr': 3600, 
              'day': 86400, 'wk': 7 * 86400, 'week': 7 * 86400,
              'ms': 1E-3, 'mus': 1E-6, 'ns': 1E-9}
     for unit in types:
@@ -216,11 +216,8 @@ def test_length():
     inch = 39.3700787402
     types = {'m': 1, 'dm': 0.1, 'cm': 0.01, 'mm': 0.001, 'mum': 1E-6,
              'nm': 1E-9, 'dam': 10, 'hm': 100, 'km': 1000, 'Mm': 1E6,
-             'Gm': 1E9, 'meter': 1,
-             'in': 1.0 / inch, '"': 1.0 / inch, 'inch': 1.0 / inch,
-             'ft': 12.0 / inch, 'foot': 12.0 / inch,
-             'yd': 36.0 / inch, 'yard': 36.0 / inch,
-             'mi': 1760.0 * 36.0 / inch, 'mile': 1760.0 * 36.0 / inch}
+             'Gm': 1E9, 'in': 1.0 / inch, 'ft': 12.0 / inch, 
+             'yd': 36.0 / inch, 'mi': 1760.0 * 36.0 / inch}
     for unit in types:
         assert abs(Length(1, unit).si - types[unit]) < 1E-6
         assert Length(1, unit).unit == unit
@@ -232,20 +229,15 @@ def test_length():
 def test_speed():
     assert Speed(5) == Speed(5.0, 'm/s')
     inch = 39.3700787402
-    types = {'m/s': 1, 'dm/s': 0.1, 'cm/s': 0.01, 'mm/s': 0.001,
-             'mum/s': 1E-6, 'nm/s': 1E-9, 'dam/s': 10, 'hm/s': 100,
-             'km/s': 1000, 'km/h': 1.0 / 3.6,
-             'in/s': 1.0 / inch, 'inch/second': 1.0 / inch,
-             'ft/s': 12.0 / inch, 'foot/second': 12.0 / inch,
-             'yd/s': 36.0 / inch, 'yard/second': 36.0 / inch,
-             'mi/s': 1760.0 * 36.0 / inch, 'mile/second': 1760.0 * 36.0 / inch,
-             'mi/h': 17.60 / inch, 'mile/hour': 17.6 / inch}
+    types = {'m/s': 1, 'km/s': 1000, 'km/h': 1.0 / 3.6,
+             'in/s': 1.0 / inch, 'ft/s': 12.0 / inch, 
+             'mi/s': 1760.0 * 36.0 / inch,
+             'mi/h': 17.60 / inch}
     for unit in types:
         assert abs(Speed(1, unit).si - types[unit]) < 1E-6
         assert Speed(1, unit).unit == unit
     assert Speed.siunits() == 'm/s'
     assert Speed(10, 'mi/h').siunits() == 'm/s'
-    assert f"{Speed(2, 'mum/s')}" == '2.0\u03BCm/s'
 
 
 def test_area():
