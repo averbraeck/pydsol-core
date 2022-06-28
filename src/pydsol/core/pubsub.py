@@ -359,8 +359,8 @@ class TimedEvent(Event):
 class EventListener(ABC):
     """
     The EventListener is an interface for a class that needs to be able to
-    receive events from one or more EventPublishers. In order to receive
-    events, a listener that has to implement the notify() method. In the
+    receive events from one or more EventProducers. In order to receive
+    events, a listener has to implement the notify() method. In the
     notify() method, events can be tested for their EventType with if-elif
     statements, and then the corresponding content can be acted upon.
     
@@ -380,7 +380,7 @@ class EventProducer:
     The EventProducer class acts as a superclass for classes that need
     to fire events to an unknown and possibly varying number of subscribers
     (also called listeners). The main methods that can be called on the
-    EventProducer are: addListener and removeListener. In addition, the
+    EventProducer are: add_listener and remove_listener. In addition, the
     logic of the class that extends the base EventProducer class calls the
     fire(event_type, content) method to notify the listener(s) (if any).
     
@@ -399,7 +399,7 @@ class EventProducer:
     addListner
         add a listener for the given EventType to this EventProducer
     remove_listner
-        remove a listner for the given EventType from this EventProducer
+        remove a listener for the given EventType from this EventProducer
     remove_all_listeners
         remove all listeners, or all listeners of a certain type or class
     has_listeners : bool
@@ -478,8 +478,8 @@ class EventProducer:
                         listener:EventListener=None):
         """
         Remove an EventListener (if given) for a provided EventType (if given)
-        for this EventProducer. It is no prroblem if there are no matches. 
-        There are fout situations:
+        for this EventProducer. It is no problem if there are no matches. 
+        There are four situations:
         
         event_type == None and listener == None
             all listeners for all event types are removed
@@ -496,7 +496,7 @@ class EventProducer:
         event_type : EventType, optional
             the EventType for which this listener unsubscribes
         listener : EventListener, optional
-            the subscriber to remove for the provided Eventtype
+            the subscriber to remove for the provided EventType
         
         Raises
         ------
