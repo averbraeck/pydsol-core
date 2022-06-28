@@ -49,6 +49,14 @@ def test_initialize():
         def inc(self):
             self.count += 1
 
+    class NoSimModel(DSOLModel):
+
+        def __init__(self, simulator: SimulatorInterface):
+            pass
+        
+        def construct_model(self):
+            pass
+
     simulator: DEVSSimulator = DEVSSimulator('sim', float, 0.0)
     model: ModelInterface = Model(simulator)
     replication: ReplicationInterface = SingleReplication(
@@ -80,6 +88,13 @@ def test_initialize():
         raise e
     finally:
         simulator.cleanup()
+    
+    # check error when model constructor does not call super().__init__
+    sim2 : DEVSSimulator = DEVSSimulator('sim2', float, 0.0)
+    mod2 : ModelInterface = NoSimModel(simulator)
+    rep2 : ReplicationInterface = SingleReplication("rep2", 0.0, 0.0, 100.0)
+    with pytest.raises(DSOLError):
+        sim2.initialize(mod2, rep2)
 
 
 def test_start():
@@ -206,6 +221,9 @@ def test_stop():
         assert not simulator.is_stopping_or_stopped()
         assert simulator.run_state == RunState.STARTED
         assert simulator.replication_state == ReplicationState.STARTED
+        # cannot re-initialize simulator that is running
+        with pytest.raises(DSOLError):
+            simulator.initialize(model, replication)
         # cannot start simulator that is running
         with pytest.raises(DSOLError):
             simulator.start()

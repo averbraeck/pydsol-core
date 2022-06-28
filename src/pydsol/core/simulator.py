@@ -220,6 +220,9 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         """initialize the simulator with a replication for a model"""
         if not isinstance(model, ModelInterface):
             raise DSOLError(f"model {model} not valid")
+        if not hasattr(model, '_simulator'):
+            raise DSOLError(f"model {model} does not have a simulator. " +
+                "Did you call super.__init__(...) in the model constructor?")
         if not isinstance(replication, ReplicationInterface):
             raise DSOLError(f"replication {replication} not valid")
         if self.is_starting_or_running():
