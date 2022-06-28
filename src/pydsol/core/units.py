@@ -49,6 +49,9 @@ class Quantity(Generic[Q], ABC, float):
         {'mum', '\03BCm'}. Another examples is the Angstrom sign for length. 
         In case no transformations are necessary for the units in the 
         quantity, an empty dict {} can be returned.
+    _descriptions: dict[str, str]:
+        Defines a dictionary that maps each unit name onto a more descriptive
+        string, e.g., 'ms' to 'millisecond'.  
     _sisig: dict[str, int]:
         Defines  dictionary with the SI signature of the quantity. The 
         symbols that can be used are '1', 'kg', 'm', 's', 'A', 'K', 'mol',
@@ -58,10 +61,14 @@ class Quantity(Generic[Q], ABC, float):
         reasons of clarity.
     _mul: dict[Quantity, Quantity]
         Defines with which quantities the defined quantity can be multiplied,
-        and what the resulting quantity will be.
+        and what the resulting quantity will be. Multiplication with 
+        Dimensionless does not have to be added. It will be automatically
+        computed at the end of the module.
     _div: dict[Quantity, Quantity]
         Defines by which quantities the defined quantity can be divided,
-        and what the resulting quantity will be.
+        and what the resulting quantity will be. Division byDimensionless 
+        does not have to be added. It will be automatically computed at 
+        the end of the module.
     """
     
     __unitlist = ('rad', 'sr', 'kg', 'm', 's', 'A', 'K', 'mol', 'cd')
@@ -502,11 +509,53 @@ class Quantity(Generic[Q], ABC, float):
 
     @classmethod
     def siunits(cls, div:bool=True, hat:str='', dot:str='') -> str:
+        """
+        Return a string with the SI-signature of this quantity, independent 
+        of the unit. Speed will, e.g., return m/s; 
+        
+        Parameters
+        ----------
+        div
+            Defines whether to use a divisor (when div == True) or negative 
+            indices for the SI units (when div == False). When div is true, 
+            Force returns kgm/s2; when it is false, it returns kgms-2.
+        hat
+            Defines the hat sign to use for indices larger than 1. When set
+            to '^', Energy would return kgm^2/s^2. When left blank, kgm2/s2.
+        dot
+            Defines the dot sign to use between quantities. When set
+            to '.',  ElectricalResistance would return kg.m2/s3.A2. When 
+            left blank, kgm2/s3A2. Combined with hat='^': kg.m^2/s^3.A^2
+        """  
         return Quantity._siunits(cls._sisig, div, hat, dot)
     
     @staticmethod
     def _siunits(sistr: dict[str, int], div:bool=True, hat:str='',
                  dot:str='') -> str:
+        """
+        Static method to return a string with the SI-signature for a dict of
+        SI quantities with their indices, such as {'m':1, 's':-1} for Speed,
+        equivalent to m/s; 
+        
+        Parameters
+        ----------
+        sistr
+            The SI information that maps SI quantity strings on the index 
+            to use. Valid quantity strings are 'rad', 'sr', 'kg', 'm', 's', 
+            'A', 'K', 'mol', and 'cd'. These are the 7 SI units plus 'rad'
+            and 'sr' for angles for reasons of clarity.
+        div
+            Defines whether to use a divisor (when div == True) or negative 
+            indices for the SI units (when div == False). When div is true, 
+            Force returns kgm/s2; when it is false, it returns kgms-2.
+        hat
+            Defines the hat sign to use for indices larger than 1. When set
+            to '^', Energy would return kgm^2/s^2. When left blank, kgm2/s2.
+        dot
+            Defines the dot sign to use between quantities. When set
+            to '.',  ElectricalResistance would return kg.m2/s3.A2. When 
+            left blank, kgm2/s3A2. Combined with hat='^': kg.m^2/s^3.A^2
+        """  
         s = ""
         t = ""
         for unit in Quantity.__unitlist:
@@ -533,6 +582,10 @@ class Quantity(Generic[Q], ABC, float):
         if len(t) > 0:
             s += "/" + t
         return s
+
+# -----------------------------------------------------------------------------
+# Definition of Quantities and units
+# -----------------------------------------------------------------------------
 
 
 class Acceleration(Quantity['Acceleration']):
@@ -738,10 +791,10 @@ class Density(Quantity['Density']):
 
 
 class Dimensionless(Quantity['Dimensionless']):
-    _baseunit = 'unit'
-    _units = {'unit': 1.0}
-    _displayunits = {'unit': 1.0}
-    _descriptions = {'unit': 'unit'}
+    _baseunit = ''
+    _units = {'': 1.0}
+    _displayunits = {}
+    _descriptions = {'': 'unit'}
     _sisig = {}
     _mul = {}
     _div = {}
