@@ -18,7 +18,6 @@ from pydsol.core.simevent import SimEventInterface, SimEvent
 from pydsol.core.units import Duration
 from pydsol.core.utils import DSOLError, get_module_logger
 
-
 __all__ = [
     "Simulator",
     "DEVSSimulator",
@@ -133,10 +132,6 @@ class SimulatorWorkerThread(Thread):
                 if self._job._replication_state != ReplicationState.ENDING:
                     self.running = True
                     try:
-                        if self._job._replication_state != ReplicationState.INITIALIZED:
-                            self._job.fire_timed(self._job.simulator_time,
-                                ReplicationInterface.START_REPLICATION_EVENT, None)
-                            self._job._replication_state = ReplicationState.STARTED
                         self._job.fire_timed(self._job.simulator_time,
                             Simulator.START_EVENT, None)
                         self._job._run_state = RunState.STARTED
@@ -221,7 +216,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         if not isinstance(model, ModelInterface):
             raise DSOLError(f"model {model} not valid")
         if not hasattr(model, '_simulator'):
-            raise DSOLError(f"model {model} does not have a simulator. " +
+            raise DSOLError(f"model {model} does not have a simulator. " + 
                 "Did you call super.__init__(...) in the model constructor?")
         if not isinstance(replication, ReplicationInterface):
             raise DSOLError(f"replication {replication} not valid")
@@ -290,13 +285,15 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self.__worker.wakeup()
         # else:
         #    self._run()
-        
+
     def start(self):
         """Starts the simulator, and fire a START_EVENT that the simulator 
         was started. Note that when the simulator was already started an 
         exception will be thrown, and no event will be fired. The start 
         uses the RunUntil property with a value of the end time of the 
         replication when starting the simulator."""
+        if self._replication == None:
+            raise DSOLError("no replication details")
         self._run_until_time = self._replication.end_sim_time
         self._run_until_including = True
         self._start_impl()
@@ -307,8 +304,10 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         method should fire the TIME_CHANGED_EVENT before the execution of 
         the simulation event, or before executing the integration of the 
         differential equation for the next timestep. So the time is changed 
-        first to match the lgic carried out for that time, and then the 
-        action for that time is carried out."""
+        first to match the logic carried out for that time, and then the 
+        action for that time is carried out. This is INDEPENDENT of the 
+        fact whether the time changes or not. The TIME_CHANGED_EVENT is
+        always fired."""
      
     def step(self):
         """Steps the simulator, and fire a STEP_EVENT to indicate the 
@@ -324,6 +323,10 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         if self._simulator_time >= self._replication.end_sim_time:
             raise DSOLError("cannot start: simulator_time > run length")
         try:
+            if self._replication_state == ReplicationState.INITIALIZED:
+                self.fire_timed(self._simulator_time,
+                    ReplicationInterface.START_REPLICATION_EVENT, None)
+                self._replication_state = ReplicationState.STARTED
             self._run_state = RunState.STARTED
             self.fire_timed(self._simulator_time,
                             Simulator.START_EVENT, None)
@@ -365,7 +368,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._start_impl()
     
     def warmup(self):
-        self.fire_timed(self.simulator_time, 
+        self.fire_timed(self.simulator_time,
                         ReplicationInterface.WARMUP_EVENT, None)
 
     @property
@@ -431,10 +434,10 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         self._eventlist.clear()
         super().initialize(model, replication)
         # schedule end_replication AFTER events at end time
-        self.schedule_event_abs(self.replication.end_sim_time, 
+        self.schedule_event_abs(self.replication.end_sim_time,
             self, "end_replication", priority=SimEventInterface.MIN_PRIORITY)
         # schedule warmup BEFORE events at warmup time
-        self.schedule_event_abs(self.replication.warmup_sim_time, 
+        self.schedule_event_abs(self.replication.warmup_sim_time,
             self, "warmup", priority=SimEventInterface.MAX_PRIORITY)
         
     def set_pause_on_error(self, pause: bool):
@@ -494,12 +497,12 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         method fires the TIME_CHANGED_EVENT before the execution of the 
         simulation event. So the time is changed first to match the logic 
         carried out for that time, and then the action for that time is 
-        carried out."""
+        carried out. This is INDEPENDENT of the fact whether the time changes 
+        or not. The TIME_CHANGED_EVENT is always fired."""
         if not self._eventlist.is_empty():
             event: SimEventInterface = self._eventlist.pop_first()
-            if (event.time != self.simulator_time):
-                self.fire_timed(event.time, Simulator.TIME_CHANGED_EVENT,
-                                event.time)
+            self.fire_timed(event.time, Simulator.TIME_CHANGED_EVENT,
+                            event.time)
             self._simulator_time = event.time
             event.execute()
 
