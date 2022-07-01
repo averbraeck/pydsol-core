@@ -544,7 +544,6 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
                 traceback.print_exc()
                 if self.is_pause_on_error():
                     self._run_state = RunState.STOPPING
-                    self._stop_impl()
         # end while
     # end run()
 
