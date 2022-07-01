@@ -7,6 +7,7 @@ from abc import abstractmethod
 import enum
 from threading import Thread
 import threading
+from time import sleep
 import traceback
 from typing import TypeVar, Generic
 
@@ -17,6 +18,7 @@ from pydsol.core.pubsub import EventProducer
 from pydsol.core.simevent import SimEventInterface, SimEvent
 from pydsol.core.units import Duration
 from pydsol.core.utils import DSOLError, get_module_logger
+
 
 __all__ = [
     "Simulator",
@@ -128,15 +130,14 @@ class SimulatorWorkerThread(Thread):
         while not self._finalized:
             # wait till wakeup, e.g., to start the simulation
             self.__wakeup_flag.wait()
+            self._running = True
             if not self._finalized:
                 if self._job._replication_state != ReplicationState.ENDING:
-                    self.running = True
                     try:
                         self._job.fire_timed(self._job.simulator_time,
                             Simulator.START_EVENT, None)
                         self._job._run_state = RunState.STARTED
                         self._job._run()
-                        self._job._stop_impl()
                         self._job.fire_timed(self._job.simulator_time,
                             Simulator.STOP_EVENT, None)
                         self._job._run_state = RunState.STOPPED
@@ -144,7 +145,6 @@ class SimulatorWorkerThread(Thread):
                         print("Simulator run interrupted by exception:")
                         print(str(e))
                         traceback.print_exc()
-                self._running = False
                 if self._job._replication_state == ReplicationState.ENDING:
                     self._job._replication_state = ReplicationState.ENDED
                     self._job._run_state = RunState.ENDED
@@ -152,6 +152,7 @@ class SimulatorWorkerThread(Thread):
                         ReplicationInterface.END_REPLICATION_EVENT, None)
                     self._finalized = True
             self.__wakeup_flag.clear()
+            self._running = False
         # end while
     # end run()
 
@@ -285,7 +286,9 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self.__worker.wakeup()
         # else:
         #    self._run()
-
+        while not self.__worker.is_running():
+            sleep(0.001)
+            
     def start(self):
         """Starts the simulator, and fire a START_EVENT that the simulator 
         was started. Note that when the simulator was already started an 
@@ -297,6 +300,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._run_until_time = self._replication.end_sim_time
         self._run_until_including = True
         self._start_impl()
+
      
     @abstractmethod
     def _step_impl(self):
@@ -341,7 +345,9 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
     def _stop_impl(self):
         """Implementation of the stop behavior."""
         self._run_state = RunState.STOPPING
-             
+        while self.__worker.is_running():
+            sleep(0.001)
+
     def stop(self):
         """Stops the simulator, and fire a STOP_EVENT that the simulator 
         was stopped. Note that when the simulator was already stopped an 
@@ -389,7 +395,8 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
     def is_stopping_or_stopped(self) -> bool:
         """Return whether the simulator is stopping or has been stopped. 
         This method also returns True when the simulator has not yet been
-        initialized, or when the model has not yet started.""" 
+        initialized, or when the model has not yet started, or when the
+        model run has ended.""" 
         return not self.is_starting_or_running()
     
     @property
