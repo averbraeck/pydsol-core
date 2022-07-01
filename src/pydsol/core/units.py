@@ -17,6 +17,8 @@ documented at https://djunits.org.
 """
 
 from abc import ABC
+import math
+import re
 from typing import TypeVar, Generic
 
 from pydsol.core.utils import get_module_logger, Assert
@@ -52,7 +54,7 @@ class Quantity(Generic[Q], ABC, float):
     _descriptions: dict[str, str]:
         Defines a dictionary that maps each unit name onto a more descriptive
         string, e.g., 'ms' to 'millisecond'.  
-    _sisig: dict[str, int]:
+    _sidict: dict[str, int]:
         Defines  dictionary with the SI signature of the quantity. The 
         symbols that can be used are '1', 'kg', 'm', 's', 'A', 'K', 'mol',
         and 'cd'. For force (Newton), the SI signature would be given as
@@ -69,11 +71,23 @@ class Quantity(Generic[Q], ABC, float):
         and what the resulting quantity will be. Division byDimensionless 
         does not have to be added. It will be automatically computed at 
         the end of the module.
+        
+    Used terminology for si-related functions and variables
+    -------------------------------------------------------
+    si: float
+        The si-value of a quantity.
+    sidict: dict[str, int]
+        Dictionary that maps SI-units onto the exponents of the signature, 
+        e.g., {'m': 1, 's': -2} for Acceleration.
+    sisig: list[int]
+        List with a length of 9, mapping the 2 plus 7 SI units onto the
+        exponents of the signature, e.g., [0, 0, 0, 1, -2, 0, 0, 0, 0] for
+        Acceleration.
+    siunit: str
+        String representation of the unit using the SI units, e.g., 'm/s2'
+        for Acceleration. 
     """
     
-    __unitlist = ('rad', 'sr', 'kg', 'm', 's', 'A', 'K', 'mol', 'cd')
-    """ SI units in the order they will be displayed, plus rad and sr""" 
-
     def __new__(cls, value, unit: str=None, **kwargs):
         """
         The __new__ method created a Quantity instance of the right type. 
@@ -83,11 +97,11 @@ class Quantity(Generic[Q], ABC, float):
         Raises
         ------
         ValueError
-            when the provided unit is not defined for this quantity
+            when the provided unit is not defined for this quantity, or
             when value is not a number
         """
         if unit == None:
-            unitmultiplier = cls._units[cls._baseunit]
+            unitmultiplier = cls._units[cls._baseunit]  # usually 1
         else:
             if not unit in cls._units:
                 raise ValueError(f"unit {unit} not defined")
@@ -107,7 +121,8 @@ class Quantity(Generic[Q], ABC, float):
         Raises
         ------
         ValueError
-            when the provided unit is not defined for this quantity
+            when the provided unit is not defined for this quantity, or
+            when value is not a number
         """
         if unit == None:
             self._unit = self._baseunit
@@ -135,8 +150,9 @@ class Quantity(Generic[Q], ABC, float):
     def unit(self) -> str:
         """
         Return the unit with which the quantity was defined. So, for 
-        Length(14, 'cm') the unit is 14. Note that the unit is different from
-        the displayunit. For Length(14, 'mum'), the unit is 'mum'.   
+        Length(14, 'cm') the unit is 'cm'. Note that the unit is different 
+        from the displayunit. For Length(14, 'mum'), the unit is 'mum', but
+        the displayunit is \u03BCm where \u03BC stands for mu (micro).   
         """
         return self._unit
         
@@ -158,17 +174,17 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not newunit in self._units:
             raise ValueError(f"unit {newunit} not defined")
-        ret = type(self)(self.si, self._baseunit)
+        ret = type(self)(self.si)
         ret._unit = newunit
         return ret
     
     def _val(self, si:float) -> Q:
         """
         Create a new quantity with the given si value and the base unit
-        of the current quantity. So, if _val(80) is called on Area(10, "ha"),
-        the returning value will be 
+        of the current quantity. So, if _val(8) is called on Length(10, "cm"),
+        the returning value will be Length(800, 'cm'), or 8 meters.
         """
-        q = type(self)(si, self._baseunit)
+        q = type(self)(si)
         q._unit = self._unit
         return q
 
@@ -202,7 +218,7 @@ class Quantity(Generic[Q], ABC, float):
         integer value above 0.104 m is 1 m = 100 cm). Note that the ceil of 
         -3.5 is -3.
         """
-        return type(self)(self.displayvalue.__ceil__(), self._unit)
+        return type(self)(math.ceil(self.displayvalue), self._unit)
     
     def __floor__(self) -> Q:
         """
@@ -212,7 +228,7 @@ class Quantity(Generic[Q], ABC, float):
         floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
         value below 0.104 m is 0 m). Note that the floor of -3.5 is -4.
         """
-        return type(self)(self.displayvalue.__floor__(), self._unit)
+        return type(self)(math.floor(self.displayvalue), self._unit)
     
     def __floordiv__(self, other):
         """
@@ -242,15 +258,25 @@ class Quantity(Generic[Q], ABC, float):
     def __mul__(self, other):
         """
         Return a new quantity containing the multiplication of this quantity 
-        by the provided factor (where the factor comes last in the 
-        multiplication). The factor has to be of type float or int. 
-        The result of Area(25.0, 'm^2') * 2 = Area(50.0, 'm^2).
+        by one of the following types:
+        a) A provided factor (where the factor comes last in the 
+           multiplication). The factor has to be of type float or int. 
+           The result of Area(25.0, 'm^2') * 2 = Area(50.0, 'm^2').
+        b) A pre-defined quantity for multiplication. As an example, for
+           length the multiplication for another length has been pre-defined
+           with the resulting Quantity type being an Area. So Length(2.0, 'm')
+           times Length(300, 'cm') leads to Area(6.0, 'm2').
+        c) A quantity for which the multiplication has not been predefined.
+           The result will be an instance of SI with the correct value and 
+           SI signature. Force(4.0, 'N') * Force(2.0, 'N') results in:
+           SI(8.0, 'kg.m2/s4'). 
+        d) An SI value. This results in another SI value. So, Force(2.0, 'N')
+           times SI(3.0, 'sr.cd/s-2') results in SI(6.0, 'sr.kg.m.cd/s-4'). 
         
         Raises
         ------
         ValueError
-            when the multiplication factor is not a float or an int, and the
-            multiplication is not between quantities
+            when the multiplier is not a float, int, SI, or Quantity
         """
         if type(other) == float or type(other) == int:
             return self._val(float(self) * other)
@@ -258,6 +284,10 @@ class Quantity(Generic[Q], ABC, float):
             newclass = type(self)._mul[type(other)]
             return newclass(float(self) * float(other),
                             newclass._baseunit)
+        if isinstance(other, Quantity):
+            return self.asSI() * other.asSI()
+        if type(other) == SI:
+            return self.asSI() * other
         raise ValueError("* operator not defined for {} * {}".format(
                          self, other))
         
@@ -316,7 +346,7 @@ class Quantity(Generic[Q], ABC, float):
         round(10.4 cm), we expect 10 cm, and not 0 cm (the rounded value of
         0.104 m). 
         """
-        return type(self)(self.displayvalue.__round__(), self._unit)
+        return type(self)(round(self.displayvalue), self._unit)
 
     def __rsub__(self, other):
         """
@@ -350,14 +380,25 @@ class Quantity(Generic[Q], ABC, float):
     def __truediv__(self, other):
         """
         Return a new quantity containing the division of this quantity 
-        by the provided divisor. The factor has to be of type float or int. 
-        The result of Area(50.0, 'm^2') / 2 = Area(25.0, 'm^2).
+        by one of the following types:
+        a) A provided factor (where the factor comes last in the 
+           multiplication). The factor has to be of type float or int. 
+           The result of Area(25.0, 'ha') / 2 = Area(12.5, 'ha').
+        b) A pre-defined quantity for division. As an example, for length 
+           the division by Duration has been pre-defined with the resulting 
+           Quantity type being a Speed. So Length(3.0, 'km') divided by
+           Duration(1, 'min') leads to Speed(50.0, 'm/s').
+        c) A quantity for which the division has not been predefined.
+           The result will be an instance of SI with the correct value and 
+           SI signature. Speed(10.0, 'm/s') / Force(2.0, 'N') results in:
+           SI(5.0, 's/kg'). 
+        d) An SI value. This results in another SI value. So, Force(6.0, 'N')
+           / SI(3.0, 'sr.cd/s-2') results in SI(2.0, 'kg.m/sr.cd'). 
         
         Raises
         ------
         ValueError
-            when the divisor is not a float or an int, and the division
-            between two quantities is not defined
+            when the divisor is not a float, int, SI, or Quantity
         """
         if type(other) == float or type(other) == int:
             return self._val(float(self) / other)
@@ -365,6 +406,10 @@ class Quantity(Generic[Q], ABC, float):
             newclass = type(self)._div[type(other)]
             return newclass(float(self) / float(other),
                             newclass._baseunit)
+        if isinstance(other, Quantity):
+            return self.asSI() / other.asSI()
+        if type(other) == SI:
+            return self.asSI() / other
         raise ValueError("/ operator not defined for {} / {}".format(
                          self, other))
 
@@ -373,7 +418,7 @@ class Quantity(Generic[Q], ABC, float):
         Return a new quantity containing the division of the other quantity 
         or value by the self object. If other is a Quantity, 
         __truediv__(other, self) can be called. If other is a number, 
-        __truediv__(Domensionless, self) will be called instead.
+        __truediv__(Dimensionless, self) will be called instead.
         
         Raises
         ------
@@ -396,7 +441,7 @@ class Quantity(Generic[Q], ABC, float):
         floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
         value below 0.104 m is 0 m). 
         """
-        return type(self)(self.displayvalue.__trunc__(), self._unit)
+        return type(self)(math.trunc(self.displayvalue), self._unit)
     
     def __pow__(self, power):
         """
@@ -496,22 +541,21 @@ class Quantity(Generic[Q], ABC, float):
         Return a string representation of the quantity, where the chosen unit 
         follows the value without a space.
         """
-        return str(self.displayvalue) + self._displayunits.get(self._unit,
-                self._unit)
+        return str(self.displayvalue) + ' ' + \
+            self._displayunits.get(self._unit, self._unit)
 
     def __repr__(self):
         """
         Return a string representation of the quantity, where the chosen unit 
         follows the value without a space.
         """
-        return str(self.displayvalue) + self._displayunits.get(self._unit,
-                self._unit)
+        return str(self)
 
     @classmethod
-    def siunits(cls, div:bool=True, hat:str='', dot:str='') -> str:
+    def siunit(cls, div:bool=True, hat:str='', dot:str='') -> str:
         """
         Return a string with the SI-signature of this quantity, independent 
-        of the unit. Speed will, e.g., return m/s; 
+        of the actual unit. Speed will, e.g., return m/s; 
         
         Parameters
         ----------
@@ -527,10 +571,27 @@ class Quantity(Generic[Q], ABC, float):
             to '.',  ElectricalResistance would return kg.m2/s3.A2. When 
             left blank, kgm2/s3A2. Combined with hat='^': kg.m^2/s^3.A^2
         """  
-        return Quantity._siunits(cls._sisig, div, hat, dot)
+        return Quantity.sidict_to_unit(cls._sidict, div, hat, dot)
+    
+    @classmethod
+    def sisig(cls) -> list[int]:
+        """
+        Return a list with the SI-exponents of this quantity, independent 
+        of the unit. Speed will, e.g., return [0, 0, 0, 1, -1, 0, 0, 0, 0]. 
+        Note that this is not defined as a property method. Property class
+        methods were introduced in Python 3.9, where we want this library
+        to be compatible with Python 3.8 for now.
+        """
+        ret: list[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        sig = cls._sidict
+        for i in range(0, 9): 
+            unit = SI.SIUNITS[i]
+            if unit in sig:
+                ret[i] = sig[unit]
+        return ret
     
     @staticmethod
-    def _siunits(sistr: dict[str, int], div:bool=True, hat:str='',
+    def sidict_to_unit(sistr: dict[str, int], div:bool=True, hat:str='',
                  dot:str='') -> str:
         """
         Static method to return a string with the SI-signature for a dict of
@@ -558,7 +619,7 @@ class Quantity(Generic[Q], ABC, float):
         """  
         s = ""
         t = ""
-        for unit in Quantity.__unitlist:
+        for unit in SI.SIUNITS:
             if unit in sistr:
                 v: int = sistr[unit]
                 if v > 0 or (v < 0 and not div):
@@ -568,7 +629,7 @@ class Quantity(Generic[Q], ABC, float):
                     if v > 1 or v < 0:
                         s += hat + str(v)
         if div:
-            for unit in Quantity.__unitlist:
+            for unit in SI.SIUNITS:
                 if unit in sistr:
                     v: int = sistr[unit]
                     if v < 0:
@@ -579,6 +640,586 @@ class Quantity(Generic[Q], ABC, float):
                             t += hat + str(-v)
         if len(s) == 0:
             s = "1"
+        if len(t) > 0:
+            s += "/" + t
+        return s
+
+    def asSI(self):
+        """
+        Return the value of this quantity as an instance of type SI. A speed
+        of 10 m/s will therefore be instantiates as SI(10, 'm/s'). 
+        """ 
+        si: SI = SI(float(self))  # without SI units
+        si._sisig = self.sisig()  # add the SI signature
+        si._unit = si.siunit(True, '', '.')  # human readable signature
+        return si
+
+# -----------------------------------------------------------------------------
+# Definition of SI Quantity
+# -----------------------------------------------------------------------------
+
+
+class SI(float):
+    """
+    Class that contains a quantity of a non-predefined type. An example would
+    be s/m, which has the inverse signature as speed. Quantities that don't
+    fit the regular type are returned as an instance of SI.So, when one 
+    calculates 1.0 / Speed(10, m/s), the answer is SI(0.1, 's/m'). If 
+    one would calculate 1.0 / SI(0.1, 's/m'), the answer is SI(10.0, 'm/s'). 
+    With the as_quantity(type) method, this number can be transformed back
+    to a Speed. 
+    
+    Attributes
+    ----------
+    float(): float
+        Internally, SI subclasses the float class and stores the si value
+        as a float number.
+    _sisig: list[int]
+        The SI signature stored as a list of 9 exponents for the defined 
+        SIUNITS. kgm/s2 is stored, e.g., as [0, 0, 1, 1, -2, 0, 0, 0, 0].
+    _unit: str
+        The human readable version of the signature is stored as well, using
+        a division sign to separate the positive from negative exponents. 
+        For the above example, _unit would have the value 'kgm/s2'.   
+    """
+    
+    SIUNITS = ('rad', 'sr', 'kg', 'm', 's', 'A', 'K', 'mol', 'cd')
+    """The SI units in the right order, as an immutable tuple. 
+    This tuple is not to be changed."""
+    
+    def __new__(cls, value, unit: str='', **kwargs):
+        """
+        The __new__ method creates a quantity instance with generic SI
+        units, e.g., s/m The storage of the unit is done in __init__. 
+        
+        Raises
+        ------
+        ValueError
+            when the value is not a number, or unit is not valid
+        """
+        if not (type(value) == float or type(value) == int):
+            raise ValueError(f"value {value} not a number")
+        return super().__new__(cls, value, **kwargs)
+    
+    def __init__(self, value: float, unit: str='', **kwargs):
+        """
+        Create an SI quantity. The si-value of the quantity is stored in 
+        the float superclass.
+        
+        Raises
+        ------
+        ValueError
+            when the provided unit is not a legal SI unit
+        """
+        if (unit == ''):
+            self._sisig = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        else:
+            self._sisig = SI.str_to_sisig(unit)
+        self._unit = self.siunit(True, '', '.')
+
+    @staticmethod
+    def str_to_sisig(unitstr: str) -> list[int]:
+        """
+        Test and standardize the unit string, which can be of any of the
+        following forms (used kgm2/s2 as an example): kgm2/s2, kgm^2/s^2,
+        kgm2s-2, kgm^2s^-2, kg.m2/s2, kg.m^2/s^2, kg.m2.s-2, kg.m^2.s^-2.
+        
+        Parameters
+        ----------
+        unitstr: str
+            The unit string that needs to be parsed.
+        
+        Returns
+        -------
+        list[int]
+            List with indices for the provided string, in the following order:
+            ['rad', 'sr', 'kg', 'm', 's', 'A', 'K', 'mol', 'cd']. For kgm2/s2,
+            the return value would be: [0, 0, 0, 1, 2, -2, 0, 0, 0, 0].
+            
+        Raises
+        ------
+        ValueError
+            when the string cannot be properly parsed.
+        """
+        ret: list[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        s = unitstr
+        div = 1
+        i = 0
+        while i < 9:
+            u = SI.SIUNITS[i]
+            if s.startswith(u):
+                if u == 'm' and s.startswith('mol'):
+                    i += 1
+                    continue
+                s = s[len(u):]
+                exp = div
+                if s[:1] == '^':
+                    s = s[1:]
+                if s.startswith('-'):
+                    s = s[1:]
+                    if re.match('[0-9]', s[:1]):
+                        exp *= -int(s[:1])
+                        s = s[1:]
+                    else:
+                        raise ValueError(f"parsing SI, isolated - in {unitstr}")
+                else:
+                    if re.match('[0-9]', s[:1]):
+                        exp *= int(s[:1])
+                        s = s[1:]
+                if ret[i] != 0:
+                    raise ValueError(f"parsing SI, unit used twice in {unitstr}")
+                ret[i] = exp
+                if s[:1] == '.':
+                    s = s[1:]
+            if s.startswith('/'):
+                if div == -1:
+                    raise ValueError(f"parsing SI, twice a / in {unitstr}")
+                div = -1
+                i = -1
+                s = s[1:]
+            i += 1
+        if len(s) != 0:
+            raise ValueError(f"parsing SI, unparsable characters in {unitstr}")
+        return ret
+
+    @property
+    def displayvalue(self) -> float:
+        """
+        Return the display value of the quantity. For the SI unit, this is 
+        the stored value. 
+        """
+        return float(self)
+    
+    @property
+    def si(self) -> float:
+        """
+        Return the internal unit value of the SI quantity. For the SI unit, 
+        this is the stored value. 
+        """
+        return float(self)
+
+    @property
+    def unit(self) -> str:
+        """
+        Return the SI-unit with which the quantity was defined.   
+        """
+        return self._unit
+        
+    def sisig(self) -> list[int]:
+        """
+        Return the internal SI signature as a list of exponents for the 
+        SI units. m/s would return [0, 0, 0, 1, -1, 0, 0, 0, 0]. 
+        Note that this is not defined as a property method, to keep it
+        symmetric with the quantity.sisig() method.
+        """
+        return self._sisig
+
+    def as_quantity(self, quantity: type[Quantity]) -> Q:
+        """
+        Return a new quantity that has been transformed from the SI value.
+        The SI exponents have to match. So you cannot change an SI value
+        with SI signature kgm/s2 into Length. The transformation will always
+        use the base (SI) unit.
+        
+        Parameters
+        ----------
+        quantity: type
+            The quantity to change the SI value into
+        
+        Raises
+        ------
+        ValueError
+            when the SI units of the quantity don't match with this SI value
+        TypeError
+            when the quantity is not of type Quantity
+        """
+        if not issubclass(quantity, Quantity):
+            raise TypeError(f"{type(quantity)} is not a Quantity")
+        if quantity.sisig() != self.sisig():
+            raise ValueError(f"SI unit of {quantity} is not {self._unit}")
+        return quantity(float(self), quantity._baseunit)
+    
+    def _val(self, si:float) -> 'SI':
+        """
+        Create a new quantity with the given si value.
+        """
+        q = SI(si)
+        q._unit = self._unit
+        q._sisig = self._sisig
+        return q
+
+    def __abs__(self) -> 'SI':
+        """
+        Return a new quantity with the absolute value. So, abs(SI(-2, 'm')
+        will return SI(2.0, 'm').
+        """
+        return self._val(abs(float(self)))
+    
+    def __add__(self, other) -> 'SI':
+        """
+        Return a new quantity containing the sum of this quantity and the
+        other quantity.
+        
+        Raises
+        ------
+        ValueError
+            when the two quantities are of different types
+        """
+        if type(self) != type(other) or self._sisig != other._sisig:
+            raise ValueError("adding incompatible quantities")
+        return self._val(float(self) + float(other))
+    
+    def __ceil__(self) -> 'SI':
+        """
+        Return the nearest integer value above the value of this quantity.
+        Note that the ceil of -3.5 is -3.
+        """
+        return self._val(math.ceil(float(self)))
+    
+    def __floor__(self) -> 'SI':
+        """
+        Return the nearest integer value below the value of this quantity.
+        Note that the floor of -3.5 is -4.
+        """
+        return self._val(math.floor(float(self)))
+    
+    def __floordiv__(self, other):
+        """
+        Return the nearest integer value below the value of the division of 
+        this quantity by the provided float or integer value. 
+        """
+        if not (type(other) == float or type(other) == int):
+            raise ValueError("// operator needs float or int")
+        return self._val(float(self) // other)
+    
+    def __mod__(self, other):
+        """
+        Return the remainder of the integer division of  this quantity 
+        by the provided float or integer value. 
+        """
+        if not (type(other) == float or type(other) == int):
+            raise ValueError("% operator needs float or int")
+        return self._val(float(self) % other)
+
+    def __mul__(self, other) -> 'SI':
+        """
+        Return a new quantity containing the multiplication of this SI
+        quantity by the provided object. The other object can be of the 
+        following types:
+        a) float or int. In that case, multiplication with a constant takes
+           place, and the si signature and unit stay the same.
+        b) Quantity. The internal si-values in the base unit will be 
+           multiplied, and the exponents of the signature of the unit will 
+           be added: SI(4, 'm^3/s') * Length(5, 'm') -> SI(20.0, 'm^4/s').
+        c) Other SI quantity.The internal si-values in the base unit will be 
+           multiplied, and the exponents of the signature of the unit will 
+           be added SI(2.0, 'm^3/s^2') * SI(4.0, 's/m') -> SI(8.0, 'm^2/s').
+        
+        Raises
+        ------
+        ValueError
+            when the multiplication factor is not float, int, Quantity or SI.
+        """
+        if type(other) == float or type(other) == int:
+            return self._val(float(self) * other)
+        if type(other) == SI or isinstance(other, Quantity):
+            ret: 'SI' = SI(float(self) * float(other))
+            ret._sisig = list(map(lambda x, y: x + y, self.sisig(), other.sisig()))
+            ret._unit = ret.siunit(True, '', '.') 
+            return ret
+        raise ValueError("* operator not defined for {} * {}".format(
+                         self, other))
+        
+    def __neg__(self):
+        """
+        Return a new quantity containing the negation of the value of the
+        quantity. A Duration of 10 seconds becomes a Duration of -10 
+        seconds. The __neg__ function implements the behavior of the
+        unary "-" behavior in front of a number. 
+        """
+        return self._val(-float(self))
+
+    def __pos__(self):
+        """
+        Return the quantity, since the unary "+" operator (placing a "+"
+        sign in front of a number or quantity) has no effect.
+        """
+        return self
+
+    def __radd__(self, other):
+        """
+        Return a new quantity containing the sum of this quantity and the
+        other quantity. radd is called for 2.0 + Length(1.0, 'm'),
+        where the left hand side is not a Quantity, and the right hand 
+        side is a Quantity. Since (a + b) == (b + a), the add function
+        is used for the implementation. Typically, the radd function will 
+        lead to a ValueError 
+        
+        Raises
+        ------
+        ValueError
+            when the other is of a different type than self
+        """
+        return self.__add__(other)
+
+    def __rmul__(self, other):
+        """
+        Return a new quantity containing the multiplication of this quantity 
+        by the provided factor (where the factor comes first in the
+        multiplication). The factor has to be of type float or int. 
+        The result of 2.0 * Area(25.0, 'm^2') = Area(50.0, 'm^2).
+        
+        Raises
+        ------
+        ValueError
+            when the multiplication factor is not a float or an int, and the
+            multiplication is not between quantities
+        """
+        return self.__mul__(other)
+    
+    def __round__(self) -> 'SI':
+        """
+        Return the nearest integer value for the value of this quantity.
+        Note that this function works on the display value of the quantity
+        and not on the internal si-value. When we want to calculate the
+        round(10.4 cm), we expect 10 cm, and not 0 cm (the rounded value of
+        0.104 m). 
+        """
+        return self._val(round(float(self)))
+
+    def __rsub__(self, other):
+        """
+        Return a new quantity containing the difference of the other value
+        and this quantity. rsub is called for 2.0 - Length(1.0, 'm'),
+        where the left hand side is not a Quantity, and the right hand 
+        side is a Quantity. Typically, the rsub function will lead to a
+        ValueError 
+        
+        Raises
+        ------
+        ValueError
+            when the other is of a different type than self
+        """
+        return self.__add__(other.__neg__())
+
+    def __sub__(self, other):
+        """
+        Return a new quantity containing the difference of this quantity 
+        and the other quantity.
+        
+        Raises
+        ------
+        ValueError
+            when the two quantities are of different types
+        """
+        if (type(self) != type(other)):
+            raise ValueError("subtracting incompatible quantities")
+        return self._val(float(self) - float(other))
+
+    def __truediv__(self, other):
+        """
+        Return a new quantity containing the division of this quantity 
+        by the provided divisor. The factor has to be of type float or int. 
+        The result of Area(50.0, 'm^2') / 2 = Area(25.0, 'm^2).
+        
+        Raises
+        ------
+        ValueError
+            when the divisor is not a float or an int, and the division
+            between two quantities is not defined
+        """
+        if type(other) == float or type(other) == int:
+            return self._val(float(self) / other)
+        if type(other) == SI or isinstance(other, Quantity):
+            ret: 'SI' = SI(float(self) / float(other))
+            ret._sisig = list(map(lambda x, y: x - y, self.sisig(), other.sisig()))
+            ret._unit = ret.siunit(True, '', '.')
+            return ret
+        raise ValueError("/ operator not defined for {} / {}".format(
+                         self, other))
+
+    def __rtruediv__(self, other):
+        """
+        Return a new quantity containing the division of the other quantity 
+        or value by the self object. If other is a Quantity, 
+        __truediv__(other, self) can be called. If other is a number, 
+        __truediv__(Dimensionless, self) will be called instead.
+        
+        Raises
+        ------
+        ValueError
+            when other is not a float or an int, and the division between 
+            the two quantities is not defined
+        """
+        if type(other) == float or type(other) == int:
+            return Dimensionless(other) / self
+        raise ValueError("/ operator not defined for {} / {}".format(
+                         other, self))
+
+    def __trunc__(self):
+        """
+        Return the nearest integer value below the value of this quantity,
+        where the direction for negative numbers is towards zero. The trunc 
+        of -3.5 is therefore -3, symmetric with the trunc of +3.5.
+        Note that this function works on the display value of the quantity
+        and not on the internal si-value. When we want to calculate the
+        floor of 10.4 cm, we expect 10 cm, and not 0 cm (the nearest integer
+        value below 0.104 m is 0 m). 
+        """
+        return self._val(math.trunc(float(self)))
+    
+    def __pow__(self, power):
+        """
+        Return a new quantity containing the value of this quantity to the
+        provided power. The power has to be of type float or int. Note that 
+        this function works on the display value of the quantity and not
+        on the internal si-value.
+        The result of Area(5.0, 'km^2') ** 2 = Area(25.0, 'km^2).
+        
+        Raises
+        ------
+        ValueError
+            when the multiplication factor is not a float or an int
+        """
+        if not (type(power) == float or type(power) == int):
+            raise ValueError("** operator needs float or int")
+        return self._val(float(self) ** power)
+
+    def __eq__(self, other) -> bool:
+        """
+        Return whether this quantity is equal to the other quantity.
+        False will be returned when the types are different.
+        """
+        if type(self) != type(other):
+            return False
+        if self._sisig != other._sisig:
+            return False
+        return float(self) == float(other)
+
+    def __ne__(self, other) -> bool:
+        """
+        Return whether this quantity is not equal to the other quantity.
+        True will be returned when the types are different.
+        """
+        if type(self) != type(other):
+            return True
+        if self._sisig != other._sisig:
+            return True
+        return float(self) != float(other)
+         
+    def __lt__(self, other) -> bool:
+        """
+        Return whether this quantity is less than the other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
+                    TypeError,
+                    "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
+        return float(self) < float(other)
+         
+    def __le__(self, other) -> bool:
+        """
+        Return whether this quantity is less than or equal to the 
+        other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
+                    TypeError,
+                    "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
+        return float(self) <= float(other)
+         
+    def __gt__(self, other) -> bool:
+        """
+        Return whether this quantity is greater than the other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
+                    TypeError,
+                    "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
+        return float(self) > float(other)
+         
+    def __ge__(self, other) -> bool:
+        """
+        Return whether this quantity is greater than or equal to the 
+        other quantity.
+        
+        Raises
+        ------
+        TypeError
+            when the two quantities are of different types
+        """
+        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
+                    TypeError,
+                    "comparing incompatible quantities {0} and {1}",
+                    type(self).__name__, type(other).__name__)
+        return float(self) >= float(other)
+         
+    def __str__(self):
+        """
+        Return a string representation of the quantity, where the chosen unit 
+        follows the value without a space.
+        """
+        return str(float(self)) + ' ' + self._unit
+
+    def __repr__(self):
+        """
+        Return a string representation of the quantity, where the chosen unit 
+        follows the value without a space.
+        """
+        return str(self)
+
+    def siunit(self, div:bool=True, hat:str='', dot:str='') -> str:
+        """
+        Method to return a string with the SI-signature of this SI value. 
+        
+        Parameters
+        ----------
+        div
+            Defines whether to use a divisor (when div == True) or negative 
+            indices for the SI units (when div == False). When div is true, 
+            Force returns kgm/s2; when it is false, it returns kgms-2.
+        hat
+            Defines the hat sign to use for indices larger than 1. When set
+            to '^', Energy would return kgm^2/s^2. When left blank, kgm2/s2.
+        dot
+            Defines the dot sign to use between quantities. When set
+            to '.',  ElectricalResistance would return kg.m2/s3.A2. When 
+            left blank, kgm2/s3A2. Combined with hat='^': kg.m^2/s^3.A^2
+        """  
+        s = ""
+        t = ""
+        for i in range(0, 9):
+            v: int = self._sisig[i]
+            if v > 0 or (v < 0 and not div):
+                if len(s) > 0:
+                    s += dot
+                s += SI.SIUNITS[i]
+                if v > 1 or v < 0:
+                    s += hat + str(v)
+        if div:
+            for i in range(0, 9):
+                v: int = self._sisig[i]
+                if v < 0:
+                    if len(t) > 0:
+                        t += dot
+                    t += SI.SIUNITS[i]
+                    if v < -1:
+                        t += hat + str(-v)
         if len(t) > 0:
             s += "/" + t
         return s
@@ -632,7 +1273,7 @@ class Acceleration(Quantity['Acceleration']):
                      'mi/hr/sec': 'mile per hour per second',
                      'mi/hour/sec': 'mile per hour per second',
                      'g': 'standard gravity', 'Gal': 'gal'}
-    _sisig = {'m': 1, 's':-2}
+    _sidict = {'m': 1, 's':-2}
     _mul = {}
     _div = {}
 
@@ -652,7 +1293,7 @@ class Angle(Quantity['Angle']):
                      'arcsec': 'arcsecond', 'grad': 'gradian',
                      'c\'': 'centesimal arcminute',
                      'c"': 'centesimal arcsecond'}
-    _sisig = {'rad': 1}
+    _sidict = {'rad': 1}
     _mul = {}
     _div = {}
 
@@ -696,7 +1337,7 @@ class AngularAcceleration(Quantity['AngularAcceleration']):
                      'c\'/sec2': 'centesimal arcminute per second squared',
                      'c"/s2': 'centesimal arcsecond per second squared',
                      'c"/sec2': 'centesimal arcsecond per second squared'}
-    _sisig = {'rad': 1, 's':-2}
+    _sidict = {'rad': 1, 's':-2}
     _mul = {}
     _div = {}
 
@@ -739,7 +1380,7 @@ class AngularVelocity(Quantity['AngularVelocity']):
                      'c\'/sec': 'centesimal arcminute per second',
                      'c"/s': 'centesimal arcsecond per second',
                      'c"/sec': 'centesimal arcsecond per second'}
-    _sisig = {'rad': 1, 's':-1}
+    _sidict = {'rad': 1, 's':-1}
     _mul = {}
     _div = {}
 
@@ -774,7 +1415,7 @@ class Area(Quantity['Area']):
                      'NM^2': 'square Nautical Mile',
                      'ft^2': 'square foot', 'in^2': 'square inch',
                      'yd^2': 'square yard', 'ac': 'acre'}
-    _sisig = {'m': 2}
+    _sidict = {'m': 2}
     _mul = {}
     _div = {}
 
@@ -785,7 +1426,7 @@ class Density(Quantity['Density']):
     _displayunits = {'kg/m^3': 1.0, 'g/cm^3': 1000.0}
     _descriptions = {'kg/m^3': 'kilogram per cubic meter',
                      'g/cm^3': 'gram per cubic centimeter'}
-    _sisig = {'kg': 1, 'm':-3}
+    _sidict = {'kg': 1, 'm':-3}
     _mul = {}
     _div = {}
 
@@ -795,7 +1436,7 @@ class Dimensionless(Quantity['Dimensionless']):
     _units = {'': 1.0}
     _displayunits = {}
     _descriptions = {'': 'unit'}
-    _sisig = {}
+    _sidict = {}
     _mul = {}
     _div = {}
 
@@ -834,7 +1475,7 @@ class Duration(Quantity['Duration']):
                      's': 'second', 'sec': 'second', 'min': 'minute',
                      'h': 'hour', 'hr': 'hour', 'hour': 'hour', 'day': 'day',
                      'wk': 'week', 'week': 'week'}
-    _sisig = {'s': 1}
+    _sidict = {'s': 1}
     _mul = {}
     _div = {}
 
@@ -873,7 +1514,7 @@ class ElectricalCharge(Quantity['ElectricalCharge']):
                      'statC': 'statcoulomb', 'Fr': 'franklin',
                      'esu': 'electrostatic unit', 'abC': 'abcoulomb',
                      'emu': 'electromagnetic unit'}
-    _sisig = {'s': 1, 'A': 1}
+    _sidict = {'s': 1, 'A': 1}
     _mul = {}
     _div = {}
 
@@ -893,7 +1534,7 @@ class ElectricalCurrent(Quantity['ElectricalCurrent']):
                      'MA': 'megaampere', 'GA': 'gigaampere',
                      'TA': 'teraampere', 'PA': 'petaampere', 'A': 'ampere',
                      'statA': 'statampere', 'abA': 'abampere'}
-    _sisig = {'A': 1}
+    _sidict = {'A': 1}
     _mul = {}
     _div = {}
 
@@ -911,7 +1552,7 @@ class ElectricalPotential(Quantity['ElectricalPotential']):
                      'hV': 'hectovolt', 'kV': 'kilovolt', 'MV': 'megavolt',
                      'GV': 'gigavolt', 'TV': 'teravolt', 'PV': 'petavolt',
                      'V': 'volt', 'stV': 'statvolt', 'abV': 'abvolt'}
-    _sisig = {'kg': 1, 'm': 2, 's':-3, 'A':-1}
+    _sidict = {'kg': 1, 'm': 2, 's':-3, 'A':-1}
     _mul = {}
     _div = {}
 
@@ -944,7 +1585,7 @@ class ElectricalResistance(Quantity['ElectricalResistance']):
                      'PΩ': 'petaohm', 'Pohm': 'petaohm', 'Ω': 'ohm',
                      'ohm': 'ohm', 'abΩ': 'abohm', 'abohm': 'abohm',
                      'stΩ': 'statohm', 'stohm': 'statohm'}
-    _sisig = {'kg': 1, 'm': 2, 's':-3, 'A':-2}
+    _sidict = {'kg': 1, 'm': 2, 's':-3, 'A':-2}
     _mul = {}
     _div = {}
 
@@ -1003,7 +1644,7 @@ class Energy(Quantity['Energy']):
                      'GeV': 'gigaelectronvolt', 'TeV': 'teraelectronvolt',
                      'PeV': 'petaelectronvolt', 'eV': 'electronvolt',
                      'sn.m': 'sthene meter', 'erg': 'erg'}
-    _sisig = {'kg': 1, 'm': 2, 's':-2}
+    _sidict = {'kg': 1, 'm': 2, 's':-2}
     _mul = {}
     _div = {}
 
@@ -1017,7 +1658,7 @@ class FlowMass(Quantity['FlowMass']):
                      'kg/sec': 'kilogram per second',
                      'lb/s': 'pound per second',
                      'lb/sec': 'pound per second'}
-    _sisig = {'kg': 1, 's':-1}
+    _sidict = {'kg': 1, 's':-1}
     _mul = {}
     _div = {}
 
@@ -1073,7 +1714,7 @@ class FlowVolume(Quantity['FlowVolume']):
                      'gal(US)/hr': 'US gallon per hour',
                      'gal(US)/hour': 'US gallon per hour',
                      'gal(US)/day': 'US gallon per day'}
-    _sisig = {'m': 3, 's':-1}
+    _sidict = {'m': 3, 's':-1}
     _mul = {}
     _div = {}
 
@@ -1089,7 +1730,7 @@ class Force(Quantity['Force']):
     _descriptions = {'N': 'newton', 'dyn': 'dyne', 'kgf': 'kilogram-force',
                      'ozf': 'ounce-force', 'lbf': 'pound-force',
                      'tnf': 'ton-force', 'sn': 'sthene'}
-    _sisig = {'kg': 1, 'm': 1, 's':-2}
+    _sidict = {'kg': 1, 'm': 1, 's':-2}
     _mul = {}
     _div = {}
 
@@ -1160,7 +1801,7 @@ class Frequency(Quantity['Frequency']):
                      '/h': 'per hour', '/hr': 'per hour',
                      '/hour': 'per hour', '/day': 'per day',
                      '/wk': 'per week', '/week': 'per week'}
-    _sisig = {'s':-1}
+    _sidict = {'s':-1}
     _mul = {}
     _div = {}
 
@@ -1186,7 +1827,7 @@ class Length(Quantity['Length']):
                      'NM': 'nautical mile', 'AU': 'Astronomical Unit',
                      'ly': 'lightyear', 'Pc': 'Parsec', 'Å': 'Angstrom',
                      'A': 'Angstrom'}
-    _sisig = {'m': 1}
+    _sidict = {'m': 1}
     _mul = {}
     _div = {}
 
@@ -1222,7 +1863,7 @@ class LinearDensity(Quantity['LinearDensity']):
                      '/AU': 'per Astronomical Unit',
                      '/ly': 'per lightyear', '/pc': 'per parsec',
                      '/Å': 'per Angstrom', '/A': 'per Angstrom'}
-    _sisig = {'m':-1}
+    _sidict = {'m':-1}
     _mul = {}
     _div = {}
 
@@ -1258,7 +1899,7 @@ class Mass(Quantity['Mass']):
                      'μeV': 'microelectronvolt',
                      'mueV': 'microelectronvolt',
                      'meV': 'millielectronvolt'}
-    _sisig = {'kg': 1}
+    _sidict = {'kg': 1}
     _mul = {}
     _div = {}
 
@@ -1269,7 +1910,7 @@ class Momentum(Quantity['Momentum']):
     _displayunits = {'kgm/sec': 'kgm/s'}
     _descriptions = {'kgm/s': 'kilogram meter per second',
                      'kgm/sec': 'kilogram meter per second'}
-    _sisig = {'kg': 1, 'm': 1, 's':-1}
+    _sidict = {'kg': 1, 'm': 1, 's':-1}
     _mul = {}
     _div = {}
 
@@ -1295,7 +1936,7 @@ class Power(Quantity['Power']):
                      'hp(M)': 'horsepower (metric)',
                      'sn.m/s': 'sthene-meter per second',
                      'erg/s': 'erg per second'}
-    _sisig = {'kg': 1, 'm': 2, 's':-3}
+    _sidict = {'kg': 1, 'm': 2, 's':-3}
     _mul = {}
     _div = {}
 
@@ -1329,7 +1970,7 @@ class Pressure(Quantity['Pressure']):
                      'lbf/ft^2': 'pound-force per square foot',
                      'lbf/in^2': 'pound-force per square inch',
                      'pz': 'pièze'}
-    _sisig = {'kg': 1, 'm':-1, 's':-2}
+    _sidict = {'kg': 1, 'm':-1, 's':-2}
     _mul = {}
     _div = {}
 
@@ -1339,7 +1980,7 @@ class SolidAngle(Quantity['SolidAngle']):
     _units = {'sr': 1.0, 'sq.deg': 3.046174197867086E-4}
     _displayunits = {'sr': 1.0, 'sq.deg': 3.046174197867086E-4}
     _descriptions = {'sr': 'steradian', 'sq.deg': 'square degree'}
-    _sisig = {'sr': 1}
+    _sidict = {'sr': 1}
     _mul = {}
     _div = {}
 
@@ -1387,7 +2028,7 @@ class Speed(Quantity['Speed']):
                      'mi/min': 'mile per minute', 'mi/h': 'mile per hour',
                      'mi/hr': 'mile per hour', 'mi/hour': 'mile per hour',
                      'kt': 'knot'}
-    _sisig = {'m': 1, 's':-1}
+    _sidict = {'m': 1, 's':-1}
     _mul = {}
     _div = {}
 
@@ -1419,7 +2060,7 @@ class Temperature(Quantity['Temperature']):
                      'degR': 'degree Rankine', 'R': 'degree Rankine',
                      '°Ré': 'degree Reaumur', 'degRe': 'degree Reaumur',
                      'Re': 'degree Reaumur', 'Ré': 'degree Reaumur'}
-    _sisig = {'K': 1}
+    _sidict = {'K': 1}
     _mul = {}
     _div = {}
 
@@ -1433,7 +2074,7 @@ class Torque(Quantity['Torque']):
     _descriptions = {'N.m': 'Newton meter',
                      'm.kgf': 'meter kilogram-force',
                      'lbf.ft': 'pound-foot', 'lbf.in': 'pound-inch'}
-    _sisig = {'kg': 1, 'm': 2, 's':-2}
+    _sidict = {'kg': 1, 'm': 2, 's':-2}
     _mul = {}
     _div = {}
 
@@ -1477,7 +2118,7 @@ class Volume(Quantity['Volume']):
                      'fl.oz(US)': 'fluid ounce (US)',
                      'fl.oz(imp)': 'fluid ounce (imp)',
                      'ly^3': 'cubic lightyear', 'pc^3': 'cubic Parsec'}
-    _sisig = {'m': 3}
+    _sidict = {'m': 3}
     _mul = {}
     _div = {}
 
@@ -1497,7 +2138,7 @@ class AbsorbedDose(Quantity['AbsorbedDose']):
                      'MGy': 'megagray', 'GGy': 'gigagray',
                      'TGy': 'teragray', 'PGy': 'petagray', 'Gy': 'gray',
                      'erg/g': 'erg per gram', 'rad': 'rad'}
-    _sisig = {'m': 2, 's':-2}
+    _sidict = {'m': 2, 's':-2}
     _mul = {}
     _div = {}
 
@@ -1516,7 +2157,7 @@ class AmountOfSubstance(Quantity['AmountOfSubstance']):
                      'hmol': 'hectomole', 'kmol': 'kilomole',
                      'Mmol': 'megamole', 'Gmol': 'gigamole',
                      'Tmol': 'teramole', 'Pmol': 'petamole', 'mol': 'mole'}
-    _sisig = {'mol': 1}
+    _sidict = {'mol': 1}
     _mul = {}
     _div = {}
 
@@ -1536,7 +2177,7 @@ class CatalyticActivity(Quantity['CatalyticActivity']):
                      'Mkat': 'megakatal', 'Gkat': 'gigakatal',
                      'Tkat': 'terakatal', 'Pkat': 'petakatal',
                      'kat': 'katal'}
-    _sisig = {'s':-1, 'mol': 1}
+    _sidict = {'s':-1, 'mol': 1}
     _mul = {}
     _div = {}
 
@@ -1556,7 +2197,7 @@ class ElectricalCapacitance(Quantity['ElectricalCapacitance']):
                      'kF': 'kilofarad', 'MF': 'megafarad',
                      'GF': 'gigafarad', 'TF': 'terafarad',
                      'PF': 'petafarad', 'F': 'farad'}
-    _sisig = {'kg':-1, 'm':-2, 's': 4, 'A': 2}
+    _sidict = {'kg':-1, 'm':-2, 's': 4, 'A': 2}
     _mul = {}
     _div = {}
 
@@ -1576,7 +2217,7 @@ class ElectricalConductance(Quantity['ElectricalConductance']):
                      'MS': 'megasiemens', 'GS': 'gigasiemens',
                      'TS': 'terasiemens', 'PS': 'petasiemens',
                      'S': 'siemens'}
-    _sisig = {'kg':-1, 'm':-2, 's': 3, 'A': 2}
+    _sidict = {'kg':-1, 'm':-2, 's': 3, 'A': 2}
     _mul = {}
     _div = {}
 
@@ -1595,7 +2236,7 @@ class ElectricalInductance(Quantity['ElectricalInductance']):
                      'hH': 'hectohenry', 'kH': 'kilohenry',
                      'MH': 'megahenry', 'GH': 'gigahenry',
                      'TH': 'terahenry', 'PH': 'petahenry', 'H': 'henry'}
-    _sisig = {'kg': 1, 'm': 2, 's':-2, 'A':-2}
+    _sidict = {'kg': 1, 'm': 2, 's':-2, 'A':-2}
     _mul = {}
     _div = {}
 
@@ -1615,7 +2256,7 @@ class EquivalentDose(Quantity['EquivalentDose']):
                      'MSv': 'megasievert', 'GSv': 'gigasievert',
                      'TSv': 'terasievert', 'PSv': 'petasievert',
                      'Sv': 'sievert', 'rem': 'rem'}
-    _sisig = {'m': 2, 's':-2}
+    _sidict = {'m': 2, 's':-2}
     _mul = {}
     _div = {}
 
@@ -1633,7 +2274,7 @@ class Illuminance(Quantity['Illuminance']):
                      'hlx': 'hectolux', 'klx': 'kilolux', 'Mlx': 'megalux',
                      'Glx': 'gigalux', 'Tlx': 'teralux', 'Plx': 'petalux',
                      'lx': 'lux', 'ph': 'phot', 'nx': 'nox'}
-    _sisig = {'sr': 1, 'm':-2, 'cd': 1}
+    _sidict = {'sr': 1, 'm':-2, 'cd': 1}
     _mul = {}
     _div = {}
 
@@ -1652,7 +2293,7 @@ class LuminousFlux(Quantity['LuminousFlux']):
                      'hlm': 'hectolumen', 'klm': 'kilolumen',
                      'Mlm': 'megalumen', 'Glm': 'gigalumen',
                      'Tlm': 'teralumen', 'Plm': 'petalumen', 'lm': 'lumen'}
-    _sisig = {'sr': 1, 'cd': 1}
+    _sidict = {'sr': 1, 'cd': 1}
     _mul = {}
     _div = {}
 
@@ -1672,7 +2313,7 @@ class LuminousIntensity(Quantity['LuminousIntensity']):
                      'Mcd': 'megacandela', 'Gcd': 'gigacandela',
                      'Tcd': 'teracandela', 'Pcd': 'petacandela',
                      'cd': 'candela'}
-    _sisig = {'cd': 1}
+    _sidict = {'cd': 1}
     _mul = {}
     _div = {}
 
@@ -1692,7 +2333,7 @@ class MagneticFluxDensity(Quantity['MagneticFluxDensity']):
                      'MT': 'megatesla', 'GT': 'gigatesla',
                      'TT': 'teratesla', 'PT': 'petatesla', 'T': 'tesla',
                      'G': 'Gauss'}
-    _sisig = {'kg': 1, 's':-2, 'A':-1}
+    _sidict = {'kg': 1, 's':-2, 'A':-1}
     _mul = {}
     _div = {}
 
@@ -1712,7 +2353,7 @@ class MagneticFlux(Quantity['MagneticFlux']):
                      'MWb': 'megaweber', 'GWb': 'gigaweber',
                      'TWb': 'teraweber', 'PWb': 'petaweber', 'Wb': 'weber',
                      'Mx': 'Maxwell'}
-    _sisig = {'kg': 1, 'm': 2, 's':-2, 'A':-1}
+    _sidict = {'kg': 1, 'm': 2, 's':-2, 'A':-1}
     _mul = {}
     _div = {}
 
@@ -1731,7 +2372,7 @@ class RadioActivity(Quantity['RadioActivity']):
                      'Ci': 'curie', 'mCi': 'millicurie',
                      'muCi': 'microcurie', 'μCi': 'microcurie',
                      'nCi': 'nanocurie', 'Rd': 'rutherford'}
-    _sisig = {'s':-1}
+    _sidict = {'s':-1}
     _mul = {}
     _div = {}
 
@@ -1921,4 +2562,3 @@ for q in QUANTITIES:
     q._mul[Dimensionless] = q
     q._div[Dimensionless] = q
     q._div[q] = Dimensionless
-
