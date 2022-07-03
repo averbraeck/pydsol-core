@@ -108,8 +108,6 @@ class EventListHeap(EventListInterface):
     ----------
     _event_list
         the internal heapq structure to store the events
-    _number_events
-        an internal counter for the number of events
         
     Methods
     -------
@@ -135,7 +133,6 @@ class EventListHeap(EventListInterface):
         """Create a new, empty event list"""
         self._event_list: list[SimEventInterface] = []
         heapq.heapify(self._event_list)
-        self._number_events: int = 0
     
     def add(self, event: SimEventInterface):
         """
@@ -148,7 +145,6 @@ class EventListHeap(EventListInterface):
         """
         heapq.heappush(self._event_list, (event.time, -event.priority,
                                           event._id, event))
-        self._number_events += 1
     
     def peek_first(self) -> SimEventInterface:
         """
@@ -176,7 +172,6 @@ class EventListHeap(EventListInterface):
         """
         if self.is_empty():
             return None
-        self._number_events -= 1
         return heapq.heappop(self._event_list)[3]
 
     def size(self) -> int:
@@ -187,7 +182,7 @@ class EventListHeap(EventListInterface):
         -------
         The number of events on the event list as an int.
         """
-        return self._number_events
+        return len(self._event_list)
 
     def contains(self, event: SimEventInterface) -> bool:
         """
@@ -224,7 +219,6 @@ class EventListHeap(EventListInterface):
         if (self.contains(event)):
             self._event_list.remove((event.time, -event.priority,
                                      event._id, event))
-            self._number_events -= 1
             return True
         return False
 
@@ -241,7 +235,6 @@ class EventListHeap(EventListInterface):
     def clear(self):
         """Remove all events from the event list."""
         self._event_list.clear()
-        self._number_events: int = 0
         
     def __str__(self) -> str:
         s = "["
