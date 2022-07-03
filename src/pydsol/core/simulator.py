@@ -5,9 +5,12 @@ advance time in a simulation and change the state of the model over time.
 
 from abc import abstractmethod
 import enum
+import logging
+import sys
 from threading import Thread
 import threading
 from time import sleep
+import time
 import traceback
 from typing import TypeVar, Generic
 
@@ -18,8 +21,7 @@ from pydsol.core.pubsub import EventProducer
 from pydsol.core.simevent import SimEventInterface, SimEvent
 from pydsol.core.units import Duration
 from pydsol.core.utils import DSOLError, get_module_logger
-import logging
-import sys
+
 
 __all__ = [
     "Simulator",
@@ -306,8 +308,12 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         for initial_event in self._initial_methods:
             initial_event.execute()
         # wait till the worker thread is waiting or ready (end replication)
-        while not (self.__worker.is_waiting() or self.__worker.is_finalized()):
+        count: int = 0
+        while (not self.__worker.is_waiting() 
+               and not self.__worker.is_finalized()
+               and count < 1000):
             sleep(0.001)
+            count += 1
 
     def add_initial_method(self, target, method: str, **kwargs):
         """Add a method call that has to be performed at the end if 
@@ -351,8 +357,11 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
                 ReplicationInterface.START_REPLICATION_EVENT, None)
             self._replication_state = ReplicationState.STARTED
         self.fire(Simulator.STARTING_EVENT, None)
+        # wake up the run() method of the worker thread to start Simulator.run
         self.__worker.wakeup()
-        while not self._runflag:
+        # wait maximally one second
+        msec: int = int(time.time() * 1000)
+        while not self._runflag and int(time.time() * 1000) - msec < 1000:
             sleep(0.001)
         self._runflag = False
             
@@ -412,7 +421,10 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         """Implementation of the stop behavior."""
         self._run_state = RunState.STOPPING
         # wait till the worker thread is waiting or ready (end replication)
-        while not (self.__worker.is_waiting() or self.__worker.is_finalized()):
+        msec: int = int(time.time() * 1000)
+        while (not self.__worker.is_waiting() 
+               and not self.__worker.is_finalized()
+               and int(time.time() * 1000) - msec < 1000):
             sleep(0.001)
 
     def stop(self):
@@ -518,9 +530,11 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
     def __init__(self, name: str, time_type: type, initial_time: TIME):
         super().__init__(name, time_type, initial_time)
         self._eventlist: EventListInterface = EventListHeap()
-        self._pause_on_error = True
     
     def initialize(self, model:ModelInterface, replication:ReplicationInterface):
+        # this check HAS to be done before clearing the eventlist
+        if self.is_starting_or_running():
+            raise DSOLError("cannot initialize a running simulation")
         self._eventlist.clear()
         super().initialize(model, replication)
         # schedule end_replication AFTER events at end time
@@ -594,24 +608,26 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         self._runflag = True
         while not self.is_stopping_or_stopped():
             # check if we are done
-            t = self.eventlist().peek_first().time
+            if self.eventlist().is_empty():
+                t = self._run_until_time
+            else:
+                t = self.eventlist().peek_first().time
             if (t > self._run_until_time or (t == self._run_until_time \
-                    and not self._run_until_including)):
+                    and not self._run_until_including) 
+                    or self.eventlist().is_empty()):
                 self._simulator_time = self._run_until_time
                 self._run_state = RunState.STOPPING
                 return;
             # get the first event
             event: SimEventInterface = self.eventlist().pop_first()
+            if not isinstance(event, SimEventInterface):
+                raise DSOLError(f"Invalid SimEvent {event} from eventlist")
             if (event.time != self.simulator_time):
                 self.fire_timed(event.time, Simulator.TIME_CHANGED_EVENT,
                                 event.time)
             self._simulator_time = event.time
             try:
                 event.execute()
-                if self.eventlist().is_empty():
-                    self._simulator_time = self._run_until_time
-                    self._run_state = RunState.STOPPING
-                    return;
             except Exception as e:
                 s = "Exception during simulation at t={self.simulator_time}: "
                 logger.log(self._error_log_level, s + str(e))
