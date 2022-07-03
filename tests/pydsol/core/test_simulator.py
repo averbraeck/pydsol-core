@@ -240,9 +240,6 @@ def test_stop():
             simulator.step()
         # but we can stop!
         simulator.stop()
-        while simulator._run_state != RunState.STOPPED:
-            sleep(0.01)
-        sleep(0.01) # make sure the thread has ended as well
         assert not simulator.is_starting_or_running()
         assert simulator.is_stopping_or_stopped()
         assert simulator.run_state == RunState.STOPPED
