@@ -18,7 +18,8 @@ from pydsol.core.pubsub import EventProducer
 from pydsol.core.simevent import SimEventInterface, SimEvent
 from pydsol.core.units import Duration
 from pydsol.core.utils import DSOLError, get_module_logger
-
+import logging
+import sys
 
 __all__ = [
     "Simulator",
@@ -97,6 +98,62 @@ class ReplicationState(enum.Enum):
     the END_REPLICATION_EVENT has been fired."""
 
 
+class ErrorStrategy(enum.Enum):
+    """
+    ErrorStrategy indicates what to do when there is an error in the 
+    execution of the simulation. In order to set the error handling, 
+    the Simulator's error_strategy can be set and changed, even during 
+    the execution of the simulation run. The log level can be overridden 
+    (and even be set to NONE).
+    """
+
+    LOG_AND_CONTINUE = 1
+    """
+    Send the error to the logger as WARNING. Both RunState and 
+    ReplicationState remain in the RUNNING state. The Simulator.run() 
+    continues as if the error did not occur.
+    """
+    
+    WARN_AND_CONTINUE = 2
+    """
+    Send the error to logger as ERROR and print the exception on stderr. 
+    Both RunState and ReplicationState remain in the RUNNING state. 
+    The Simulator.run() continues as if the error did not occur.
+    """
+    
+    WARN_AND_PAUSE = 3
+    """
+    Send the error to logger as ERROR and print the exception on stderr 
+    The RunState goes to STOPPING, leading to the stop of the loop in the 
+    Simulator.run() method and a subsequent STOPPED state in the 
+    SimulatorWorkerThread.run() method. The SimulatorWorkerThread will go 
+    into a Thread.wait(), to wait for start (or cleanup).
+    """
+
+    WARN_AND_END = 4
+    """
+    Send the error to logger as CRITICAL and print the exception on stderr 
+    The Simulator.cleanup() method is called to ensure the 
+    SimulatorWorkerThread.run() method completely ends and can be garbage 
+    collected. If there is a UI thread, it will keep running.
+    """
+    
+    WARN_AND_EXIT = 5
+    """
+    Send the error to logger as FATAL and print the exception on stderr 
+    The Simulator.cleanup() method is called to ensure the stop of the 
+    run() in SimulatorWorkerThread; the System.exit() method is called to 
+    end the complete program.
+    """
+
+    LOG_LEVELS = {LOG_AND_CONTINUE: logging.WARNING,
+                  WARN_AND_CONTINUE: logging.ERROR,
+                  WARN_AND_PAUSE: logging.ERROR,
+                  WARN_AND_END: logging.CRITICAL,
+                  WARN_AND_EXIT: logging.FATAL}
+    """Dictionary for default log level per error handling strategy."""
+
+
 class SimulatorWorkerThread(Thread):
     """
     The Simulator uses a worker thread to execute the simulation. The
@@ -109,7 +166,7 @@ class SimulatorWorkerThread(Thread):
     def __init__(self, name: str, job: 'Simulator'):
         super().__init__(name=name)
         self._job: 'Simulator' = job
-        # TODO: self.daemon(False)
+        self.daemon = False
         self._running: bool = False
         self._finalized: bool = False
         self.__wakeup_flag = threading.Event()
@@ -125,6 +182,12 @@ class SimulatorWorkerThread(Thread):
     
     def wakeup(self):
         self.__wakeup_flag.set()
+        
+    def is_waiting(self):
+        return len(self.__wakeup_flag._cond._waiters) > 0
+
+    def is_finalized(self):
+        return self._finalized
     
     def run(self):
         while not self._finalized:
@@ -158,9 +221,14 @@ class SimulatorWorkerThread(Thread):
 
 
 class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
+    """
+    The Simulator class 
+    """
     
     def __init__(self, name: str, time_type: type, initial_time: TIME):
         EventProducer.__init__(self)
+        """
+        """
         if not isinstance(name, str):
             raise DSOLError("simulator id should be a str")
         if not (issubclass(time_type, int) or issubclass(time_type, float)):
@@ -178,7 +246,10 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._replication_state = ReplicationState.NOT_INITIALIZED
         self.__worker: Thread = None
         self._initial_time = initial_time
-        self._initial_methods: list[SimEventInterface] = [] 
+        self._initial_methods: list[SimEventInterface] = []
+        self._error_strategy = ErrorStrategy.WARN_AND_PAUSE
+        self._error_log_level = logging.ERROR
+        self._runflag: bool = False
         
     @property
     def name(self) -> str:
@@ -234,6 +305,9 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._replication_state = ReplicationState.INITIALIZED
         for initial_event in self._initial_methods:
             initial_event.execute()
+        # wait till the worker thread is waiting or ready (end replication)
+        while not (self.__worker.is_waiting() or self.__worker.is_finalized()):
+            sleep(0.001)
 
     def add_initial_method(self, target, method: str, **kwargs):
         """Add a method call that has to be performed at the end if 
@@ -277,17 +351,10 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
                 ReplicationInterface.START_REPLICATION_EVENT, None)
             self._replication_state = ReplicationState.STARTED
         self.fire(Simulator.STARTING_EVENT, None)
-        # counter = 0
-        # while not self.__worker.is_alive():
-        #     sleep(0.001)
-        #     if counter > 1000:
-        #         raise DSOLError("worker thread not started")
-        # TODO: if threading.current_thread().name == self.name:
         self.__worker.wakeup()
-        # else:
-        #    self._run()
-        while not self.__worker.is_running():
+        while not self._runflag:
             sleep(0.001)
+        self._runflag = False
             
     def start(self):
         """Starts the simulator, and fire a START_EVENT that the simulator 
@@ -300,7 +367,6 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._run_until_time = self._replication.end_sim_time
         self._run_until_including = True
         self._start_impl()
-
      
     @abstractmethod
     def _step_impl(self):
@@ -345,7 +411,8 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
     def _stop_impl(self):
         """Implementation of the stop behavior."""
         self._run_state = RunState.STOPPING
-        while self.__worker.is_running():
+        # wait till the worker thread is waiting or ready (end replication)
+        while not (self.__worker.is_waiting() or self.__worker.is_finalized()):
             sleep(0.001)
 
     def stop(self):
@@ -410,7 +477,22 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         if self._simulator_time < self._replication.end_sim_time:
             print("warning: end_replication called with simtime < runlength")
             self._simulator_time = self._replication.end_sim_time
-        
+    
+    def set_error_strategy(self, error_strategy: ErrorStrategy,
+                           log_level: int=-1):
+        """
+        Set a new error handling strategy for the simulator, and possibly
+        override the default log level belonging to the error strategy 
+        (e.g. with logging.NONE to suppress logging altogether). 
+        """
+        if not error_strategy in ErrorStrategy.LOG_LEVELS:
+            raise ValueError("None-existent error strategy for simulator")
+        self._error_strategy = error_strategy
+        if log_level >= 0:
+            self._error_log_level = log_level
+            return
+        self._error_log_level = ErrorStrategy.LOG_LEVELS[error_strategy]
+
     @abstractmethod
     def _run(self):
         """
@@ -419,12 +501,13 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         formalism. Where discrete event formalisms loop over an event list, 
         continuous simulators take predefined time steps.
         Make sure that:
+         - self._runflag is set to True at the start of the run() method.
          - SimulatorInterface.TIME_CHANGED_EVENT is fired when the time 
-           of the simulator changes
+           of the simulator changes.
          - the warmup() method is called when the warmup period has expired 
-           (through an event or based on simulation time)
+           (through an event or based on simulation time).
          - the endReplication() method is called when the replication 
-           has ended
+           has ended.
          - the simulator runs until the runUntil time, which is also set 
            by the start() method.
         """
@@ -446,16 +529,6 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         # schedule warmup BEFORE events at warmup time
         self.schedule_event_abs(self.replication.warmup_sim_time,
             self, "warmup", priority=SimEventInterface.MAX_PRIORITY)
-        
-    def set_pause_on_error(self, pause: bool):
-        """Indicate whether the simulation has to pause when the 
-        execution of a SimEvent resulted in an exception."""
-        self._pause_on_error = pause
-        
-    def is_pause_on_error(self) -> bool:
-        """Return whether the simulation has to pause when the 
-        execution of a SimEvent resulted in an exception."""
-        return self._pause_on_error
 
     def eventlist(self) -> EventListInterface:
         """Return the event list used by this simulator."""
@@ -518,6 +591,7 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
         self.eventlist().clear()
         
     def _run(self):
+        self._runflag = True
         while not self.is_stopping_or_stopped():
             # check if we are done
             t = self.eventlist().peek_first().time
@@ -539,11 +613,18 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
                     self._run_state = RunState.STOPPING
                     return;
             except Exception as e:
-                print("Simulator run interrupted by exception:")
-                print(str(e))
-                traceback.print_exc()
-                if self.is_pause_on_error():
+                s = "Exception during simulation at t={self.simulator_time}: "
+                logger.log(self._error_log_level, s + str(e))
+                if self.error_strategy > ErrorStrategy.LOG_AND_CONTINUE:
+                    print(s + str(e))
+                    traceback.print_exc()
+                if self._error_strategy == ErrorStrategy.WARN_AND_PAUSE:
                     self._run_state = RunState.STOPPING
+                elif self._error_strategy == ErrorStrategy.WARN_AND_END:
+                    self.cleanup()
+                elif self._error_strategy == ErrorStrategy.WARN_AND_EXIT:
+                    sys.exit()
+            # end except
         # end while
     # end run()
 
