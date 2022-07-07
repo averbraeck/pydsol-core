@@ -537,9 +537,6 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
             raise DSOLError("cannot initialize a running simulation")
         self._eventlist.clear()
         super().initialize(model, replication)
-        # schedule end_replication AFTER events at end time
-        self.schedule_event_abs(self.replication.end_sim_time,
-            self, "end_replication", priority=SimEventInterface.MIN_PRIORITY)
         # schedule warmup BEFORE events at warmup time
         self.schedule_event_abs(self.replication.warmup_sim_time,
             self, "warmup", priority=SimEventInterface.MAX_PRIORITY)
@@ -616,6 +613,7 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
                     and not self._run_until_including) 
                     or self.eventlist().is_empty()):
                 self._simulator_time = self._run_until_time
+                self._replication_state = ReplicationState.ENDING
                 self._run_state = RunState.STOPPING
                 return;
             # get the first event
