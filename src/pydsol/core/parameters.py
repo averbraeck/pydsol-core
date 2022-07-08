@@ -1,7 +1,10 @@
 import math
+from typing import Union
 
 from pydsol.core.units import Quantity
-from typing import Union
+from pydsol.core.utils import get_module_logger
+
+logger = get_module_logger('parameters')
 
 
 class InputParameter:
