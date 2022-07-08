@@ -136,7 +136,7 @@ class EventType:
         if key in EventType.__defined_types:
             raise EventError(f"EventType {name} already defined")
         EventType.__defined_types.add(key)
-        if metadata != None:
+        if metadata is not None:
             for key in metadata.keys():
                 if not isinstance(key, str):
                     raise EventError("metadata {metadata} key not a str")
@@ -223,7 +223,7 @@ class Event:
             raise EventError("event_type is not an instance of EventType")
         self._event_type = event_type
         self._content = content
-        if event_type.metadata != None:
+        if event_type.metadata is not None:
             if not isinstance(content, dict):
                 raise EventError("event_type defined metadata but content "
                     +"is not specified as a dict")

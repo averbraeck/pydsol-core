@@ -39,7 +39,7 @@ def test_experiment():
 
 
 def test_model():
-    assert getattr(ModelInterface, "construct_model", None) != None
+    assert getattr(ModelInterface, "construct_model", None) is not None
 
 
 if __name__ == '__main__':

@@ -296,7 +296,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
             raise DSOLError(f"replication {replication} not valid")
         if self.is_starting_or_running():
             raise DSOLError("cannot initialize a running simulation")
-        if self.__worker != None:
+        if self.__worker is not None:
             self.cleanup()
         self.__worker = SimulatorWorkerThread(self.name, self)
         self._replication = replication
@@ -331,7 +331,7 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
         self._stop_impl()
         if self.has_listeners():
             self.remove_all_listeners()
-        if self.__worker != None:
+        if self.__worker is not None:
             self.__worker.cleanup()
             self.__worker = None
         self._run_state = RunState.NOT_INITIALIZED

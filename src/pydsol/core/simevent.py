@@ -134,7 +134,7 @@ class SimEvent(SimEventInterface):
         
         if not isinstance(method, str):
             raise DSOLError("method should be a string")
-        if getattr(target, method, None) != None:
+        if getattr(target, method, None) is not None:
             self._method = getattr(target, method)
         else:
             raise DSOLError(\
