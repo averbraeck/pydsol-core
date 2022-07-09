@@ -20,7 +20,12 @@ from typing import TypeVar, Generic
 from pydsol.core.pubsub import EventType
 from pydsol.core.utils import get_module_logger
 
+
 logger = get_module_logger('interfaces')
+
+#----------------------------------------------------------------------------
+# SIMULATOR INTERFACES
+#----------------------------------------------------------------------------
 
 # The TypeVar for time is used for type hinting for simulator time types
 TIME = TypeVar("TIME", float, int)
@@ -166,6 +171,54 @@ class ModelInterface(ABC):
     @abstractmethod
     def simulator(self):
         """return the simulator for this model"""
+
+#----------------------------------------------------------------------------
+# STATISTICS INTERFACES
+#----------------------------------------------------------------------------
+
+
+class StatisticsInterface(ABC):
+    """
+    The StatisticsInterface is a tagging interface for statistics classes. 
+    """
+    
+    @abstractmethod
+    def initialize(self) -> None:
+        """Initialize the statistic. This can happen at a the start and/or
+        at a simulation replication warmup event.
+        """
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Return the descriptive name of the statistic."""
+
+    @abstractmethod
+    def n(self) -> int:
+        """Return the number of observations."""
+
+
+class SimStatisticsInterface(StatisticsInterface):
+    """
+    The SimStatisticsInterface is a tagging interface for statistics classes
+    that are aware of the Simulator, and that can listen to events such as 
+    the WARMUP_EVENT to (re)initialize the statistics. 
+    """
+    
+    @abstractmethod
+    def notify(self, event) -> None:
+        """EventListener behavior, so the statistic can be subscribed to 
+        events like WARMUP_EVENT and END_REPLICATION_EVENT.  
+        """
+
+    @property
+    @abstractmethod
+    def simulator(self) -> SimulatorInterface:
+        """Return the simulator."""
+
+#----------------------------------------------------------------------------
+# STATISTICS EVENTS
+#----------------------------------------------------------------------------
 
 
 class StatEvents:
