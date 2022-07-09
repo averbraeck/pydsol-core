@@ -20,7 +20,6 @@ from typing import TypeVar, Generic
 from pydsol.core.pubsub import EventType
 from pydsol.core.utils import get_module_logger
 
-
 logger = get_module_logger('interfaces')
 
 # The TypeVar for time is used for type hinting for simulator time types
@@ -167,3 +166,186 @@ class ModelInterface(ABC):
     @abstractmethod
     def simulator(self):
         """return the simulator for this model"""
+
+
+class StatEvents:
+
+    DATA_EVENT: EventType = EventType("DATA_EVENT")
+    """The DATA_EVENT is the incoming event for EventBased statistics that
+    contains a new value for the statistics. The payload is a single float.
+    This event can be used by the EventBasedCounter and EventBasedTally 
+    and its subclasses. The event is fired from outside to these statistics."""
+    
+    WEIGHT_DATA_EVENT: EventType = EventType("WEIGHT_DATA_EVENT")
+    """The WEIGHT_DATA_EVENT is the incoming event for weighted EventBased 
+    statistics that contains a new weight-value pair for the statistics. 
+    The payload is a tuple (weight, value). This event can be used by the 
+    EventBasedWeightedTally and its subclasses.The event is fired from outside 
+    to the statistics."""
+
+    TIMESTAMP_DATA_EVENT: EventType = EventType("TIMESTAMP_DATA_EVENT")
+    """The TIMESTAMP_DATA_EVENT is the incoming event for weighted EventBased 
+    statistics that contains a new timestamp-value pair for the statistics. 
+    The payload is a tuple (timestamp, value). This event can be used by the 
+    EventBasedTimestampWeightedTally and its subclasses.The event is fired 
+    from outside to the statistics."""
+    
+    INITIALIZED_EVENT: EventType = EventType("INITIALIZED_EVENT")
+    """INITIALIZED_EVENT indicates that the statistic has been
+    (re)initialized, and all counters have been reset to the original values.
+    The event is fired by the statistic to its listeners."""
+     
+    OBSERVATION_ADDED_EVENT: EventType = EventType("OBSERVATION_ADDED_EVENT")
+    """OBSERVATION_ADDED_EVENT indicates that an observation has been 
+    received, and contains the value of the observation as the payload.
+    For weight-bsaed and timestamp-based observations, the payload is a tuple.
+    For value-based statistics, the payload is jus the (float) value. 
+    The event is fired by the statistic to its listeners."""
+
+    N_EVENT: EventType = EventType("N_EVENT")
+    """N_EVENT indicates that the number of observations has been increased,
+    and contains the new number of observation as the payload. 
+    The event is fired by the statistic to its listeners."""
+
+    COUNT_EVENT: EventType = EventType("COUNT_EVENT")
+    """COUNT_EVENT is an event of the Counter statistic and is subclasses.
+    The event indicates that the count has changed, and contains the new 
+    count as the payload. The event is fired by the statistic to its 
+    listeners."""
+
+    MIN_EVENT: EventType = EventType("MIN_EVENT")
+    """MIN_EVENT indicates that the minimum of the observations has changed,
+    and contains the new minimum as the payload. This event is fired by the 
+    EventBasedTally, its Weighted and Timestamped variant, and its subclasses 
+    to the listeners."""
+
+    MAX_EVENT: EventType = EventType("MAX_EVENT")
+    """MAX_EVENT indicates that the maximum of the observations has changed,
+    and contains the new maximum as the payload. This event is fired by the 
+    EventBasedTally, its Weighted and Timestamped variants, and their 
+    subclasses to the listeners."""
+
+    SUM_EVENT: EventType = EventType("SUM_EVENT")
+    """SUM_EVENT indicates that the sum of the observations has changed,
+    and contains the new sum as the payload. This event is fired by the 
+    EventBasedTally and its subclasses to the listeners."""
+
+    POPULATION_MEAN_EVENT: EventType = EventType("POPULATION_MEAN_EVENT")
+    """POPULATION_MEAN_EVENT indicates that the population mean of the 
+    observations has changed, and contains the new mean as the payload. 
+    This event is fired by the EventBasedTally and its subclasses to the 
+    listeners."""
+
+    POPULATION_STDEV_EVENT: EventType = EventType("POPULATION_STDEV_EVENT")
+    """POPULATION_STDEV_EVENT indicates that the population standard
+    deviation of the observations has changed, and contains the new standard
+    deviation as the payload. This event is fired by the EventBasedTally and 
+    its subclasses to the listeners."""
+
+    POPULATION_VARIANCE_EVENT: EventType = EventType("POPULATION_VARIANCE_EVENT")
+    """POPULATION_VARIANCE_EVENT indicates that the population variance
+    of the observations has changed, and contains the new variance as the 
+    payload. This event is fired by the EventBasedTally and its subclasses 
+    to the listeners."""
+
+    POPULATION_SKEWNESS_EVENT: EventType = EventType("POPULATION_SKEWNESS_EVENT")
+    """POPULATION_SKEWNESS_EVENT indicates that the population skewness
+    of the observations has changed, and contains the new skewness as the 
+    payload. This event is fired by the EventBasedTally and its subclasses 
+    to the listeners."""
+
+    POPULATION_KURTOSIS_EVENT: EventType = EventType("POPULATION_KURTOSIS_EVENT")
+    """POPULATION_KURTOSIS_EVENT indicates that the population kurtosis
+    of the observations has changed, and contains the new kurtosis as the 
+    payload. This event is fired by the EventBasedTally and its subclasses 
+    to the listeners."""
+
+    POPULATION_EXCESS_K_EVENT: EventType = EventType("POPULATION_EXCESS_K_EVENT")
+    """POPULATION_EXCESS_K_EVENT indicates that the population exces kurtosis
+    of the observations has changed, and contains the new excess kurtosis as 
+    the payload. This event is fired by the EventBasedTally and its subclasses 
+    to the listeners."""
+
+    SAMPLE_MEAN_EVENT: EventType = EventType("SAMPLE_MEAN_EVENT")
+    """SAMPLE_MEAN_EVENT indicates that the sample mean of the 
+    observations has changed, and contains the new mean as the payload. 
+    This event is fired by the EventBasedTally and its subclasses to the 
+    listeners."""
+
+    SAMPLE_STDEV_EVENT: EventType = EventType("SAMPLE_STDEV_EVENT")
+    """SAMPLE_STDEV_EVENT indicates that the sample standard deviation of 
+    the observations has changed, and contains the new standard deviation 
+    as the payload. This event is fired by the EventBasedTally and its 
+    subclasses to the listeners."""
+
+    SAMPLE_VARIANCE_EVENT: EventType = EventType("SAMPLE_VARIANCE_EVENT")
+    """SAMPLE_VARIANCE_EVENT indicates that the sample variance of the 
+    observations has changed, and contains the new variance as the payload. 
+    This event is fired by the EventBasedTally and its subclasses to the 
+    listeners."""
+
+    SAMPLE_SKEWNESS_EVENT: EventType = EventType("SAMPLE_SKEWNESS_EVENT")
+    """SAMPLE_SKEWNESS_EVENT indicates that the sample skewness of the 
+    observations has changed, and contains the new skewness as the payload. 
+    This event is fired by the EventBasedTally and its subclasses to the 
+    listeners."""
+
+    SAMPLE_KURTOSIS_EVENT: EventType = EventType("SAMPLE_KURTOSIS_EVENT")
+    """SAMPLE_KURTOSIS_EVENT indicates that the sample kurtosis of the 
+    observations has changed, and contains the new kurtosis as the payload. 
+    This event is fired by the EventBasedTally and its subclasses to the 
+    listeners."""
+
+    SAMPLE_EXCESS_K_EVENT: EventType = EventType("SAMPLE_EXCESS_K_EVENT")
+    """SAMPLE_EXCESS_K_EVENT indicates that the sample excess kurtosis of the 
+    observations has changed, and contains the new excess kurtosis as the 
+    payload. This event is fired by the EventBasedTally and its subclasses 
+    to the listeners."""
+
+    WEIGHTED_SUM_EVENT: EventType = EventType("WEIGHTED_SUM_EVENT")
+    """WEIGHTED_SUM_EVENT indicates that the weighted sum of the observations 
+    has changed, and contains the new weighted sum as the payload. This event 
+    is fired by the EventBasedWeightedTally and its subclasses to the 
+    listeners."""
+
+    WEIGHTED_POPULATION_MEAN_EVENT: EventType = \
+            EventType("WEIGHTED_POPULATION_MEAN_EVENT")
+    """WEIGHTED_POPULATION_MEAN_EVENT indicates that the weighted population 
+    mean of the observations has changed, and contains the new weighted mean 
+    as the payload. This event is fired by the EventBasedWeightedTally and 
+    its subclasses to the listeners."""
+
+    WEIGHTED_POPULATION_STDEV_EVENT: EventType = \
+            EventType("WEIGHTED_POPULATION_STDEV_EVENT")
+    """WEIGHTED_POPULATION_STDEV_EVENT indicates that the weighted population 
+    standard deviation of the observations has changed, and contains the 
+    new weighted standard deviation as the payload. This event is fired by 
+    the EventBasedWeightedTally and its subclasses to the listeners."""
+
+    WEIGHTED_POPULATION_VARIANCE_EVENT: EventType = \
+            EventType("WEIGHTED_POPULATION_VARIANCE_EVENT")
+    """WEIGHTED_POPULATION_VARIANCE_EVENT indicates that the weighted 
+    population variance of the observations has changed, and contains the 
+    new weighted variance as the payload. This event is fired by the 
+    EventBasedWeightedTally and its subclasses to the listeners."""
+
+    WEIGHTED_SAMPLE_MEAN_EVENT: EventType = \
+            EventType("WEIGHTED_SAMPLE_MEAN_EVENT")
+    """WEIGHTED_SAMPLE_MEAN_EVENT indicates that the weighted sample mean 
+    of the observations has changed, and contains the new weighted mean 
+    as the payload. This event is fired by the EventBasedWeightedTally and 
+    its subclasses to the listeners."""
+
+    WEIGHTED_SAMPLE_STDEV_EVENT: EventType = \
+            EventType("WEIGHTED_SAMPLE_STDEV_EVENT")
+    """WEIGHTED_SAMPLE_STDEV_EVENT indicates that the weighted sample 
+    standard deviation of the observations has changed, and contains the 
+    new weighted standard deviation as the payload. This event is fired by 
+    the EventBasedWeightedTally and its subclasses to the listeners."""
+
+    WEIGHTED_SAMPLE_VARIANCE_EVENT: EventType = \
+            EventType("WEIGHTED_SAMPLE_VARIANCE_EVENT")
+    """WEIGHTED_SAMPLE_VARIANCE_EVENT indicates that the weighted sample 
+    variance of the observations has changed, and contains the new weighted 
+    variance as the payload. This event is fired by the EventBasedWeightedTally 
+    and its subclasses to the listeners."""
