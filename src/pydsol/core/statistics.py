@@ -371,3 +371,68 @@ class EventBasedCounter(EventProducer, EventListener, Counter):
         self.fire(self.N_EVENT, self.n())
         self.fire(self.COUNT_EVENT, self.count())
 
+
+
+class EventBasedTally(EventProducer, EventListener, Tally):
+    
+    INITIALIZED_EVENT: EventType = EventType("INITIALIZED_EVENT")
+    DATA_EVENT: EventType = EventType("DATA_EVENT")
+    OBSERVATION_ADDED_EVENT: EventType = EventType("OBSERVATION_ADDED_EVENT")
+    N_EVENT: EventType = EventType("N_EVENT")
+    MIN_EVENT: EventType = EventType("MIN_EVENT")
+    MAX_EVENT: EventType = EventType("MAX_EVENT")
+    SUM_EVENT: EventType = EventType("SUM_EVENT")
+    POPULATION_MEAN_EVENT: EventType = EventType("POPULATION_MEAN_EVENT")
+    POPULATION_STDEV_EVENT: EventType = EventType("POPULATION_STDEV_EVENT")
+    POPULATION_VARIANCE_EVENT: EventType = EventType("POPULATION_VARIANCE_EVENT")
+    POPULATION_SKEWNESS_EVENT: EventType = EventType("POPULATION_SKEWNESS_EVENT")
+    POPULATION_KURTOSIS_EVENT: EventType = EventType("POPULATION_KURTOSIS_EVENT")
+    POPULATION_EXCESS_K_EVENT: EventType = EventType("POPULATION_EXCESS_K_EVENT")
+    SAMPLE_MEAN_EVENT: EventType = EventType("SAMPLE_MEAN_EVENT")
+    SAMPLE_STDEV_EVENT: EventType = EventType("SAMPLE_STDEV_EVENT")
+    SAMPLE_VARIANCE_EVENT: EventType = EventType("SAMPLE_VARIANCE_EVENT")
+    SAMPLE_SKEWNESS_EVENT: EventType = EventType("SAMPLE_SKEWNESS_EVENT")
+    SAMPLE_KURTOSIS_EVENT: EventType = EventType("SAMPLE_KURTOSIS_EVENT")
+    SAMPLE_EXCESS_K_EVENT: EventType = EventType("SAMPLE_EXCESS_K_EVENT")
+
+    def __init__(self, name: str):
+        EventProducer.__init__(self)
+        Tally.__init__(self, name)
+ 
+    def initialize(self):
+        Tally.initialize(self)
+        self.fire(self.INITIALIZED_EVENT, None)
+        
+    def notify(self, event: Event):
+        if not event.event_type == self.DATA_EVENT:
+            raise ValueError(f"notification {event.event_type} for counter " + \
+                             "is not a DATA_EVENT")
+        if not (isinstance(event.content, float) or 
+                isinstance(event.content, int)):
+            raise TypeError(f"notification {event.content} for counter " + \
+                            "is not a float or int")
+        self.ingest(event.content)
+
+    def ingest(self, value: int):
+        super().ingest(value)
+        if self.has_listeners():
+            self.fire(self.OBSERVATION_ADDED_EVENT, value)
+            self.fire_events()  
+
+    def fire_events(self):
+        self.fire(self.N_EVENT, self.n())
+        self.fire(self.MIN_EVENT, self.min())
+        self.fire(self.MAX_EVENT, self.max())
+        self.fire(self.SUM_EVENT, self.sum())
+        self.fire(self.POPULATION_MEAN_EVENT, self.population_mean())
+        self.fire(self.POPULATION_STDEV_EVENT, self.population_stdev())
+        self.fire(self.POPULATION_VARIANCE_EVENT, self.population_variance())
+        self.fire(self.POPULATION_SKEWNESS_EVENT, self.population_skewness())
+        self.fire(self.POPULATION_KURTOSIS_EVENT, self.population_kurtosis())
+        self.fire(self.POPULATION_EXCESS_K_EVENT, self.population_excess_kurtosis())
+        self.fire(self.SAMPLE_MEAN_EVENT, self.sample_mean())
+        self.fire(self.SAMPLE_STDEV_EVENT, self.sample_stdev())
+        self.fire(self.SAMPLE_VARIANCE_EVENT, self.sample_variance())
+        self.fire(self.SAMPLE_SKEWNESS_EVENT, self.sample_skewness())
+        self.fire(self.SAMPLE_KURTOSIS_EVENT, self.sample_kurtosis())
+        self.fire(self.SAMPLE_EXCESS_K_EVENT, self.sample_excess_kurtosis())
