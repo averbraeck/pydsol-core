@@ -2,8 +2,9 @@ import math
 
 import pytest
 
+from pydsol.core.pubsub import EventListener, Event
 from pydsol.core.statistics import Counter, Tally, WeightedTally, \
-    TimestampWeightedTally
+    TimestampWeightedTally, EventBasedCounter
 
 
 def test_counter():
@@ -327,6 +328,72 @@ def test_t_tally_errors():
     t.ingest(2.0, 4)
     with pytest.raises(ValueError):
         t.ingest(1.0, 5)  # back in time
+
+# ===========================================================================
+# Tests for EventBased statistics
+# ===========================================================================
+
+
+class LoggingEventListener(EventListener):
+    def __init__(self):
+        self.last_event: Event = None
+        self.nr_events: int = 0
+    
+    def notify(self, event: Event):
+        self.last_event = event
+        self.nr_events += 1
+    
+
+class CounterEventListener(EventListener):
+    def __init__(self):
+        self.count_events: int = 0
+    
+    def notify(self, event: Event):
+        assert event.event_type == EventBasedCounter.OBSERVATION_ADDED_EVENT
+        assert isinstance(event.content, int)
+        self.count_events += 1
+        
+def test_e_counter():
+    name = "event-based counter description"
+    c: EventBasedCounter = EventBasedCounter(name)
+    assert c.name == name
+    assert name in str(c)
+    assert name in repr(c)
+    assert c.n() == 0
+    assert c.count() == 0
+    c.notify(Event(EventBasedCounter.DATA_EVENT, 2))
+    assert c.n() == 1
+    assert c.count() == 2
+    
+    c.initialize()
+    assert c.name == name
+    assert c.n() == 0
+    assert c.count() == 0
+    cel: CounterEventListener = CounterEventListener()
+    c.add_listener(EventBasedCounter.OBSERVATION_ADDED_EVENT, cel)
+    assert cel.count_events == 0
+    nl: LoggingEventListener = LoggingEventListener()
+    c.add_listener(EventBasedCounter.N_EVENT, nl)
+    cl: LoggingEventListener = LoggingEventListener()
+    c.add_listener(EventBasedCounter.COUNT_EVENT, cl)
+    v = 0
+    for i in range(100):
+        c.notify(Event(EventBasedCounter.DATA_EVENT, 2 * i))
+        v += 2 * i
+    assert c.n() == 100
+    assert c.count() == v
+    assert cel.count_events == 100
+    assert nl.nr_events == 100
+    assert cl.nr_events == 100
+    assert nl.last_event.content == 100
+    assert cl.last_event.content == v
+    
+    with pytest.raises(TypeError):
+        EventBasedCounter(4)
+    with pytest.raises(TypeError):
+        c.notify(Event(EventBasedCounter.DATA_EVENT, 'abc'))
+    with pytest.raises(ValueError):
+        c.notify(Event(EventBasedCounter.N_EVENT, 1))
 
 
 if __name__ == "__main__":
