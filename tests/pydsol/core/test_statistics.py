@@ -2,9 +2,11 @@ import math
 
 import pytest
 
+from pydsol.core.interfaces import StatEvents
 from pydsol.core.pubsub import EventListener, Event
 from pydsol.core.statistics import Counter, Tally, WeightedTally, \
-    TimestampWeightedTally, EventBasedCounter, EventBasedTally
+    TimestampWeightedTally, EventBasedCounter, EventBasedTally, \
+    EventBasedWeightedTally
 
 
 def test_counter():
@@ -351,7 +353,7 @@ class CounterEventListener(EventListener):
         self.count_events: int = 0
     
     def notify(self, event: Event):
-        assert event.event_type == EventBasedCounter.OBSERVATION_ADDED_EVENT
+        assert event.event_type == StatEvents.OBSERVATION_ADDED_EVENT
         assert isinstance(event.content, int)
         self.count_events += 1
 
@@ -364,7 +366,7 @@ def test_e_counter():
     assert name in repr(c)
     assert c.n() == 0
     assert c.count() == 0
-    c.notify(Event(EventBasedCounter.DATA_EVENT, 2))
+    c.notify(Event(StatEvents.DATA_EVENT, 2))
     assert c.n() == 1
     assert c.count() == 2
     
@@ -373,15 +375,15 @@ def test_e_counter():
     assert c.n() == 0
     assert c.count() == 0
     cel: CounterEventListener = CounterEventListener()
-    c.add_listener(EventBasedCounter.OBSERVATION_ADDED_EVENT, cel)
+    c.add_listener(StatEvents.OBSERVATION_ADDED_EVENT, cel)
     assert cel.count_events == 0
     nl: LoggingEventListener = LoggingEventListener()
-    c.add_listener(EventBasedCounter.N_EVENT, nl)
+    c.add_listener(StatEvents.N_EVENT, nl)
     cl: LoggingEventListener = LoggingEventListener()
-    c.add_listener(EventBasedCounter.COUNT_EVENT, cl)
+    c.add_listener(StatEvents.COUNT_EVENT, cl)
     v = 0
     for i in range(100):
-        c.notify(Event(EventBasedCounter.DATA_EVENT, 2 * i))
+        c.notify(Event(StatEvents.DATA_EVENT, 2 * i))
         v += 2 * i
     assert c.n() == 100
     assert c.count() == v
@@ -394,9 +396,9 @@ def test_e_counter():
     with pytest.raises(TypeError):
         EventBasedCounter(4)
     with pytest.raises(TypeError):
-        c.notify(Event(EventBasedCounter.DATA_EVENT, 'abc'))
+        c.notify(Event(StatEvents.DATA_EVENT, 'abc'))
     with pytest.raises(ValueError):
-        c.notify(Event(EventBasedCounter.N_EVENT, 1))
+        c.notify(Event(StatEvents.N_EVENT, 1))
 
 
 class TallyEventListener(EventListener):
@@ -406,7 +408,7 @@ class TallyEventListener(EventListener):
         self.last_observation = math.nan
     
     def notify(self, event: Event):
-        assert event.event_type == EventBasedTally.OBSERVATION_ADDED_EVENT
+        assert event.event_type == StatEvents.OBSERVATION_ADDED_EVENT
         assert isinstance(event.content, float)
         self.nr_events += 1
         self.last_observation = event.content
@@ -423,23 +425,23 @@ def test_e_tally_11():
     assert math.isnan(t.max())
 
     tel: TallyEventListener = TallyEventListener()
-    t.add_listener(EventBasedTally.OBSERVATION_ADDED_EVENT, tel)
+    t.add_listener(StatEvents.OBSERVATION_ADDED_EVENT, tel)
     assert tel.nr_events == 0
     log_n: LoggingEventListener = LoggingEventListener()
-    t.add_listener(EventBasedTally.N_EVENT, log_n)
+    t.add_listener(StatEvents.N_EVENT, log_n)
     log_pm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(EventBasedTally.POPULATION_MEAN_EVENT, log_pm)
+    t.add_listener(StatEvents.POPULATION_MEAN_EVENT, log_pm)
     log_sm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(EventBasedTally.SAMPLE_MEAN_EVENT, log_sm)
+    t.add_listener(StatEvents.SAMPLE_MEAN_EVENT, log_sm)
     log_min: LoggingEventListener = LoggingEventListener()
-    t.add_listener(EventBasedTally.MIN_EVENT, log_min)
+    t.add_listener(StatEvents.MIN_EVENT, log_min)
     log_max: LoggingEventListener = LoggingEventListener()
-    t.add_listener(EventBasedTally.MAX_EVENT, log_max)
+    t.add_listener(StatEvents.MAX_EVENT, log_max)
     log_sum: LoggingEventListener = LoggingEventListener()
-    t.add_listener(EventBasedTally.SUM_EVENT, log_sum)
+    t.add_listener(StatEvents.SUM_EVENT, log_sum)
     
     for i in range(11):
-        t.notify(Event(EventBasedTally.DATA_EVENT, 1.0 + 0.1 * i))
+        t.notify(Event(StatEvents.DATA_EVENT, 1.0 + 0.1 * i))
     assert t.n() == 11
     assert tel.nr_events == 11
     assert tel.last_observation == 2.0
@@ -462,9 +464,89 @@ def test_e_tally_11():
     with pytest.raises(TypeError):
         EventBasedTally(4)
     with pytest.raises(TypeError):
-        t.notify(Event(EventBasedTally.DATA_EVENT, 'abc'))
+        t.notify(Event(StatEvents.DATA_EVENT, 'abc'))
     with pytest.raises(ValueError):
-        t.notify(Event(EventBasedTally.N_EVENT, 1))
+        t.notify(Event(StatEvents.N_EVENT, 1))
+
+
+def test_e_w_tally_11():
+    name = "event-based weighted tally description"
+    t: EventBasedWeightedTally = EventBasedWeightedTally(name)
+    assert t.name == name
+    assert name in str(t)
+    assert name in repr(t)
+    assert t.n() == 0
+    assert math.isnan(t.min())
+    assert math.isnan(t.max())
+
+    tel: TallyEventListener = TallyEventListener()
+    t.add_listener(StatEvents.OBSERVATION_ADDED_EVENT, tel)
+    assert tel.nr_events == 0
+    log_n: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.N_EVENT, log_n)
+    log_pm: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_POPULATION_MEAN_EVENT, log_pm)
+    log_sm: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT, log_sm)
+    log_min: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.MIN_EVENT, log_min)
+    log_max: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.MAX_EVENT, log_max)
+    log_sum: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SUM_EVENT, log_sum)
+    log_pstd: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_POPULATION_STDEV_EVENT, log_pstd)
+    log_sstd: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT, log_sstd)
+    log_pvar: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT, log_pvar)
+    log_svar: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT, log_svar)
+    
+    for i in range(11):
+        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (0.1, 1.0 + 0.1 * i)))
+    assert t.n() == 11
+    assert tel.nr_events == 11
+    assert tel.last_observation == 2.0
+    assert log_n.nr_events == 11
+    assert log_n.last_event.content == 11
+    assert math.isclose(t.min(), 1.0)
+    assert log_min.nr_events == 11
+    assert log_min.last_event.content == 1.0
+    assert math.isclose(t.max(), 2.0)
+    assert log_max.nr_events == 11
+    assert log_max.last_event.content == 2.0
+    assert math.isclose(t.weighted_sum(), 1.5 * 0.1 * 11)
+    assert log_sum.nr_events == 11
+    assert math.isclose(log_sum.last_event.content, 1.5 * 0.1 * 11)
+    assert math.isclose(t.weighted_sample_mean(), 1.5)
+    assert math.isclose(log_sm.last_event.content, 1.5)
+    assert math.isclose(t.weighted_population_mean(), 1.5)
+    assert math.isclose(log_pm.last_event.content, 1.5)
+    assert math.isclose(t.weighted_population_stdev(), 0.316228, abs_tol=1E-6)
+    assert math.isclose(log_pstd.last_event.content, 0.316228, abs_tol=1E-6)
+    assert math.isclose(t.weighted_sample_stdev(), 0.331662, abs_tol=1E-6)
+    assert math.isclose(log_sstd.last_event.content, 0.331662, abs_tol=1E-6)
+    assert math.isclose(t.weighted_population_variance(), 0.1, abs_tol=1E-6)
+    assert math.isclose(log_pvar.last_event.content, 0.1, abs_tol=1E-6)
+    assert math.isclose(t.weighted_sample_variance(), 0.11, abs_tol=1E-6)
+    assert math.isclose(log_svar.last_event.content, 0.11, abs_tol=1E-6)
+
+    with pytest.raises(TypeError):
+        EventBasedWeightedTally(4)
+    with pytest.raises(ValueError):
+        t.notify(Event(StatEvents.DATA_EVENT, 1))
+    with pytest.raises(TypeError):
+        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, 'abc'))
+    with pytest.raises(TypeError):
+        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, )))
+    with pytest.raises(TypeError):
+        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, 'abc')))
+    with pytest.raises(TypeError):
+        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, ('abc', 1.0)))
+    with pytest.raises(TypeError):
+        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, 2.0, 3.0)))
+
 
 
 if __name__ == "__main__":
