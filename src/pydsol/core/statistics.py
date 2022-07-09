@@ -1,6 +1,8 @@
 import math
 from statistics import NormalDist
 
+from pydsol.core.pubsub import EventProducer, EventListener, Event, EventType
+
 
 class Counter:
 
@@ -290,14 +292,14 @@ class WeightedTally:
         return str(self)
 
 
-class TimestampWeightedTally:
+class TimestampWeightedTally(WeightedTally):
         
     def __init__(self, name: str):
-        self._wrapped_tally = WeightedTally(name)
+        super().__init__(name)
         self.initialize()
         
     def initialize(self):
-        self._wrapped_tally.initialize()
+        super().initialize()
         self._start_time = math.nan
         self._last_timestamp = math.nan
         self._last_value = 0.0
@@ -328,47 +330,41 @@ class TimestampWeightedTally:
                 self._start_time = timestamp
             else:
                 deltatime = max(0.0, timestamp - self._last_timestamp)
-                self._wrapped_tally.ingest(deltatime, self._last_value)
+                super().ingest(deltatime, self._last_value)
             self._last_timestamp = timestamp
         self._last_value = value
         return value
 
-    @property
-    def name(self):
-        return self._wrapped_tally.name
 
-    def n(self):
-        return self._wrapped_tally._n
-
-    def min(self):
-        return self._wrapped_tally._min
-
-    def max(self):
-        return self._wrapped_tally._max
-
-    def weighted_sample_mean(self):
-        return self._wrapped_tally.weighted_sample_mean()
+class EventBasedCounter(EventProducer, EventListener, Counter):
     
-    def weighted_population_mean(self):
-        return self._wrapped_tally.weighted_population_mean()
-    
-    def weighted_sample_stdev(self):
-        return self._wrapped_tally.weighted_sample_stdev()
-    
-    def weighted_population_stdev(self):
-        return self._wrapped_tally.weighted_population_stdev()
-    
-    def weighted_sample_variance(self):
-        return self._wrapped_tally.weighted_sample_variance()
+    INITIALIZED_EVENT: EventType = EventType("INITIALIZED_EVENT")
+    OBSERVATION_ADDED_EVENT: EventType = EventType("OBSERVATION_ADDED_EVENT")
+    N_EVENT: EventType = EventType("N_EVENT")
+    COUNT_EVENT: EventType = EventType("COUNT_EVENT")
 
-    def weighted_population_variance(self):
-        return self._wrapped_tally.weighted_population_variance()
+    def __init__(self):
+        Counter.__init__(self)
+        EventProducer.__init__(self)
 
-    def weighted_sum(self):
-        return self._wrapped_tally.weighted_sum()
+    def initialize(self):
+        Counter.initialize(self)
+        self.fire(self.INITIALIZED_EVENT, None)
+        
+    def notify(self, event: Event):
+        if isinstance(event.content, int):
+            self.ingest(event.content)
+        else:
+            raise ValueError(f"notification {event.content} for counter "+\
+                             "is not an int")
 
-    def __str__(self):
-        return str(self._wrapped_tally)
-    
-    def __repr__(self):
-        return repr(self._wrapped_tally)
+    def ingest(self, value: int):
+        super().ingest(value)
+        if self.has_listeners():
+            self.fire(self.OBSERVATION_ADDED_EVENT, value)
+            self.fire_events()  
+
+    def fire_events(self):
+        self.fire(self.N_EVENT, self.n())
+        self.fire(self.COUNT_EVENT, self.count())
+
