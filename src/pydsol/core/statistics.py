@@ -339,25 +339,28 @@ class TimestampWeightedTally(WeightedTally):
 class EventBasedCounter(EventProducer, EventListener, Counter):
     
     INITIALIZED_EVENT: EventType = EventType("INITIALIZED_EVENT")
+    DATA_EVENT: EventType = EventType("DATA_EVENT")
     OBSERVATION_ADDED_EVENT: EventType = EventType("OBSERVATION_ADDED_EVENT")
     N_EVENT: EventType = EventType("N_EVENT")
     COUNT_EVENT: EventType = EventType("COUNT_EVENT")
 
-    def __init__(self):
-        Counter.__init__(self)
+    def __init__(self, name: str):
         EventProducer.__init__(self)
-
+        Counter.__init__(self, name)
+ 
     def initialize(self):
         Counter.initialize(self)
         self.fire(self.INITIALIZED_EVENT, None)
         
     def notify(self, event: Event):
-        if isinstance(event.content, int):
-            self.ingest(event.content)
-        else:
-            raise ValueError(f"notification {event.content} for counter "+\
-                             "is not an int")
-
+        if not event.event_type == self.DATA_EVENT:
+            raise ValueError(f"notification {event.event_type} for counter " + \
+                             "is not a DATA_EVENT")
+        if not isinstance(event.content, int):
+            raise TypeError(f"notification {event.content} for counter " + \
+                            "is not an int")
+        self.ingest(event.content)
+            
     def ingest(self, value: int):
         super().ingest(value)
         if self.has_listeners():
