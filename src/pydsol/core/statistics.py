@@ -1,8 +1,10 @@
 import math
 from statistics import NormalDist
 
-from pydsol.core.pubsub import EventProducer, EventListener, Event, EventType
+from pydsol.core.pubsub import EventProducer, EventListener, Event, EventType,\
+    TimedEvent
 from pydsol.core.interfaces import StatEvents
+from pydsol.core.units import Duration
 
 
 class Counter:
@@ -465,4 +467,55 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
         self.fire(StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT, 
                   self.weighted_sample_stdev())
         self.fire(StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT, 
+                  self.weighted_sample_variance())
+
+
+class EventBasedTimestampWeightedTally(EventProducer, EventListener, 
+                                       TimestampWeightedTally):
+    
+    def __init__(self, name: str):
+        EventProducer.__init__(self)
+        TimestampWeightedTally.__init__(self, name)
+ 
+    def initialize(self):
+        TimestampWeightedTally.initialize(self)
+        self.fire(StatEvents.INITIALIZED_EVENT, None)
+        
+    def notify(self, event: TimedEvent):
+        if not isinstance(event, TimedEvent):
+            raise TypeError(f"event notification {event} for " + \
+                            "timestamped tally is not timestamped")
+        if not event.event_type == StatEvents.TIMESTAMP_DATA_EVENT:
+            raise ValueError(f"notification {event.event_type} for " + \
+                             "timestamped tally is not a TIMESTAMP_DATA_EVENT")
+        if not (isinstance(event.content, float) or 
+                isinstance(event.content, int)):
+            raise TypeError(f"notification {event.content} for " + \
+                            "timestamped tally: value is not a float or int")
+        # float(...) will turn a Duration timestamp into its si-value
+        self.ingest(float(event.timestamp), float(event.content))
+
+    def ingest(self, timestamp: float, value: float):
+        super().ingest(timestamp, value)
+        if self.has_listeners():
+            self.fire_timed(timestamp, StatEvents.OBSERVATION_ADDED_EVENT, value)
+            self.fire_events(timestamp)  
+
+    def fire_events(self, timestamp: float):
+        self.fire_timed(timestamp, StatEvents.N_EVENT, self.n())
+        self.fire_timed(timestamp, StatEvents.MIN_EVENT, self.min())
+        self.fire_timed(timestamp, StatEvents.MAX_EVENT, self.max())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SUM_EVENT, 
+                  self.weighted_sum())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_MEAN_EVENT, 
+                  self.weighted_population_mean())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_STDEV_EVENT, 
+                  self.weighted_population_stdev())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT, 
+                  self.weighted_population_variance())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT, 
+                  self.weighted_sample_mean())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT, 
+                  self.weighted_sample_stdev())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT, 
                   self.weighted_sample_variance())
