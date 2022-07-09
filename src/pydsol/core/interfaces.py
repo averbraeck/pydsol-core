@@ -199,7 +199,7 @@ class StatEvents:
     """OBSERVATION_ADDED_EVENT indicates that an observation has been 
     received, and contains the value of the observation as the payload.
     For weight-bsaed and timestamp-based observations, the payload is a tuple.
-    For value-based statistics, the payload is jus the (float) value. 
+    For value-based statistics, the payload is just the (float) value. 
     The event is fired by the statistic to its listeners."""
 
     N_EVENT: EventType = EventType("N_EVENT")
