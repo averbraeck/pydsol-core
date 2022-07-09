@@ -1,10 +1,9 @@
 import math
 from statistics import NormalDist
 
-from pydsol.core.pubsub import EventProducer, EventListener, Event, EventType,\
-    TimedEvent
 from pydsol.core.interfaces import StatEvents
-from pydsol.core.units import Duration
+from pydsol.core.pubsub import EventProducer, EventListener, Event, \
+    TimedEvent
 
 
 class Counter:
@@ -369,7 +368,6 @@ class EventBasedCounter(EventProducer, EventListener, Counter):
         self.fire(StatEvents.COUNT_EVENT, self.count())
 
 
-
 class EventBasedTally(EventProducer, EventListener, Tally):
     
     def __init__(self, name: str):
@@ -456,21 +454,21 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
         self.fire(StatEvents.MIN_EVENT, self.min())
         self.fire(StatEvents.MAX_EVENT, self.max())
         self.fire(StatEvents.WEIGHTED_SUM_EVENT, self.weighted_sum())
-        self.fire(StatEvents.WEIGHTED_POPULATION_MEAN_EVENT, 
+        self.fire(StatEvents.WEIGHTED_POPULATION_MEAN_EVENT,
                   self.weighted_population_mean())
-        self.fire(StatEvents.WEIGHTED_POPULATION_STDEV_EVENT, 
+        self.fire(StatEvents.WEIGHTED_POPULATION_STDEV_EVENT,
                   self.weighted_population_stdev())
-        self.fire(StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT, 
+        self.fire(StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT,
                   self.weighted_population_variance())
-        self.fire(StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT, 
+        self.fire(StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT,
                   self.weighted_sample_mean())
-        self.fire(StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT, 
+        self.fire(StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT,
                   self.weighted_sample_stdev())
-        self.fire(StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT, 
+        self.fire(StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT,
                   self.weighted_sample_variance())
 
 
-class EventBasedTimestampWeightedTally(EventProducer, EventListener, 
+class EventBasedTimestampWeightedTally(EventProducer, EventListener,
                                        TimestampWeightedTally):
     
     def __init__(self, name: str):
@@ -505,17 +503,17 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
         self.fire_timed(timestamp, StatEvents.N_EVENT, self.n())
         self.fire_timed(timestamp, StatEvents.MIN_EVENT, self.min())
         self.fire_timed(timestamp, StatEvents.MAX_EVENT, self.max())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_SUM_EVENT, 
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SUM_EVENT,
                   self.weighted_sum())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_MEAN_EVENT, 
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_MEAN_EVENT,
                   self.weighted_population_mean())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_STDEV_EVENT, 
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_STDEV_EVENT,
                   self.weighted_population_stdev())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT, 
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT,
                   self.weighted_population_variance())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT, 
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT,
                   self.weighted_sample_mean())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT, 
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT,
                   self.weighted_sample_stdev())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT, 
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT,
                   self.weighted_sample_variance())
