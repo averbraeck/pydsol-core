@@ -3,10 +3,11 @@ import math
 import pytest
 
 from pydsol.core.interfaces import StatEvents
-from pydsol.core.pubsub import EventListener, Event
+from pydsol.core.pubsub import EventListener, Event, TimedEvent, EventError
 from pydsol.core.statistics import Counter, Tally, WeightedTally, \
     TimestampWeightedTally, EventBasedCounter, EventBasedTally, \
-    EventBasedWeightedTally
+    EventBasedWeightedTally, EventBasedTimestampWeightedTally
+from pydsol.core.units import Duration
 
 
 def test_counter():
@@ -539,7 +540,7 @@ def test_e_w_tally_11():
     with pytest.raises(TypeError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, 'abc'))
     with pytest.raises(TypeError):
-        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, )))
+        t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0,)))
     with pytest.raises(TypeError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, 'abc')))
     with pytest.raises(TypeError):
@@ -547,6 +548,98 @@ def test_e_w_tally_11():
     with pytest.raises(TypeError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, 2.0, 3.0)))
 
+
+def test_e_t_tally_11():
+    name = "event-based weighted tally description"
+    t: EventBasedTimestampWeightedTally = EventBasedTimestampWeightedTally(name)
+    assert t.name == name
+    assert name in str(t)
+    assert name in repr(t)
+    assert t.n() == 0
+    assert math.isnan(t.min())
+    assert math.isnan(t.max())
+
+    tel: TallyEventListener = TallyEventListener()
+    t.add_listener(StatEvents.OBSERVATION_ADDED_EVENT, tel)
+    assert tel.nr_events == 0
+    log_n: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.N_EVENT, log_n)
+    log_pm: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_POPULATION_MEAN_EVENT, log_pm)
+    log_sm: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT, log_sm)
+    log_min: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.MIN_EVENT, log_min)
+    log_max: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.MAX_EVENT, log_max)
+    log_sum: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SUM_EVENT, log_sum)
+    log_pstd: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_POPULATION_STDEV_EVENT, log_pstd)
+    log_sstd: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT, log_sstd)
+    log_pvar: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT, log_pvar)
+    log_svar: LoggingEventListener = LoggingEventListener()
+    t.add_listener(StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT, log_svar)
+    
+    for i in range(11):
+        t.notify(TimedEvent(0.1 * i, StatEvents.TIMESTAMP_DATA_EVENT,
+                            1.0 + 0.1 * i))
+    assert t.n() == 10
+    assert math.isclose(t.min(), 1.0)
+    assert math.isclose(t.max(), 1.9)
+    t.end_observations(1.1)
+    assert not t.isactive()
+
+    assert t.n() == 11
+    assert tel.nr_events == 12  # the event-listeners all got 1 extra event
+    assert tel.last_observation == 2.0
+    assert log_n.nr_events == 12
+    assert log_n.last_event.content == 11
+    assert math.isclose(t.min(), 1.0)
+    assert log_min.nr_events == 12
+    assert log_min.last_event.content == 1.0
+    assert math.isclose(t.max(), 2.0)
+    assert log_max.nr_events == 12
+    assert log_max.last_event.content == 2.0
+    assert math.isclose(t.weighted_sum(), 1.5 * 0.1 * 11)
+    assert math.isclose(log_sum.last_event.content, 1.5 * 0.1 * 11)
+    assert log_sum.nr_events == 12
+        
+    # Let's compute the standard deviation
+    variance = 0;
+    for i  in range(11):
+        variance += math.pow(1.5 - (1.0 + i / 10.0), 2)
+    variance = variance / 10.0;
+    stdev = math.sqrt(variance)
+
+    assert math.isclose(log_sum.last_event.content, 1.5 * 0.1 * 11)
+    assert math.isclose(t.weighted_sample_mean(), 1.5)
+    assert math.isclose(log_sm.last_event.content, 1.5)
+    assert math.isclose(t.weighted_population_mean(), 1.5)
+    assert math.isclose(log_pm.last_event.content, 1.5)
+    assert math.isclose(t.weighted_population_stdev(), math.sqrt(0.1), abs_tol=1E-6)
+    assert math.isclose(log_pstd.last_event.content, math.sqrt(0.1), abs_tol=1E-6)
+    assert math.isclose(t.weighted_sample_stdev(), stdev, abs_tol=1E-6)
+    assert math.isclose(log_sstd.last_event.content, stdev, abs_tol=1E-6)
+    assert math.isclose(t.weighted_population_variance(), 0.1, abs_tol=1E-6)
+    assert math.isclose(log_pvar.last_event.content, 0.1, abs_tol=1E-6)
+    assert math.isclose(t.weighted_sample_variance(), variance, abs_tol=1E-6)
+    assert math.isclose(log_svar.last_event.content, variance, abs_tol=1E-6)
+    
+    t.notify(TimedEvent(Duration(3.0, 's'), StatEvents.TIMESTAMP_DATA_EVENT, 2))
+
+    with pytest.raises(TypeError):
+        EventBasedTimestampWeightedTally(4)
+    with pytest.raises(ValueError):
+        t.notify(TimedEvent(1.0, StatEvents.WEIGHT_DATA_EVENT, 2))
+    with pytest.raises(TypeError):
+        t.notify(Event(StatEvents.TIMESTAMP_DATA_EVENT, 2))
+    with pytest.raises(TypeError):
+        t.notify(TimedEvent(1.0, StatEvents.TIMESTAMP_DATA_EVENT, 'abc'))
+    with pytest.raises(EventError):
+        t.notify(TimedEvent('abc', StatEvents.TIMESTAMP_DATA_EVENT, 1.0))
 
 
 if __name__ == "__main__":
