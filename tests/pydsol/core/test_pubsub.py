@@ -225,7 +225,6 @@ def test_event_producer():
     assert prod._listeners[P.EVENT_PROD2] == [listener2]
 
     add4()
-    print(prod._listeners)
     assert prod._listeners[P.EVENT_PROD1] == [listener1, listener2]
     assert prod._listeners[P.EVENT_PROD2] == [listener1, listener2]
     prod.remove_all_listeners()
