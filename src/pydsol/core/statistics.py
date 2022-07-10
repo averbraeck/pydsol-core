@@ -5,7 +5,24 @@ from pydsol.core.interfaces import StatEvents, SimulatorInterface, \
     ReplicationInterface, SimStatisticsInterface, StatisticsInterface
 from pydsol.core.pubsub import EventProducer, EventListener, Event, \
     TimedEvent, EventType
+from pydsol.core.utils import get_module_logger
 
+
+__all__ = [
+    "Counter",
+    "Tally",
+    "WeightedTally",
+    "TimestampWeightedTally",
+    "EventBasedCounter",
+    "EventBasedTally",
+    "EventBasedWeightedTally",
+    "EventBasedTimestampWeightedTally",
+    "SimCounter",
+    "SimTally",
+    "SimPersistent",
+    ]
+
+logger = get_module_logger('statistics')
 
 class Counter(StatisticsInterface):
 
