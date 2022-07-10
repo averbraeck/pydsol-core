@@ -32,6 +32,7 @@ __all__ = [
     "RunState",
     "ReplicationState",
     "SimulatorWorkerThread",
+    "ErrorStrategy",
     ]
 
 logger = get_module_logger('simulator')
