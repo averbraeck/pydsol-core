@@ -100,7 +100,7 @@ class ReplicationState(enum.Enum):
     the END_REPLICATION_EVENT has been fired."""
 
 
-class ErrorStrategy(enum.Enum):
+class ErrorStrategy():
     """
     ErrorStrategy indicates what to do when there is an error in the 
     execution of the simulation. In order to set the error handling, 
@@ -629,7 +629,7 @@ class DEVSSimulator(Simulator[TIME], Generic[TIME]):
             except Exception as e:
                 s = "Exception during simulation at t={self.simulator_time}: "
                 logger.log(self._error_log_level, s + str(e))
-                if self.error_strategy > ErrorStrategy.LOG_AND_CONTINUE:
+                if self._error_strategy > ErrorStrategy.LOG_AND_CONTINUE:
                     print(s + str(e))
                     traceback.print_exc()
                 if self._error_strategy == ErrorStrategy.WARN_AND_PAUSE:
