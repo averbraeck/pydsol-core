@@ -20,6 +20,15 @@ from typing import TypeVar, Generic
 from pydsol.core.pubsub import EventType
 from pydsol.core.utils import get_module_logger
 
+__all__ = [
+    "SimulatorInterface",
+    "ReplicationInterface",
+    "ExperimentInterface",
+    "ModelInterface",
+    "StatisticsInterface",
+    "SimStatisticsInterface",
+    "StatEvents",
+    ]
 
 logger = get_module_logger('interfaces')
 

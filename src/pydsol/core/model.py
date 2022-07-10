@@ -5,6 +5,9 @@ from pydsol.core.interfaces import SimulatorInterface, ModelInterface, \
 from pydsol.core.parameters import InputParameterMap, InputParameter
 from pydsol.core.utils import DSOLError, get_module_logger
 
+__all__ = [
+    "DSOLModel",
+    ]
 
 logger = get_module_logger('model')
 
