@@ -28,9 +28,8 @@ executed at a later point in time.
 """
 
 from abc import ABC, abstractmethod
-from typing import Type, Optional, Any, Union
-
 import inspect
+from typing import Type, Optional, Any, Union
 from pydsol.core.utils import get_module_logger
 
 __all__ = [
@@ -542,7 +541,7 @@ class EventProducer:
         """
         if not isinstance(event, Event):
             raise EventError("event {event} not of type Event")
-        logger.debug("fire %s to %s", event, 
+        logger.debug("fire %s to %s", event,
                      self._listeners.get(event.event_type))
         if event.event_type not in self._listeners:
             return
@@ -595,7 +594,7 @@ class EventProducer:
         """
         if not isinstance(timed_event, TimedEvent):
             raise EventError("event {event} not of type TimedEvent")
-        logger.debug("fire %s to %s", timed_event, 
+        logger.debug("fire %s to %s", timed_event,
                      self._listeners.get(timed_event.event_type))
         if timed_event.event_type not in self._listeners:
             return
