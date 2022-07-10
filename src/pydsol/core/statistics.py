@@ -44,8 +44,8 @@ class Counter(StatisticsInterface):
     
     def report_header(self) -> str:
         return '-' * 72 \
-             + f"\n| {'Counter name':<48} | {'n':>6} | {'count':>8} |\n" \
-             + '-' * 72
+             +f"\n| {'Counter name':<48} | {'n':>6} | {'count':>8} |\n" \
+             +'-' * 72
     
     def report_line(self) -> str:
         return f"| {self.name:<48} | {self.n():>6} | {self.count():>8} |"
@@ -211,8 +211,8 @@ class Tally(StatisticsInterface):
 
     def report_header(self) -> str:
         return '-' * 72 \
-             + f"\n| {'Tally name':<48} | {'n':>6} | {'p_mean':>8} |\n" \
-             + '-' * 72
+             +f"\n| {'Tally name':<48} | {'n':>6} | {'p_mean':>8} |\n" \
+             +'-' * 72
     
     def report_line(self) -> str:
         return f"| {self.name:<48} | {self.n():>6} | {self.population_mean():8.2f} |"
@@ -318,13 +318,13 @@ class WeightedTally(StatisticsInterface):
 
     def report_header(self) -> str:
         return '-' * 72 \
-             + f"\n| {'Weighted Tally name':<48} | {'n':>6} | "\
-             + f"{'p_mean':>8} |\n" \
-             + '-' * 72
+             +f"\n| {'Weighted Tally name':<48} | {'n':>6} | "\
+             +f"{'p_mean':>8} |\n" \
+             +'-' * 72
     
     def report_line(self) -> str:
         return f"| {self.name:<48} | {self.n():>6} | "\
-            + f"{self.weighted_population_mean():8.2f} |"
+            +f"{self.weighted_population_mean():8.2f} |"
 
     def report_footer(self) -> str:
         return '-' * 72
@@ -423,6 +423,11 @@ class EventBasedTally(EventProducer, EventListener, Tally):
  
     def initialize(self):
         Tally.initialize(self)
+        self.fire_initialized()
+    
+    def fire_initialized(self):
+        """Separate method to allow easy overriding of firing the 
+        INITIALIZED_EVENT as a TimedEvent."""
         self.fire(StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: Event):
@@ -438,10 +443,10 @@ class EventBasedTally(EventProducer, EventListener, Tally):
     def ingest(self, value: float):
         super().ingest(value)
         if self.has_listeners():
-            self.fire(StatEvents.OBSERVATION_ADDED_EVENT, value)
-            self.fire_events()  
+            self.fire_events(value)
 
-    def fire_events(self):
+    def fire_events(self, value: float):
+        self.fire(StatEvents.OBSERVATION_ADDED_EVENT, value)
         self.fire(StatEvents.N_EVENT, self.n())
         self.fire(StatEvents.MIN_EVENT, self.min())
         self.fire(StatEvents.MAX_EVENT, self.max())
@@ -468,6 +473,11 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
  
     def initialize(self):
         WeightedTally.initialize(self)
+        self.fire_initialized()
+    
+    def fire_initialized(self):
+        """Separate method to allow easy overriding of firing the 
+        INITIALIZED_EVENT as a TimedEvent."""
         self.fire(StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: Event):
@@ -524,6 +534,11 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
  
     def initialize(self):
         TimestampWeightedTally.initialize(self)
+        self.fire_initialized()
+    
+    def fire_initialized(self):
+        """Separate method to allow easy overriding of firing the 
+        INITIALIZED_EVENT as a TimedEvent."""
         self.fire(StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: TimedEvent):
@@ -574,12 +589,13 @@ class SimCounter(EventBasedCounter, SimStatisticsInterface):
     
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
+        if not isinstance(key, str):
+            raise TypeError(f"key {key} is not a str")
+        if not isinstance(simulator, SimulatorInterface):
+            raise TypeError(f"simulator {simulator} is not a simulator")
         self._simulator = simulator
         EventBasedCounter.__init__(self, name)
-        if simulator.simulator_time > simulator.replication.warmup_sim_time:
-            self.initialize()
-        else:
-            simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
+        simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
         simulator.model.add_output_statistic(key, self)
         if producer != None or event_type != None:
@@ -627,16 +643,18 @@ class SimCounter(EventBasedCounter, SimStatisticsInterface):
         self.fire_timed(self.simulator.simulator_time,
                         StatEvents.COUNT_EVENT, self.count())
 
+
 class SimTally(EventBasedTally, SimStatisticsInterface):
     
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
+        if not isinstance(key, str):
+            raise TypeError(f"key {key} is not a str")
+        if not isinstance(simulator, SimulatorInterface):
+            raise TypeError(f"simulator {simulator} is not a simulator")
         self._simulator = simulator
         EventBasedTally.__init__(self, name)
-        if simulator.simulator_time > simulator.replication.warmup_sim_time:
-            self.initialize()
-        else:
-            simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
+        simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
         simulator.model.add_output_statistic(key, self)
         if producer != None or event_type != None:
@@ -683,41 +701,44 @@ class SimTally(EventBasedTally, SimStatisticsInterface):
         self.fire_timed(t, StatEvents.MIN_EVENT, self.min())
         self.fire_timed(t, StatEvents.MAX_EVENT, self.max())
         self.fire_timed(t, StatEvents.SUM_EVENT, self.sum())
-        self.fire_timed(t, StatEvents.POPULATION_MEAN_EVENT, 
+        self.fire_timed(t, StatEvents.POPULATION_MEAN_EVENT,
                         self.population_mean())
-        self.fire_timed(t, StatEvents.POPULATION_STDEV_EVENT, 
+        self.fire_timed(t, StatEvents.POPULATION_STDEV_EVENT,
                         self.population_stdev())
-        self.fire_timed(t, StatEvents.POPULATION_VARIANCE_EVENT, 
+        self.fire_timed(t, StatEvents.POPULATION_VARIANCE_EVENT,
                         self.population_variance())
-        self.fire_timed(t, StatEvents.POPULATION_SKEWNESS_EVENT, 
+        self.fire_timed(t, StatEvents.POPULATION_SKEWNESS_EVENT,
                         self.population_skewness())
-        self.fire_timed(t, StatEvents.POPULATION_KURTOSIS_EVENT, 
+        self.fire_timed(t, StatEvents.POPULATION_KURTOSIS_EVENT,
                         self.population_kurtosis())
-        self.fire_timed(t, StatEvents.POPULATION_EXCESS_K_EVENT, 
+        self.fire_timed(t, StatEvents.POPULATION_EXCESS_K_EVENT,
                         self.population_excess_kurtosis())
-        self.fire_timed(t, StatEvents.SAMPLE_MEAN_EVENT, 
+        self.fire_timed(t, StatEvents.SAMPLE_MEAN_EVENT,
                         self.sample_mean())
-        self.fire_timed(t, StatEvents.SAMPLE_STDEV_EVENT, 
+        self.fire_timed(t, StatEvents.SAMPLE_STDEV_EVENT,
                         self.sample_stdev())
-        self.fire_timed(t, StatEvents.SAMPLE_VARIANCE_EVENT, 
+        self.fire_timed(t, StatEvents.SAMPLE_VARIANCE_EVENT,
                         self.sample_variance())
-        self.fire_timed(t, StatEvents.SAMPLE_SKEWNESS_EVENT, 
+        self.fire_timed(t, StatEvents.SAMPLE_SKEWNESS_EVENT,
                         self.sample_skewness())
-        self.fire_timed(t, StatEvents.SAMPLE_KURTOSIS_EVENT, 
+        self.fire_timed(t, StatEvents.SAMPLE_KURTOSIS_EVENT,
                         self.sample_kurtosis())
-        self.fire_timed(t, StatEvents.SAMPLE_EXCESS_K_EVENT, 
+        self.fire_timed(t, StatEvents.SAMPLE_EXCESS_K_EVENT,
                         self.sample_excess_kurtosis())
+
 
 class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
     
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
+        if not isinstance(key, str):
+            raise TypeError(f"key {key} is not a str")
+        if not isinstance(simulator, SimulatorInterface):
+            raise TypeError(f"simulator {simulator} is not a simulator")
         self._simulator = simulator
         EventBasedTimestampWeightedTally.__init__(self, name)
-        if simulator.simulator_time > simulator.replication.warmup_sim_time:
-            self.initialize()
-        else:
-            simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
+        simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
+        simulator.add_listener(ReplicationInterface.END_REPLICATION_EVENT, self)
         self._key = key
         simulator.model.add_output_statistic(key, self)
         if producer != None or event_type != None:
@@ -757,3 +778,5 @@ class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
                     StatEvents.TIMESTAMP_DATA_EVENT, event.content))
         elif event.event_type == ReplicationInterface.WARMUP_EVENT:
             self.initialize()
+        elif event.event_type == ReplicationInterface.END_REPLICATION_EVENT:
+            self.end_observations(self.simulator.simulator_time)
