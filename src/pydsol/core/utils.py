@@ -6,6 +6,11 @@ from typing import Any
 import sys
 
 
+__all__ = [
+    "DSOLError",
+    "Assert",
+    ]
+
 class DSOLError(Exception):
     """General Exception class for pydsol."""
     pass
