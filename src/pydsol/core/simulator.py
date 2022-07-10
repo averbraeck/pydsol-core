@@ -328,10 +328,10 @@ class Simulator(EventProducer, SimulatorInterface, Generic[TIME]):
     def cleanup(self):
         """clean up after a replication has finished, and prepare for the
         next replication to run"""
-        self._stop_impl()
         if self.has_listeners():
             self.remove_all_listeners()
         if self.__worker is not None:
+            self._stop_impl()
             self.__worker.cleanup()
             self.__worker = None
         self._run_state = RunState.NOT_INITIALIZED
