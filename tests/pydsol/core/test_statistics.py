@@ -1,12 +1,20 @@
+import logging
 import math
+import sys
+import time
 
 import pytest
 
-from pydsol.core.interfaces import StatEvents
-from pydsol.core.pubsub import EventListener, Event, TimedEvent, EventError
+from pydsol.core.experiment import SingleReplication, Replication
+from pydsol.core.interfaces import StatEvents, ReplicationInterface
+from pydsol.core.model import DSOLModel
+from pydsol.core.pubsub import EventListener, Event, TimedEvent, EventError, \
+    EventProducer, EventType
+from pydsol.core.simulator import DEVSSimulator, DEVSSimulatorFloat, \
+    ErrorStrategy
 from pydsol.core.statistics import Counter, Tally, WeightedTally, \
     TimestampWeightedTally, EventBasedCounter, EventBasedTally, \
-    EventBasedWeightedTally, EventBasedTimestampWeightedTally
+    EventBasedWeightedTally, EventBasedTimestampWeightedTally, SimCounter
 from pydsol.core.units import Duration
 
 
@@ -332,9 +340,9 @@ def test_t_tally_errors():
     with pytest.raises(ValueError):
         t.ingest(1.0, 5)  # back in time
 
-# ===========================================================================
+#----------------------------------------------------------------------------
 # Tests for EventBased statistics
-# ===========================================================================
+#----------------------------------------------------------------------------
 
 
 class LoggingEventListener(EventListener):
@@ -640,6 +648,68 @@ def test_e_t_tally_11():
         t.notify(TimedEvent(1.0, StatEvents.TIMESTAMP_DATA_EVENT, 'abc'))
     with pytest.raises(EventError):
         t.notify(TimedEvent('abc', StatEvents.TIMESTAMP_DATA_EVENT, 1.0))
+
+#----------------------------------------------------------------------------
+# Tests for Simulation statistics
+#----------------------------------------------------------------------------
+
+
+class QueuingModel(DSOLModel, EventProducer):
+    
+    GEN_EVENT: EventType = EventType("GEN_EVENT")
+    
+    def __init__(self, simulator: DEVSSimulator):
+        DSOLModel.__init__(self, simulator)
+        EventProducer.__init__(self)
+    
+    def construct_model(self):
+        self.simulator.schedule_event_now(self, "generate", i=1.0)
+        self.gen_counter: SimCounter = SimCounter("generator.nr",
+            "number of generated entities", self.simulator)
+        self.gen_counter.listen_to(self, self.GEN_EVENT)
+
+    def generate(self, i:float):
+        t = self.simulator.simulator_time
+        # count the generated items
+        self.simulator.schedule_event_rel(i, self, "generate", i=i + 1.0)
+        self.fire_timed_event(TimedEvent(t, self.GEN_EVENT, 1))
+        # sys.stdout.write(f"gen at {t}\n")- combine with --capture=tee-sys
+
+        
+class Simulation(EventListener):
+
+    def __init__(self):
+        self.simulator: DEVSSimulatorFloat = DEVSSimulatorFloat("sim")
+        self.simulator.set_error_strategy(ErrorStrategy.WARN_AND_END,
+                                          logging.FATAL)
+        self.simulator.add_listener(ReplicationInterface.END_REPLICATION_EVENT, self)
+        self.model: DSOLModel = QueuingModel(self.simulator)
+        replication: Replication = SingleReplication("rep", 0.0, 0.0, 20.0)
+        self.simulator.initialize(self.model, replication)
+        self.simulator.start()
+
+    def notify(self, event: Event):
+        if event.event_type == ReplicationInterface.END_REPLICATION_EVENT:
+            m: QueuingModel = self.model
+            gc: SimCounter = m.gen_counter
+            assert gc.key == "generator.nr"
+            # times are 0, 1, 3, 6, 10, 15, (not 21)
+            assert gc.n() == 6
+            assert gc.count() == 6
+            assert len(gc.report_footer()) == 72 
+            assert "count" in gc.report_header()
+            assert " 6 " in gc.report_line()
+            assert gc.name in gc.report_line()
+
+
+def test_sim_stats():
+    s = Simulation()
+    t = time.time()
+    while s.simulator.is_starting_or_running() and time.time() - t < 1.0:
+        time.sleep(0.001)
+    t_after = time.time()
+    s.simulator.cleanup()
+    assert t_after - t < 1.0
 
 
 if __name__ == "__main__":
