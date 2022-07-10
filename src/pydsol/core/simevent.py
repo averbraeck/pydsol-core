@@ -166,7 +166,7 @@ class SimEvent(SimEventInterface):
             self._method(**self._kwargs)
         except:
             raise(DSOLError(f"method {self._method}(..) is not callable " \
-                +"on {self._target} with arguments {self._kwargs}"))
+                +f"on {self._target} with arguments {self._kwargs}"))
 
     def __cmp__(self, other: SimEventInterface) -> int:
         """
