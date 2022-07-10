@@ -172,6 +172,30 @@ class ModelInterface(ABC):
     def simulator(self):
         """return the simulator for this model"""
 
+    @abstractmethod
+    def add_parameter(self, input_parameter):
+        """add an input parameter to the input parameter map."""
+
+    @abstractmethod
+    def set_parameter(self, key: str, value: object):
+        """set the parameter value of an input parameter."""
+        
+    @abstractmethod
+    def get_parameter(self, key: str) -> object:
+        """return the value of an input parameter."""
+    
+    @abstractmethod
+    def output_statistics(self) -> dict[str, "StatisticsInterface"]:
+        """return the output statistics map."""
+    
+    @abstractmethod
+    def add_output_statistic(self, key: str, statistic: "StatisticsInterface"):
+        """add an output statistic to the output statistics map."""
+
+    @abstractmethod
+    def get_output_statistic(self, key: str) -> "StatisticsInterface":
+        """retrieve an output statistic from the output statistics map."""
+
 #----------------------------------------------------------------------------
 # STATISTICS INTERFACES
 #----------------------------------------------------------------------------
