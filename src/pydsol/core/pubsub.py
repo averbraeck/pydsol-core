@@ -33,6 +33,7 @@ from typing import Type, Optional, Any, Union
 from pydsol.core.utils import get_module_logger
 
 __all__ = [
+    "EventError",
     "EventType",
     "Event",
     "TimedEvent",
