@@ -1,12 +1,11 @@
 import logging
 import math
-import sys
 import time
 
 import pytest
 
 from pydsol.core.experiment import SingleReplication, Replication
-from pydsol.core.interfaces import StatEvents, ReplicationInterface
+from pydsol.core.interfaces import StatEvents
 from pydsol.core.model import DSOLModel
 from pydsol.core.pubsub import EventListener, Event, TimedEvent, EventError, \
     EventProducer, EventType
@@ -14,7 +13,8 @@ from pydsol.core.simulator import DEVSSimulator, DEVSSimulatorFloat, \
     ErrorStrategy
 from pydsol.core.statistics import Counter, Tally, WeightedTally, \
     TimestampWeightedTally, EventBasedCounter, EventBasedTally, \
-    EventBasedWeightedTally, EventBasedTimestampWeightedTally, SimCounter
+    EventBasedWeightedTally, EventBasedTimestampWeightedTally, SimCounter, \
+    SimTally, SimPersistent
 from pydsol.core.units import Duration
 
 
@@ -654,62 +654,283 @@ def test_e_t_tally_11():
 #----------------------------------------------------------------------------
 
 
-class QueuingModel(DSOLModel, EventProducer):
-    
+class StatisticsModel(DSOLModel, EventProducer):
+
     GEN_EVENT: EventType = EventType("GEN_EVENT")
-    
+    TALLY_EVENT: EventType = EventType("TALLY_EVENT")
+    PERS_EVENT: EventType = EventType("PERS_EVENT")
+
     def __init__(self, simulator: DEVSSimulator):
         DSOLModel.__init__(self, simulator)
         EventProducer.__init__(self)
-    
+
     def construct_model(self):
         self.simulator.schedule_event_now(self, "generate", i=1.0)
         self.gen_counter: SimCounter = SimCounter("generator.nr",
             "number of generated entities", self.simulator)
+        # with listen_to
         self.gen_counter.listen_to(self, self.GEN_EVENT)
-
+        self.gen_tally: SimTally = SimTally("generator.tally",
+            "average value of i", self.simulator)
+        self.gen_tally.listen_to(self, self.TALLY_EVENT)
+        self.gen_pers: SimPersistent = SimPersistent("generator.pers",
+            "time-weighed value of i", self.simulator)
+        self.gen_pers.listen_to(self, self.PERS_EVENT)
+        # without listen_to
+        self.gen_counter2: SimCounter = SimCounter("generator.nr2",
+            "number of generated entities", self.simulator,
+            producer=self, event_type=self.GEN_EVENT)
+        self.gen_tally2: SimTally = SimTally("generator.tally2",
+            "average value of i", self.simulator,
+            producer=self, event_type=self.TALLY_EVENT)
+        self.gen_pers2: SimPersistent = SimPersistent("generator.pers2",
+            "time-weighed value of i", self.simulator,
+            producer=self, event_type=self.PERS_EVENT)
+        # listen to events
+        self.lelc: LoggingEventListener = LoggingEventListener()
+        self.gen_counter.add_listener(StatEvents.N_EVENT, self.lelc)
+        self.lelt: LoggingEventListener = LoggingEventListener()
+        self.gen_tally.add_listener(StatEvents.N_EVENT, self.lelt)
+        self.lelp: LoggingEventListener = LoggingEventListener()
+        self.gen_pers.add_listener(StatEvents.N_EVENT, self.lelp)
+    
     def generate(self, i:float):
         t = self.simulator.simulator_time
         # count the generated items
         self.simulator.schedule_event_rel(i, self, "generate", i=i + 1.0)
         self.fire_timed_event(TimedEvent(t, self.GEN_EVENT, 1))
-        # sys.stdout.write(f"gen at {t}\n")- combine with --capture=tee-sys
+        self.fire_timed_event(TimedEvent(t, self.TALLY_EVENT, i))
+        self.fire_timed_event(TimedEvent(t, self.PERS_EVENT, i))
+        # combine with --capture=tee-sys
+        # import sys
+        # sys.stdout.write(f"gen at {t}, value = {i}\n")
 
-        
-class Simulation(EventListener):
 
-    def __init__(self):
+class Simulation():
+
+    def __init__(self, warmup: float):
         self.simulator: DEVSSimulatorFloat = DEVSSimulatorFloat("sim")
         self.simulator.set_error_strategy(ErrorStrategy.WARN_AND_END,
                                           logging.FATAL)
-        self.simulator.add_listener(ReplicationInterface.END_REPLICATION_EVENT, self)
-        self.model: DSOLModel = QueuingModel(self.simulator)
-        replication: Replication = SingleReplication("rep", 0.0, 0.0, 20.0)
+        self.model: DSOLModel = StatisticsModel(self.simulator)
+        replication: Replication = SingleReplication("rep", 0.0, warmup, 20.0)
         self.simulator.initialize(self.model, replication)
         self.simulator.start()
 
-    def notify(self, event: Event):
-        if event.event_type == ReplicationInterface.END_REPLICATION_EVENT:
-            m: QueuingModel = self.model
-            gc: SimCounter = m.gen_counter
-            assert gc.key == "generator.nr"
-            # times are 0, 1, 3, 6, 10, 15, (not 21)
-            assert gc.n() == 6
-            assert gc.count() == 6
-            assert len(gc.report_footer()) == 72 
-            assert "count" in gc.report_header()
-            assert " 6 " in gc.report_line()
-            assert gc.name in gc.report_line()
-
 
 def test_sim_stats():
-    s = Simulation()
-    t = time.time()
-    while s.simulator.is_starting_or_running() and time.time() - t < 1.0:
-        time.sleep(0.001)
-    t_after = time.time()
-    s.simulator.cleanup()
-    assert t_after - t < 1.0
+    s = Simulation(0.0)
+    try:
+        t = time.time()
+        while s.simulator.is_starting_or_running() and time.time() - t < 1.0:
+            time.sleep(0.001)
+        t_after = time.time()
+        assert t_after - t < 1.0
+        
+        m: StatisticsModel = s.model
+        
+        # SimCounter
+        gc: SimCounter = m.gen_counter
+        gc2: SimCounter = m.gen_counter2
+        assert gc.key == "generator.nr"
+        # times are 0, 1, 3, 6, 10, 15, (not 21)
+        assert gc.n() == 6
+        assert gc.count() == 6
+        assert gc.n() == gc2.n()
+        assert gc.count() == gc2.count()
+        assert len(gc.report_footer()) == 72 
+        assert "count" in gc.report_header()
+        assert " 6 " in gc.report_line()
+        assert gc.name in gc.report_line()
+        
+        assert m.lelc.nr_events == 6
+        assert m.lelc.last_event.event_type == StatEvents.N_EVENT
+        assert m.lelc.last_event.content == 6
+        
+        # SimTally
+        gt: SimTally = m.gen_tally
+        gt2: SimTally = m.gen_tally2
+        assert gt.key == "generator.tally"
+        # average of 1, 2, 3, 4, 5, 6 = 3.5
+        assert gt.n() == 6
+        assert math.isclose(gt.population_mean(), 3.5) 
+        assert gt2.n() == 6
+        assert math.isclose(gt2.sample_mean(), 3.5) 
+        assert len(gt.report_footer()) == 72
+        assert "mean" in gt.report_header()
+        assert " 3.5" in gt.report_line()
+        assert gt.name in gt.report_line()
+        
+        assert m.lelt.nr_events == 6
+        assert m.lelt.last_event.event_type == StatEvents.N_EVENT
+        assert m.lelt.last_event.content == 6
+    
+        # SimTally
+        gp: SimPersistent = m.gen_pers
+        gp2: SimPersistent = m.gen_pers2
+        assert gp.key == "generator.pers"
+        # times are   0,  1,  3,  6, 10, 15, 20
+        # delta-t is  1,  2,  3,  4,  5,  5
+        # average of  0,  1,  2,  3,  4,  5
+        # weighed av (1 + 4 + 9 +16 +25 +30) / 20 = 85/20 = 4.25
+        assert gp.n() == 6
+        assert math.isclose(gp.weighted_population_mean(), 85.0 / 20.0) 
+        assert math.isclose(gp2.weighted_sample_mean(), 85.0 / 20.0) 
+        assert len(gp.report_footer()) == 72
+        assert "mean" in gp.report_header()
+        assert "4.25" in gp.report_line()
+        assert gp.name in gp.report_line()
+        
+        assert m.lelp.nr_events == 7 # including end_observation()
+        assert m.lelp.last_event.event_type == StatEvents.N_EVENT
+        assert m.lelp.last_event.content == 6
+
+    except Exception as e:
+        raise e
+    finally:
+        try:
+            s.simulator.cleanup()
+        except Exception:
+            pass
+
+
+def test_sim_warmup():
+    s = Simulation(10.0)
+    try:
+        t = time.time()
+        while s.simulator.is_starting_or_running() and time.time() - t < 1.0:
+            time.sleep(0.001)
+        t_after = time.time()
+        assert t_after - t < 1.0
+        
+        m: StatisticsModel = s.model
+        
+        # SimCounter
+        gc: SimCounter = m.gen_counter
+        assert gc.key == "generator.nr"
+        # times are x0, x1, x3, x6, 10, 15, (not 21)
+        assert gc.n() == 2
+        assert gc.count() == 2
+    
+        # SimTally
+        gt: SimTally = m.gen_tally
+        assert gt.key == "generator.tally"
+        # average of x1, x2, x3, x4, 5, 6 = 5.5
+        assert gt.n() == 2
+        assert math.isclose(gt.population_mean(), 5.5) 
+    
+        # SimTally
+        gp: SimPersistent = m.gen_pers
+        assert gp.key == "generator.pers"
+        # times are   x0,  x1,  x3,  x6, 10, 15, 20
+        # delta-t is  x1,  x2,  x3,  x4,  5,  5
+        # average of  x0,  x1,  x2,  x3,  4,  5
+        # weighed av (x1 + x4 + x9 +16 +25 +30) / 10 = 55/10 = 5.5
+        assert gp.n() == 2
+        assert math.isclose(gp.weighted_population_mean(), 5.5)
+    except Exception as e:
+        raise e
+    finally:
+        try:
+            s.simulator.cleanup()
+        except Exception:
+            pass
+    
+
+def test_sim_errors():
+    
+    class EmptyModel(DSOLModel):
+
+        def construct_model(self):
+            pass
+        
+    try:
+        simulator: DEVSSimulatorFloat = DEVSSimulatorFloat("sim")
+        model: DSOLModel = EmptyModel(simulator)
+        replication: Replication = SingleReplication("rep", 0.0, 0.0, 20.0)
+        simulator.initialize(model, replication)
+        EVENT: EventType = EventType("EVENT")
+        
+        with pytest.raises(TypeError):
+            SimCounter(0, "name", simulator)
+        with pytest.raises(TypeError):
+            SimCounter("key", 0, simulator)
+        with pytest.raises(TypeError):
+            SimCounter("key", "name", 'x')
+        counter: SimCounter = SimCounter("counter", "name", simulator)
+        with pytest.raises(TypeError):
+            counter.listen_to('x', EVENT)
+        with pytest.raises(TypeError):
+            counter.listen_to(simulator, 'x')
+
+        with pytest.raises(TypeError):
+            SimTally(0, "name", simulator)
+        with pytest.raises(TypeError):
+            SimTally("key", 0, simulator)
+        with pytest.raises(TypeError):
+            SimTally("key", "name", 'x')
+        tally: SimTally = SimTally("tally", "name", simulator)
+        with pytest.raises(TypeError):
+            tally.listen_to('x', EVENT)
+        with pytest.raises(TypeError):
+            tally.listen_to(simulator, 'x')
+
+        with pytest.raises(TypeError):
+            SimPersistent(0, "name", simulator)
+        with pytest.raises(TypeError):
+            SimPersistent("key", 0, simulator)
+        with pytest.raises(TypeError):
+            SimPersistent("key", "name", 'x')
+        pers: SimPersistent = SimPersistent("persistent", "name", simulator)
+        with pytest.raises(TypeError):
+            pers.listen_to('x', EVENT)
+        with pytest.raises(TypeError):
+            pers.listen_to(simulator, 'x')
+
+    except Exception as e:
+        raise e
+    finally:
+        try:
+            simulator.cleanup()
+        except Exception:
+            pass
+
+def test_data_events():
+    
+    class EmptyModel(DSOLModel):
+
+        def construct_model(self):
+            pass
+        
+    try:
+        simulator: DEVSSimulatorFloat = DEVSSimulatorFloat("sim")
+        model: DSOLModel = EmptyModel(simulator)
+        replication: Replication = SingleReplication("rep", 0.0, 0.0, 20.0)
+        simulator.initialize(model, replication)
+        
+        counter: SimCounter = SimCounter("counter", "name", simulator)
+        counter.notify(TimedEvent(0.0, StatEvents.DATA_EVENT, 2))
+        assert counter.n() == 1
+        assert counter.count() == 2
+
+        tally: SimTally = SimTally("tally", "name", simulator)
+        tally.notify(TimedEvent(0.0, StatEvents.DATA_EVENT, 10))
+        assert tally.n() == 1
+        assert tally.population_mean() == 10.0
+
+        pers: SimPersistent = SimPersistent("persistent", "name", simulator)
+        pers.notify(TimedEvent(0.0, StatEvents.TIMESTAMP_DATA_EVENT, 2))
+        pers.notify(TimedEvent(1.0, StatEvents.TIMESTAMP_DATA_EVENT, 4))
+        assert pers.n() == 1
+        assert pers.weighted_population_mean() == 2.0
+
+    except Exception as e:
+        raise e
+    finally:
+        try:
+            simulator.cleanup()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
