@@ -8,7 +8,7 @@ import math
 import pytest
 
 from pydsol.core.distributions import Distribution, DistBeta, DistGamma, \
-    DistConstant, DistBernoulli
+    DistConstant, DistBernoulli, DistErlang
 from pydsol.core.statistics import Tally
 from pydsol.core.streams import MersenneTwister, StreamInterface
 
@@ -39,9 +39,12 @@ def test_c_mean_variance():
            0.0, 1.0, 0.1)
     c_dist("DistConstant", DistConstant(stream, 12.1), 12.1, 0.0, 12.1,
            12.1, 0.001)
-    # c_dist("DistErlang", DistErlang(stream, 2.0, 1), 2.0, 2.0 * 2.0, 0.0, nan, 0.05)
-    # c_dist("DistErlang", DistErlang(stream, 0.5, 4), 4.0 * 0.5, 4.0 * 0.5 * 0.5, 0.0, nan, 0.05)
-    # c_dist("DistErlang", DistErlang(stream, 0.5, 40), 40.0 * 0.5, 40.0 * 0.5 * 0.5, 0.0, nan, 0.05)
+    c_dist("DistErlang", DistErlang(stream, 2.0, 1), 2.0, 2.0 * 2.0,
+           0.0, nan, 0.05)
+    c_dist("DistErlang", DistErlang(stream, 0.5, 4), 4.0 * 0.5,
+           4.0 * 0.5 * 0.5, 0.0, nan, 0.05)
+    c_dist("DistErlang", DistErlang(stream, 0.5, 40), 40.0 * 0.5,
+           40.0 * 0.5 * 0.5, 0.0, nan, 0.05)
     # c_dist("DistExponential", DistExponential(stream, 1.2), 1.2, 1.2 * 1.2, 0.0, nan, 0.01)
     c_dist("DistGamma", DistGamma(stream, 2.0, 4.0), 2.0 * 4.0,
            2.0 * 4.0 * 4.0, 0.0, nan, 0.5)
@@ -107,6 +110,57 @@ def test_constant():
         DistConstant('x', 0.1)
     with pytest.raises(TypeError):
         DistConstant(stream, 'x')
+
+
+def test_erlang():
+    stream: StreamInterface = MersenneTwister(10)
+    dist: DistErlang = DistErlang(stream, 2.5, 3)
+    assert stream == dist.stream
+    assert dist.scale == 2.5
+    assert dist.k == 3
+    assert "Erlang" in str(dist)
+    assert "2.5" in str(dist)
+    assert "3" in repr(dist)
+
+    # below 10
+    value: float = dist.draw()
+    assert value > 0
+    assert dist.draw() != value
+    dist.stream = MersenneTwister(10)
+    assert dist.draw() == value
+    
+    # above 10
+    stream: StreamInterface = MersenneTwister(10)
+    dist: DistErlang = DistErlang(stream, 2, 15)
+    value: float = dist.draw()
+    assert value > 0
+    assert dist.draw() != value
+    dist.stream = MersenneTwister(10)
+    assert dist.draw() == value
+    
+    # exactly 10
+    stream: StreamInterface = MersenneTwister(10)
+    dist: DistErlang = DistErlang(stream, 3.14, 10)
+    value: float = dist.draw()
+    assert value > 0
+    assert dist.draw() != value
+    dist.stream = MersenneTwister(10)
+    assert dist.draw() == value
+    
+    with pytest.raises(TypeError):
+        DistErlang('x', 0.1, 2)
+    with pytest.raises(TypeError):
+        DistErlang(stream, 'x', 2)
+    with pytest.raises(TypeError):
+        DistErlang(stream, 0.1, 'x')
+    with pytest.raises(ValueError):
+        DistErlang(stream, -0.1, 2)
+    with pytest.raises(ValueError):
+        DistErlang(stream, 0.1, -2)
+    with pytest.raises(ValueError):
+        DistErlang(stream, 0, 2)
+    with pytest.raises(ValueError):
+        DistErlang(stream, 0.1, 0)
 
 
 def test_gamma():
