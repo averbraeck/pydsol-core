@@ -8,7 +8,7 @@ import math
 import pytest
 
 from pydsol.core.distributions import Distribution, DistBeta, DistGamma, \
-    DistConstant, DistBernoulli, DistErlang
+    DistConstant, DistBernoulli, DistErlang, DistExponential
 from pydsol.core.statistics import Tally
 from pydsol.core.streams import MersenneTwister, StreamInterface
 
@@ -45,7 +45,8 @@ def test_c_mean_variance():
            4.0 * 0.5 * 0.5, 0.0, nan, 0.05)
     c_dist("DistErlang", DistErlang(stream, 0.5, 40), 40.0 * 0.5,
            40.0 * 0.5 * 0.5, 0.0, nan, 0.05)
-    # c_dist("DistExponential", DistExponential(stream, 1.2), 1.2, 1.2 * 1.2, 0.0, nan, 0.01)
+    c_dist("DistExponential", DistExponential(stream, 1.2), 1.2, 
+           1.2 * 1.2, 0.0, nan, 0.05)
     c_dist("DistGamma", DistGamma(stream, 2.0, 4.0), 2.0 * 4.0,
            2.0 * 4.0 * 4.0, 0.0, nan, 0.5)
     c_dist("DistGamma", DistGamma(stream, 3.0, 4.0), 3.0 * 4.0,
@@ -55,7 +56,7 @@ def test_c_mean_variance():
     c_dist("DistGamma", DistGamma(stream, 1.0, 4.0), 1.0 * 4.0,
            1.0 * 4.0 * 4.0, 0.0, nan, 0.5)
     c_dist("DistGamma", DistGamma(stream, 0.5, 0.2), 0.5 * 0.2,
-           0.5 * 0.2 * 0.2, 0.0, nan, 0.01)
+           0.5 * 0.2 * 0.2, 0.0, nan, 0.1)
     # c_dist("DistPearson5", DistPearson5(stream, 3, 1), 0.5, 0.25, 0.0, nan, 0.01)
     # c_dist("DistPearson6", DistPearson6(stream, 2, 3, 4), 4.0 * 2 / (3 - 1),
     #         4.0 * 4 * 2 * (2 + 3 - 1) / ((3 - 1) * (3 - 1) * (3 - 2)), 0.0, nan, 0.05)
@@ -161,6 +162,32 @@ def test_erlang():
         DistErlang(stream, 0, 2)
     with pytest.raises(ValueError):
         DistErlang(stream, 0.1, 0)
+
+
+def test_exponential():
+    stream: StreamInterface = MersenneTwister(10)
+    dist: DistExponential = DistExponential(stream, 2.5)
+    assert stream == dist.stream
+    assert dist.mean == 2.5
+    assert "Exponential" in str(dist)
+    assert "2.5" in repr(dist)
+    value: float = dist.draw()
+    assert value >= 0
+    assert dist.draw() != value
+    dist.stream = MersenneTwister(10)
+    assert dist.draw() == value
+    dist: DistExponential = DistExponential(stream, 2)
+    value: float = dist.draw()
+    assert value >= 0
+    
+    with pytest.raises(TypeError):
+        DistExponential('x', 0.1)
+    with pytest.raises(TypeError):
+        DistExponential(stream, 'x')
+    with pytest.raises(ValueError):
+        DistExponential(stream, -0.1)
+    with pytest.raises(ValueError):
+        DistExponential(stream, 0)
 
 
 def test_gamma():
