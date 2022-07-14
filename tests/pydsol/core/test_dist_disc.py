@@ -8,7 +8,7 @@ import math
 import pytest
 
 from pydsol.core.distributions import Distribution, DistBernoulli, DistBinomial, \
-    DistDiscreteUniform
+    DistDiscreteUniform, DistGeometric
 from pydsol.core.statistics import Tally
 from pydsol.core.streams import MersenneTwister, StreamInterface
 
@@ -40,10 +40,10 @@ def test_d_mean_variance():
            3 * 0.25, 3 * 0.25 * 0.75, 0.0, 3.0, 0.01)
     d_dist("DistDiscreteUniform", DistDiscreteUniform(stream, 1, 5), 
            3.0, (5.0 - 1.0) * (5.0 + 1.0) / 12.0, 1, 5, 0.05)
-    # d_dist("DistGeometric", DistGeometric(stream, 0.25), 
-    #        (1 - 0.25) / 0.25, (1 - 0.25) / (0.25 * 0.25), 0.0, nan, 0.05)
-    # d_dist("DistGeometric", DistGeometric(stream, 0.9), 
-    #        (1 - 0.9) / 0.9, (1 - 0.9) / (0.9 * 0.9), 0.0, nan, 0.05)
+    d_dist("DistGeometric", DistGeometric(stream, 0.25), 
+           (1 - 0.25) / 0.25, (1 - 0.25) / (0.25 * 0.25), 0.0, nan, 0.05)
+    d_dist("DistGeometric", DistGeometric(stream, 0.9), 
+           (1 - 0.9) / 0.9, (1 - 0.9) / (0.9 * 0.9), 0.0, nan, 0.05)
     # d_dist("DistNegBinomial", DistNegBinomial(stream, 10, 0.25), 
     #        10 * (1.0 - 0.25) / 0.25, 10 * (1.0 - 0.25) / (0.25 * 0.25), 
     #        0.0, nan, 0.05)
@@ -146,6 +146,31 @@ def test_discrete_uniform():
     with pytest.raises(ValueError):
         DistDiscreteUniform(stream, 4, 4)
     
+    
+def test_geometric():
+    for p in [x / 10 for x in range(1, 10)]:
+        stream: StreamInterface = MersenneTwister(10)
+        dist: DistGeometric = DistGeometric(stream, p)
+        assert stream == dist.stream
+        assert dist.p == p
+        assert "Geometric" in str(dist)
+        assert str(p) in repr(dist)
+        value: int = dist.draw()
+        assert value >= 0
+        dist.stream = MersenneTwister(10)
+        assert dist.draw() == value
+
+    with pytest.raises(TypeError):
+        DistGeometric('x', 0.1)
+    with pytest.raises(TypeError):
+        DistGeometric(stream, 'x')
+    with pytest.raises(TypeError):
+        DistGeometric(stream, 1)
+    with pytest.raises(ValueError):
+        DistGeometric(stream, -0.1)
+    with pytest.raises(ValueError):
+        DistGeometric(stream, 1.01)
+
     
 if __name__ == "__main__":
     pytest.main()
