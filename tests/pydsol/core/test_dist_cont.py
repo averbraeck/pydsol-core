@@ -8,9 +8,10 @@ import math
 import pytest
 
 from pydsol.core.distributions import Distribution, DistBeta, DistGamma, \
-    DistConstant, DistBernoulli, DistErlang, DistExponential
+    DistConstant, DistErlang, DistExponential
 from pydsol.core.statistics import Tally
 from pydsol.core.streams import MersenneTwister, StreamInterface
+from pydsol.core.utils import beta
 
 
 def c_dist(name: str, dist: Distribution, expected_mean: float,
@@ -45,7 +46,7 @@ def test_c_mean_variance():
            4.0 * 0.5 * 0.5, 0.0, nan, 0.05)
     c_dist("DistErlang", DistErlang(stream, 0.5, 40), 40.0 * 0.5,
            40.0 * 0.5 * 0.5, 0.0, nan, 0.05)
-    c_dist("DistExponential", DistExponential(stream, 1.2), 1.2, 
+    c_dist("DistExponential", DistExponential(stream, 1.2), 1.2,
            1.2 * 1.2, 0.0, nan, 0.05)
     c_dist("DistGamma", DistGamma(stream, 2.0, 4.0), 2.0 * 4.0,
            2.0 * 4.0 * 4.0, 0.0, nan, 0.5)
@@ -66,6 +67,12 @@ def test_c_mean_variance():
 
 
 def test_beta():
+    
+    def dist_beta(a, b, x) -> float:
+        """Calculate probability density of DistBeta(a, b) for value x. 
+        From: https://mathworld.wolfram.com/BetaDistribution.html"""
+        return (1 - x) ** (b - 1) * x ** (a - 1) / beta(a, b)
+        
     stream: StreamInterface = MersenneTwister(10)
     dist: DistBeta = DistBeta(stream, 1.5, 2.5)
     assert stream == dist.stream
@@ -80,6 +87,15 @@ def test_beta():
     dist.stream = MersenneTwister(10)
     assert dist.draw() == value
 
+    assert math.isclose(dist.probability_density(0.5),
+            dist_beta(1.5, 2.5, 0.5), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(0.25),
+            dist_beta(1.5, 2.5, 0.25), abs_tol=0.0001)
+    assert dist.probability_density(0.0) == 0.0
+    assert dist.probability_density(1.0) == 0.0
+    assert dist.probability_density(2.0) == 0.0
+    assert dist.probability_density(-0.1) == 0.0
+    
     with pytest.raises(TypeError):
         DistBeta('x', 0.1, 2.0)
     with pytest.raises(TypeError):
@@ -107,13 +123,31 @@ def test_constant():
     dist: DistConstant = DistConstant(stream, 4)
     assert dist.draw() == 4
 
+    dist: DistConstant = DistConstant(stream, 1.5)
+    assert dist.probability_density(0.0) == 0.0
+    assert dist.probability_density(1.0) == 0.0
+    assert dist.probability_density(1.5) == 1.0
+
+    dist: DistConstant = DistConstant(stream, 4)
+    assert dist.probability_density(0.0) == 0.0
+    assert dist.probability_density(1.0) == 0.0
+    assert dist.probability_density(4) == 1.0
+
     with pytest.raises(TypeError):
         DistConstant('x', 0.1)
     with pytest.raises(TypeError):
         DistConstant(stream, 'x')
 
-
+    
 def test_erlang():
+
+    def dist_erlang(k, scale, x) -> float:
+        """Calculate probability density of DistErlang(k, scale) for value x. 
+        From: https://mathworld.wolfram.com/ErlangDistribution.html"""
+        la = 1.0 / scale
+        return (la * ((la * x) ** (k - 1)) * math.exp(-la * x)
+                / math.factorial(k - 1))
+    
     stream: StreamInterface = MersenneTwister(10)
     dist: DistErlang = DistErlang(stream, 2.5, 3)
     assert stream == dist.stream
@@ -147,7 +181,21 @@ def test_erlang():
     assert dist.draw() != value
     dist.stream = MersenneTwister(10)
     assert dist.draw() == value
-    
+
+    dist: DistErlang = DistErlang(stream, 2.5, 3)
+    assert math.isclose(dist.probability_density(1.0),
+            dist_erlang(3, 2.5, 1.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(2.0),
+            dist_erlang(3, 2.5, 2.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(3.0),
+            dist_erlang(3, 2.5, 3.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(4.0),
+            dist_erlang(3, 2.5, 4.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(5.0),
+            dist_erlang(3, 2.5, 5.0), abs_tol=0.0001)
+    assert dist.probability_density(0.0) == 0.0
+    assert dist.probability_density(-0.1) == 0.0
+
     with pytest.raises(TypeError):
         DistErlang('x', 0.1, 2)
     with pytest.raises(TypeError):
@@ -179,6 +227,20 @@ def test_exponential():
     dist: DistExponential = DistExponential(stream, 2)
     value: float = dist.draw()
     assert value >= 0
+
+    dist: DistExponential = DistExponential(stream, 2.5)
+    l = 1 / 2.5
+    assert math.isclose(dist.probability_density(0.0), 
+            l * math.exp(-l * 0.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(1.0), 
+            l * math.exp(-l * 1.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(2.0), 
+            l * math.exp(-l * 2.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(3.0), 
+            l * math.exp(-l * 3.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(4.0), 
+            l * math.exp(-l * 4.0), abs_tol=0.0001)
+    assert dist.probability_density(-0.1) == 0.0
     
     with pytest.raises(TypeError):
         DistExponential('x', 0.1)
@@ -191,6 +253,13 @@ def test_exponential():
 
 
 def test_gamma():
+    
+    def dist_gamma(alpha, theta, x) -> float:
+        """Calculate probability density of DistErlang(k, scale) for value x. 
+        From: https://mathworld.wolfram.com/GammaDistribution.html"""
+        return ((x ** (alpha - 1)) * math.exp(-x / theta)
+                / (math.gamma(alpha) * (theta ** alpha)))
+
     stream: StreamInterface = MersenneTwister(10)
     dist: DistGamma = DistGamma(stream, 1.5, 2.5)
     assert stream == dist.stream
@@ -211,6 +280,34 @@ def test_gamma():
     assert DistGamma(stream, 0.0001, 1000.0).draw() > 0
     assert DistGamma(stream, 1000.0, 0.0001).draw() > 0
 
+    dist: DistGamma = DistGamma(stream, 1.5, 2.5)
+    assert math.isclose(dist.probability_density(0.5), 
+            dist_gamma(1.5, 2.5, 0.5), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(1.0), 
+            dist_gamma(1.5, 2.5, 1.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(2.0), 
+            dist_gamma(1.5, 2.5, 2.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(4.0), 
+            dist_gamma(1.5, 2.5, 4.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(8.0), 
+            dist_gamma(1.5, 2.5, 8.0), abs_tol=0.0001)
+    assert dist.probability_density(0.0) == 0.0
+    assert dist.probability_density(-0.1) == 0.0
+
+    dist: DistGamma = DistGamma(stream, 0.5, 2.5)
+    assert math.isclose(dist.probability_density(0.5), 
+            dist_gamma(0.5, 2.5, 0.5), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(1.0), 
+            dist_gamma(0.5, 2.5, 1.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(2.0), 
+            dist_gamma(0.5, 2.5, 2.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(4.0), 
+            dist_gamma(0.5, 2.5, 4.0), abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(8.0), 
+            dist_gamma(0.5, 2.5, 8.0), abs_tol=0.0001)
+    assert dist.probability_density(0.0) == 0.0
+    assert dist.probability_density(-0.1) == 0.0
+    
     with pytest.raises(TypeError):
         DistGamma('x', 0.1, 2.0)
     with pytest.raises(TypeError):
