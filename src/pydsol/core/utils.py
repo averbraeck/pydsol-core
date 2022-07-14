@@ -2,21 +2,24 @@
 This module contains generic utilities for the pydsol code. 
 """
 import logging
-from typing import Any
+import math
 import sys
-
+from typing import Any
 
 __all__ = [
     "DSOLError",
     "Assert",
     ]
 
+
 class DSOLError(Exception):
     """General Exception class for pydsol."""
     pass
 
+
 logging.basicConfig(level=logging.DEBUG,
         format='%(levelname)s: %(module)s.%(funcName)s: %(message)s')
+
 
 def get_module_logger(mod_name: str, level=logging.CRITICAL):
     logger = logging.getLogger(mod_name)
@@ -30,115 +33,94 @@ def get_module_logger(mod_name: str, level=logging.CRITICAL):
     logger.setLevel(level)
     return logger
 
+
 logger = get_module_logger('utils')
 
 
-class Assert():
+def sign(x: float) -> float:
     """
-    The Assert class contains a number of utilities that are easy to use 
-    to test preconditions (or postconditions) in a method.
-    
-    Methods
-    -------
-    istype
-        Assert that a variable is an exact instance of a certain type
-    subtype
-        Assert that a variable is an instance of a type (or subtype)
-    subtypes
-        Assert that a variable is an instance of any of a list of typrs
-    that
-        Assert that a certain condition is met
+    Return the sign of x. Analogous to other programming languages, the
+    following convention is used:
+    * return -1  for negative x
+    * return +1  for positive x
+    * return 0   when x s zero
+    * return nan when x is nan
     """
-    
-    @staticmethod
-    def istype(var: Any, varname: str, type_: type, 
-               error_class: Exception=DSOLError):
-        """
-        Assert that the variable 'var' is of type 'type_' (and not a subtype).
-        
-        Parameters
-        ----------
-        var: Any
-            the variable to check
-        varname: str
-            the name of the variable to use in the message
-        type_: type
-            the type to check for. The type of var should be exactly the same
-        error_class: Exception, optional
-            the exception to throw; defaults to DSOLError
-        """
-        if type(var) == type_:
-            return
-        raise error_class(\
-            f"parameter {varname} is not of type {type_.__name__}")
-            
-    
-    @staticmethod
-    def subtype(var: Any, varname: str, type_: type, 
-               error_class: Exception=DSOLError):
-        """
-        Assert that the variable 'var' is an instance of type_ or an instance
-        of a subtype of type_.
-        
-        Parameters
-        ----------
-        var: Any
-            the variable to check
-        varname: str
-            the name of the variable to use in the message
-        type_: type
-            the type to check for
-        error_class: Exception, optional
-            the exception to throw; defaults to DSOLError
-        """
-        if isinstance(var, type_):
-            return
-        raise error_class(\
-            f"parameter {varname} is not an instance of {type_.__name__}")
-    
-    @staticmethod
-    def anytype(var: Any, varname: str, types: list[type], 
-               error_class: Exception=DSOLError):
-        """
-        Assert that the variable 'var' is an instance of any of the given
-        types in the type list.
-        
-        Parameters
-        ----------
-        var: Any
-            the variable to check
-        varname: str
-            the name of the variable to use in the message
-        types: list[type]
-            the types to check for; ok if var is a subtype of any of the types
-        error_class: Exception, optional
-            the exception to throw; defaults to DSOLError
-        """
-        for type_ in types:
-            if isinstance(var, type_):
-                return
-        s = [type_.__name__ for type_ in types]
-        raise error_class(\
-            f"parameter {varname} is not an instance of {s}")
+    if math.isnan(x):
+        return math.nan
+    if x > 0:
+        return 1.0
+    if x < 0:
+        return -1.0
+    return 0.0
 
-    @staticmethod
-    def that(condition: bool, error_class: Exception, 
-             message: str, *args, **kwargs):
-        """
-        Assert that a certain condition is met, otherwise raise an error.
+
+def erf_inv(y: float) -> float:
+    """
+    Approximates the inverse error function (erf) based on the C-algorithm
+    at http://www.naic.edu/~jeffh/inverse_cerf.c.
+    
+    Raises
+    ------
+    TypeError when y is not a number
+    ValueError when y is not between -1 and 1 (inclusive)
+    """
+    if not isinstance(y, (float, int)):
+        raise TypeError(f"Parameter y {y} is not a number")
+    if not -1.0 <= y <= 1.0:
+        raise ValueError(f"Parameter y {y} not between 0 and 1 (inclusive)")
+
+    ax = abs(y)
+    
+    if ax <= 0.75:
+        # This approximation, taken from Table 10 of Blair et al., is valid
+        # for |x|<=0.75 and has a maximum relative error of 4.47 x 10^-8.
+        p = (-13.0959967422, 26.785225760, -9.289057635)
+        q = (-12.0749426297, 30.960614529, -17.149977991, 1.00000000)
+        t = ax * ax - 0.75 * 0.75
+        r = (ax * (p[0] + t * (p[1] + t * p[2])) 
+             / (q[0] + t * (q[1] + t * (q[2] + t * q[3]))))
         
-        Parameters
-        ----------
-        condition: bool
-            the condition as an outcome of a check
-        error_class: Exception
-            the exception to throw
-        message: str
-            the message to print in the error in case of failure
-        *args
-            arguments to use in the formatting of the error string
-        **kwargs
-            arguments to use in the formatting of the error string
-        """
-        if not condition:
-            raise error_class(message.format(*args, **kwargs))
+    elif 0.75 <= ax <= 0.9375:
+        # This approximation, taken from Table 29 of Blair et al., is valid 
+        # for .75<=|x|<=.9375 and has a maximum relative error of 4.17 x 10^-8.
+        p = (-.12402565221, 1.0688059574, -1.9594556078, .4230581357)
+        q = (-.08827697997, .8900743359, -2.1757031196, 1.0000000000)
+        t = ax * ax - 0.9375 * 0.9375
+        r = (ax * (p[0] + t * (p[1] + t * (p[2] + t * p[3]))) 
+             / (q[0] + t * (q[1] + t * (q[2] + t * q[3]))))
+        
+    elif ax >= 0.9375 and ax <= (1.0 - 1.0e-9):
+        # This approximation, taken from Table 50 of Blair et al., is valid 
+        # for .9375<=|x|<=1-10^-100 and has a maximum relative error of 
+        # 2.45 x 10^-8.
+        p = (.1550470003116, 1.382719649631, .690969348887, -1.128081391617,
+             .680544246825, -.16444156791)
+        q = (.155024849822, 1.385228141995, 1.000000000000)
+        t = 1.0 / math.sqrt(-math.log(1.0 - ax))
+        r = ((p[0] / t + p[1] + t * (p[2] + t * (p[3] + t * (p[4] + t * p[5])))) 
+             / (q[0] + t * (q[1] + t * (q[2]))))
+    
+    else:
+        r = math.inf
+    
+    return sign(y) * r
+
+    
+def beta(z: float, w: float) -> float:
+    """
+    Calculates Beta(z, w) where Beta(z, w) = Gamma(z) * Gamma(w) / Gamma(z + w).
+    
+    Raises
+    ------
+    TypeEsception when z or w are not numbers 
+    ValueException when z < 0 or w < 0
+    """
+    if not isinstance(w, (float, int)):
+        raise TypeError(f"Parameter w {w} is not a number")
+    if not isinstance(z, (float, int)):
+        raise TypeError(f"Parameter z {z} is not a number")
+    if z < 0 or w < 0:
+        raise ValueError(f"Parameter z {z} or w {w} < 0")
+    return math.exp(math.lgamma(z) + math.lgamma(w) - math.lgamma(z + w))
+
