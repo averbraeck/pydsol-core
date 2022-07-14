@@ -4,6 +4,7 @@ from typing import Union
 
 from pydsol.core.streams import StreamInterface
 from pydsol.core.utils import get_module_logger
+from math import floor
 
 __all__ = [
     "Distribution",
@@ -626,3 +627,68 @@ class DistGamma(Distribution):
     
     def __repr__(self) -> str:
         return str(self)
+
+
+
+class DistGeometric(Distribution):
+    """
+    The Geometric distribution is the only discrete memoryless random 
+    distribution. It is a discrete analog of the exponential distribution. 
+    There are two variants, one that indicates the number of Bernoulli trials 
+    to get the first success (1, 2, 3, ...), and one that indicates the 
+    number of failures before the first success (0, 1, 2, ...). In line
+    with Law &amp; Kelton, the version of the number of failures before 
+    the first success is modeled here, so X ={0, 1, 2, ...}.
+    For more information on this distribution see 
+    https://mathworld.wolfram.com/GeometricDistribution.html. 
+    """
+    
+    def __init__(self, stream: StreamInterface, p: float):
+        """
+        Construct a new geometric distribution for a repeated set of 
+        Bernoulli trials, indicating the number of failures before the first 
+        success with probability p of success on each trial.
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        p: float
+            the probability for success for each individual Bernoulli trial
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when p is not a float
+        ValueError when p < 0 or p > 1
+        """
+        super().__init__(stream)
+        if not isinstance(p, float):
+            raise TypeError(f"parameter p {p} is not a float")
+        if not 0 <= p <= 1:
+            raise ValueError(f"parameter p {p} not between 0 and 1")
+        self._p = p
+        self._lnp = math.log(1.0 - self._p)
+        
+    def draw(self) -> int:
+        """
+        Draw a value from the Binomial distribution, where the return value is
+        the number of failures of independent Bernoulli trials until the
+        first success.
+        """
+        u = self._stream.next_float()
+        return math.floor(math.log(u) / self._lnp)
+    
+    @property
+    def p(self) -> float:
+        """Return the parameter value p, the probability for success 
+        for each individual Bernoulli trial"""
+        return self._p
+    
+    def __str__(self) -> str:
+        return f"DisGeometric[p={self._p}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
