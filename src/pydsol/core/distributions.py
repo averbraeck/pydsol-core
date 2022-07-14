@@ -94,14 +94,14 @@ class DistBernoulli(Distribution):
         return 0
     
     @property
-    def p(self):
+    def p(self) -> float:
         """Return the parameter value p"""
         return self._p
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DistBernoulli[p={self._p}]"
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -165,19 +165,19 @@ class DistBeta(Distribution):
         self._dist2 = DistGamma(self._stream, self._alpha2, 1.0)
 
     @property
-    def alpha1(self):
+    def alpha1(self) -> float:
         """Return the parameter value alpha1"""
         return self._alpha1
 
     @property
-    def alpha2(self):
+    def alpha2(self) -> float:
         """Return the parameter value alpha2"""
         return self._alpha2
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DistBeta[alpha1={self._alpha1}, alpha2={self._alpha2}]"
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -236,20 +236,21 @@ class DistBinomial(Distribution):
         return x
     
     @property
-    def p(self):
+    def p(self) -> float:
         """Return the parameter value p"""
         return self._p
     
     @property
-    def n(self):
+    def n(self) -> int:
         """Return the parameter value n"""
         return self._n
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DisBinomial[p={self._p}, n={self._n}]"
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
+
 
 class DistDiscreteUniform(Distribution):
     """
@@ -259,7 +260,7 @@ class DistDiscreteUniform(Distribution):
     distribution.  
     """
     
-    def __init__(self, stream: StreamInterface, lo: int, hi: float):
+    def __init__(self, stream: StreamInterface, lo: int, hi: int):
         """
         Constructs a Discrete uniform distribution. The distribution
         draws from a range of integer numbers with equal probabilities. 
@@ -297,19 +298,19 @@ class DistDiscreteUniform(Distribution):
         return self._stream.next_int(self._lo, self._hi)
     
     @property
-    def lo(self):
+    def lo(self) -> int:
         """Return the parameter value lo (lowest value, inclusive)"""
         return self._lo
     
     @property
-    def hi(self):
+    def hi(self) -> int:
         """Return the parameter value hi (highest value, inclusive)"""
         return self._hi
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DisDiscreteUniform[lo={self._lo}, hi={self._hi}]"
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -339,8 +340,8 @@ class DistConstant(Distribution):
         """
         super().__init__(stream)
         if not (isinstance(constant, float) or isinstance(constant, int)):
-            raise TypeError(f"parameter constant {constant} is not a float")
-        self._constant = float(constant)
+            raise TypeError(f"constant {constant} is not a float / int")
+        self._constant = constant
         
     def draw(self) -> float:
         """
@@ -351,14 +352,108 @@ class DistConstant(Distribution):
         return self._constant
     
     @property
-    def constant(self):
+    def constant(self) -> Union[float, int]:
         """Return the parameter value constant"""
         return self._constant
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DistConstant[constant={self._constant}]"
     
-    def __repr__(self):
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class DistErlang(Distribution):
+    """
+    The Erlang distribution is the distribution of a sum of k independent 
+    exponential variables with the scale parameter as the mean. The scale 
+    parameter is equal to 1/rate or 1/lambda;, giving the entire Erlang 
+    distribution a mean of k*scale. For more information on this distribution 
+    see https://mathworld.wolfram.com/ErlangDistribution.html.
+    """
+    
+    GAMMATHRESHOLD = 10
+    """the threshold above which we use a gamma function and below we use
+    repeated drawing"""
+    
+    def __init__(self, stream: StreamInterface, scale: float, k: int):
+        """
+        Construct a new Erlang distribution with k and a mean (so not k and 
+        a rate) as parameters. It is the distribution of a sum of k 
+        independent exponential variables with the scale parameter as the mean. 
+        The scale parameter is equal to 1/rate or 1/lambda, giving the 
+        entire Erlang distribution a mean of k*scale.
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        scale: float
+            the mean of a single sample from the exponential distribution, 
+            of which k are summed. Equal to 1/rate or 1/lambda.
+        k: int
+            the shape parameter of the Erlang distribution. The shape k is 
+            the number of times a drawing is done from the exponential 
+            distribution, where the Erlang distribution is the sum of these 
+            k independent exponential variables.
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when scale is not a float or int
+        TypeError when k is not an int
+        ValueError when k <= 0 or scale <= 0
+        """
+        if not (isinstance(scale, float) or isinstance(scale, int)):
+            raise TypeError(f"parameter scale {scale} is not a float")
+        if not isinstance(k, int):
+            raise TypeError(f"parameter k {k} is not an int")
+        if scale <= 0:
+            raise ValueError(f"parameter scale {scale} <= 0")
+        if k <= 0:
+            raise ValueError(f"parameter k {k} <= 0")
+        self._scale = float(scale)
+        self._k = k
+        self._lambda = 1.0 / scale
+        super().__init__(stream)  # after setting k and scale
+        
+    def draw(self) -> float:
+        """
+        Draw a value from the Erlang distribution. Based on the algorithm in 
+        Law & Kelton, Simulation Modeling and Analysis, 1991.
+        """
+        if self._k < self.GAMMATHRESHOLD:
+            # according to Law and Kelton, Simulation Modeling and Analysis
+            # repeated drawing and composition is usually faster for k<=10
+            product: float = 1.0
+            for _ in range(self._k):
+                product *= self._stream.next_float()
+            return -self._scale * math.log(product)
+        return self._dist_gamma.draw()
+
+    def _set_stream(self, stream: StreamInterface):
+        """Internal method to initialize the underlying distribution when
+        a new random stream is set for this distribution."""
+        super()._set_stream(stream)
+        if self._k < self.GAMMATHRESHOLD:
+            self._dist_gamma = None
+        else:
+            self._dist_gamma = DistGamma(stream, self._k, self._scale)
+    
+    @property
+    def scale(self) -> float:
+        """Return the parameter value scale"""
+        return self._scale
+    
+    @property
+    def k(self) -> int:
+        """Return the parameter value k"""
+        return self._k
+    
+    def __str__(self) -> str:
+        return f"DisErlang[scale={self._scale}, k={self._k}]"
+    
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -461,17 +556,17 @@ class DistGamma(Distribution):
             return -self._scale * math.log(self._stream.next_float())
 
     @property
-    def shape(self):
+    def shape(self) -> float:
         """Return the parameter value shape, also called alpha or k"""
         return self._shape
 
     @property
-    def scale(self):
+    def scale(self) -> float:
         """Return the parameter value scale, also  called beta or theta"""
         return self._scale
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DistGamma[shape={self._shape}, scale={self._scale}]"
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
