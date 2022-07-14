@@ -21,7 +21,7 @@ import math
 import re
 from typing import TypeVar, Generic
 
-from pydsol.core.utils import get_module_logger, Assert
+from pydsol.core.utils import get_module_logger
 
 
 __all__ = [
@@ -534,9 +534,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(type(self) == type(other), TypeError,
-            "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not type(self) == type(other):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) < float(other)
          
     def __le__(self, other) -> bool:
@@ -549,9 +549,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(type(self) == type(other), TypeError,
-            "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not type(self) == type(other):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) <= float(other)
          
     def __gt__(self, other) -> bool:
@@ -563,9 +563,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(type(self) == type(other), TypeError,
-            "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not type(self) == type(other):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) > float(other)
          
     def __ge__(self, other) -> bool:
@@ -578,9 +578,9 @@ class Quantity(Generic[Q], ABC, float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(type(self) == type(other), TypeError,
-            "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not type(self) == type(other):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) >= float(other)
          
     def __str__(self):
@@ -1163,10 +1163,9 @@ class SI(float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
-                    TypeError,
-                    "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not (isinstance(other, SI) and self._sisig == other._sisig):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) < float(other)
          
     def __le__(self, other) -> bool:
@@ -1179,10 +1178,9 @@ class SI(float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
-                    TypeError,
-                    "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not (isinstance(other, SI) and self._sisig == other._sisig):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) <= float(other)
          
     def __gt__(self, other) -> bool:
@@ -1194,10 +1192,9 @@ class SI(float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
-                    TypeError,
-                    "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not (isinstance(other, SI) and self._sisig == other._sisig):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) > float(other)
          
     def __ge__(self, other) -> bool:
@@ -1210,10 +1207,9 @@ class SI(float):
         TypeError
             when the two quantities are of different types
         """
-        Assert.that(isinstance(other, SI) and self._sisig == other._sisig,
-                    TypeError,
-                    "comparing incompatible quantities {0} and {1}",
-                    type(self).__name__, type(other).__name__)
+        if not (isinstance(other, SI) and self._sisig == other._sisig):
+            raise TypeError(f"comparing incompatible quantities " 
+                    + f"{type(self).__name__} and {type(other).__name__}")
         return float(self) >= float(other)
          
     def __str__(self):
