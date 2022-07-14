@@ -67,6 +67,12 @@ def test_bernoulli():
         value = dist.draw()
         assert value == 0 or value == 1
 
+    assert math.isclose(dist.probability(0), 0.75, abs_tol=1E-6)
+    assert math.isclose(dist.probability(1), 0.25, abs_tol=1E-6)
+    assert dist.probability(2) == 0.0
+    assert dist.probability(-2) == 0.0
+    assert dist.probability(0.5) == 0.0
+    
     with pytest.raises(TypeError):
         DistBernoulli('x', 0.1)
     with pytest.raises(TypeError):
@@ -95,6 +101,20 @@ def test_binomial():
     for _ in range(20):
         value = dist.draw()
         assert value >= 0 and value <= 4
+
+    assert math.isclose(dist.probability(0), 
+            math.comb(4, 0) * (0.25 ** 0) * (0.75 ** 4), abs_tol=1E-6)
+    assert math.isclose(dist.probability(1), 
+            math.comb(4, 1) * (0.25 ** 1) * (0.75 ** 3), abs_tol=1E-6)
+    assert math.isclose(dist.probability(2), 
+            math.comb(4, 2) * (0.25 ** 2) * (0.75 ** 2), abs_tol=1E-6)
+    assert math.isclose(dist.probability(3), 
+            math.comb(4, 3) * (0.25 ** 3) * (0.75 ** 1), abs_tol=1E-6)
+    assert math.isclose(dist.probability(4), 
+            math.comb(4, 4) * (0.25 ** 4) * (0.75 ** 0), abs_tol=1E-6)
+    assert dist.probability(5) == 0.0
+    assert dist.probability(-1) == 0.0
+    assert dist.probability(0.5) == 0.0
 
     with pytest.raises(TypeError):
         DistBinomial('x', 4, 0.1)
@@ -131,6 +151,17 @@ def test_discrete_uniform():
         value = dist.draw()
         assert value >= 1 and value <= 6
 
+    assert math.isclose(dist.probability(1), 1./6., abs_tol=1E-6) 
+    assert math.isclose(dist.probability(2), 1./6., abs_tol=1E-6)
+    assert math.isclose(dist.probability(3), 1./6., abs_tol=1E-6)
+    assert math.isclose(dist.probability(4), 1./6., abs_tol=1E-6)
+    assert math.isclose(dist.probability(5), 1./6., abs_tol=1E-6)
+    assert math.isclose(dist.probability(6), 1./6., abs_tol=1E-6)
+    assert dist.probability(0) == 0.0
+    assert dist.probability(7) == 0.0
+    assert dist.probability(-1) == 0.0
+    assert dist.probability(3.5) == 0.0
+
     with pytest.raises(TypeError):
         DistDiscreteUniform('x', 1, 6)
     with pytest.raises(TypeError):
@@ -159,6 +190,12 @@ def test_geometric():
         assert value >= 0
         dist.stream = MersenneTwister(10)
         assert dist.draw() == value
+
+        for k in range(10):
+            assert math.isclose(dist.probability(k), 
+                p * ((1 - p) ** k), abs_tol=1E-6) 
+        assert dist.probability(-1) == 0.0
+        assert dist.probability(3.5) == 0.0
 
     with pytest.raises(TypeError):
         DistGeometric('x', 0.1)
