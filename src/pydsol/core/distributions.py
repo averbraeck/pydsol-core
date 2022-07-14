@@ -3,14 +3,32 @@ import math
 from typing import Union
 
 from pydsol.core.streams import StreamInterface
-from pydsol.core.utils import get_module_logger
-from math import floor
+from pydsol.core.utils import get_module_logger, beta
 
 __all__ = [
     "Distribution",
+    "DistContinuous",
+    "DistSiscrete",
     "DistBernoulli",
     "DistBeta",
+    "DistBinomial",
+    "DistConstant",
+    "DistDiscreteUniform",
+    "DistErlang",
+    "DistExponential",
     "DistGamma",
+    "DistGeometric",
+    "DistLogNormal",
+    "DistLogNormalTrunc",
+    "DistNegBinomial",
+    "DistNormal",
+    "DistNormalTrunc",
+    "DistPearson5",
+    "DistPearson6",
+    "DistPoisson",
+    "DistTriangular",
+    "DistUniform",
+    "DistWeibull",
     ]
 
 logger = get_module_logger('distributions')
@@ -53,7 +71,37 @@ class Distribution(ABC):
         self._stream: StreamInterface = stream
 
 
-class DistBernoulli(Distribution):
+class DistContinuous(Distribution):
+    """
+    The Continuous distribution. For more information on this distribution 
+    see https://mathworld.wolfram.com/ContinuousDistribution.html. 
+    """
+
+    def __init__(self, stream: StreamInterface):
+        """Initialize the distribution with a random stream."""
+        super().__init__(stream)
+
+    @abstractmethod
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+
+
+class DistDiscrete(Distribution):
+    """
+    The Discrete distribution. For more information on this distribution 
+    see https://mathworld.wolfram.com/DiscreteDistribution.html. 
+    """
+
+    def __init__(self, stream: StreamInterface):
+        """Initialize the distribution with a random stream."""
+        super().__init__(stream)
+
+    @abstractmethod
+    def probability(self, observation: int) -> float:
+        """Returns the probability of the observation for the distribution."""
+
+
+class DistBernoulli(DistDiscrete):
     """
     The Bernoulli distribution is a discrete distribution function with
     a single trial with a probability p for success (X = 1) and a probability
@@ -93,7 +141,15 @@ class DistBernoulli(Distribution):
         if self._stream.next_float() <= self._p:
             return 1
         return 0
-    
+
+    def probability(self, observation: int) -> float:
+        """Returns the probability of the observation for the distribution."""
+        if observation == 0:
+            return 1.0 - self._p
+        elif observation == 1:
+            return self._p
+        return 0.0
+            
     @property
     def p(self) -> float:
         """Return the parameter value p"""
@@ -106,7 +162,7 @@ class DistBernoulli(Distribution):
         return str(self)
 
 
-class DistBeta(Distribution):
+class DistBeta(DistContinuous):
     """
     The Beta distribution is a continuous distribution that is bound between 
     0 and 1 for the outcome, and has two shape parameters alpha 1 and alpha2. 
@@ -158,6 +214,13 @@ class DistBeta(Distribution):
         y2 = self._dist2.draw()
         return y1 / (y1 + y2)
 
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if 0 < x < 1:
+            return (x ** (self.alpha1 - 1) * (1.0 - x) ** (self.alpha2 - 1)
+                    / beta(self._alpha1, self._alpha2))
+        return 0.0
+
     def _set_stream(self, stream: StreamInterface):
         """Internal method to initialize the underlying distributions when
         a new random stream is set for this distribution."""
@@ -182,7 +245,7 @@ class DistBeta(Distribution):
         return str(self)
 
 
-class DistBinomial(Distribution):
+class DistBinomial(DistDiscrete):
     """
     The Binomial distribution is a discrete distribution function that models
     the probability of the number of successes in a sequence of n 
@@ -235,7 +298,14 @@ class DistBinomial(Distribution):
             if self._stream.next_float() <= self._p:
                 x += 1
         return x
-    
+
+    def probability(self, observation: int) -> float:
+        """Returns the probability of the observation for the distribution."""
+        if isinstance(observation, int) and 0 <= observation <= self._n:
+            return (math.comb(self._n, observation) * self._p ** observation
+                    * (1.0 - self._p) ** (self._n - observation))
+        return 0.0;
+
     @property
     def p(self) -> float:
         """Return the parameter value p"""
@@ -253,7 +323,7 @@ class DistBinomial(Distribution):
         return str(self)
 
 
-class DistDiscreteUniform(Distribution):
+class DistDiscreteUniform(DistDiscrete):
     """
     The Discrete Uniform distribution is a discrete distribution function 
     that models the probability of drawing from a range of integer numbers 
@@ -297,7 +367,13 @@ class DistDiscreteUniform(Distribution):
         Draw a value from the Discrete Uniform distribution.
         """
         return self._stream.next_int(self._lo, self._hi)
-    
+
+    def probability(self, observation: int) -> float:
+        """Returns the probability of the observation for the distribution."""
+        if isinstance(observation, int) and self._lo <= observation <= self._hi:
+            return 1.0 / (self._hi - self._lo + 1.0)
+        return 0.0;
+
     @property
     def lo(self) -> int:
         """Return the parameter value lo (lowest value, inclusive)"""
@@ -315,7 +391,7 @@ class DistDiscreteUniform(Distribution):
         return str(self)
 
 
-class DistConstant(Distribution):
+class DistConstant(DistContinuous):
     """
     The Constant distribution is a continuous distribution that always returns
     the same value. It can be used in situations where a distribution function
@@ -351,6 +427,12 @@ class DistConstant(Distribution):
         """
         self._stream.next_float()
         return self._constant
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x == self._constant:
+            return 1.0  # actually this shoudl be math.inf...
+        return 0.0
     
     @property
     def constant(self) -> Union[float, int]:
@@ -364,7 +446,7 @@ class DistConstant(Distribution):
         return str(self)
 
 
-class DistErlang(Distribution):
+class DistErlang(DistContinuous):
     """
     The Erlang distribution is the distribution of a sum of k independent 
     exponential variables with the scale parameter as the mean. The scale 
@@ -440,7 +522,15 @@ class DistErlang(Distribution):
             self._dist_gamma = None
         else:
             self._dist_gamma = DistGamma(stream, self._k, self._scale)
-    
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x >= 0:
+            return (self._lambda * math.exp(-self._lambda * x) 
+                    * (self._lambda * x) ** (self._k - 1) 
+                    / math.factorial(self._k - 1))
+        return 0.0
+
     @property
     def scale(self) -> float:
         """Return the parameter value scale"""
@@ -458,7 +548,7 @@ class DistErlang(Distribution):
         return str(self)
 
 
-class DistExponential(Distribution):
+class DistExponential(DistContinuous):
     """
     The exponential distribution describes the interarrival times of 
     entities to a system that occur randomly at a constant rate. The 
@@ -502,6 +592,12 @@ class DistExponential(Distribution):
         """
         return -self._mean * math.log(self._stream.next_float())
 
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x >= 0:
+            return (1.0 / self._mean) * math.exp(-x / self._mean) 
+        return 0.0
+
     @property
     def mean(self) -> float:
         """Return the parameter value mean"""
@@ -514,7 +610,7 @@ class DistExponential(Distribution):
         return str(self)
 
 
-class DistGamma(Distribution):
+class DistGamma(DistContinuous):
     """
     The Gamma distribution is a continuous distribution that yields positive
     numbers. The gamma distribution represents the time to complete some task, 
@@ -612,6 +708,14 @@ class DistGamma(Distribution):
             #  Gamma(1.0, scale) ~ exponential with mean = scale
             return -self._scale * math.log(self._stream.next_float())
 
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x > 0:
+            return ((self._scale ** -self._shape) * (x ** (self._shape - 1))
+                    * math.exp(-1.0 * x / self._scale)
+                    / math.gamma(self._shape)) 
+        return 0.0
+
     @property
     def shape(self) -> float:
         """Return the parameter value shape, also called alpha or k"""
@@ -629,8 +733,7 @@ class DistGamma(Distribution):
         return str(self)
 
 
-
-class DistGeometric(Distribution):
+class DistGeometric(DistDiscrete):
     """
     The Geometric distribution is the only discrete memoryless random 
     distribution. It is a discrete analog of the exponential distribution. 
@@ -678,7 +781,13 @@ class DistGeometric(Distribution):
         """
         u = self._stream.next_float()
         return math.floor(math.log(u) / self._lnp)
-    
+
+    def probability(self, observation: int) -> float:
+        """Returns the probability of the observation for the distribution."""
+        if isinstance(observation, int) and observation >= 0:
+            return self._p * (1.0 - self._p) ** observation
+        return 0.0;
+
     @property
     def p(self) -> float:
         """Return the parameter value p, the probability for success 
@@ -690,5 +799,4 @@ class DistGeometric(Distribution):
     
     def __repr__(self) -> str:
         return str(self)
-
 
