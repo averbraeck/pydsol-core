@@ -457,6 +457,62 @@ class DistErlang(Distribution):
         return str(self)
 
 
+class DistExponential(Distribution):
+    """
+    The exponential distribution describes the interarrival times of 
+    entities to a system that occur randomly at a constant rate. The 
+    exponential distribution here is characterized by the mean interarrival 
+    time, but can also be characterized by this rate parameter lambda where
+    mean = 1 / lambda. For more information on this distribution see 
+    https://mathworld.wolfram.com/ExponentialDistribution.html.
+    """
+    
+    def __init__(self, stream: StreamInterface, mean: float):
+        """
+        Construct a new exponential distribution. The exponential 
+        distribution describes the interarrival times of entities to a
+         system that occur randomly at a constant rate. The exponential 
+         distribution can also be characterized by this rate parameter lambda
+         where mean = 1 / lambda.
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        mean: float
+            the mean of the interarrival time. Equal to 1/rate or 1/lambda.
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when mean is not a float or int
+        ValueError when mean <= 0
+        """
+        super().__init__(stream)
+        if not (isinstance(mean, float) or isinstance(mean, int)):
+            raise TypeError(f"parameter mean {mean} is not a float or int")
+        if mean <= 0:
+            raise ValueError(f"parameter mean {mean} <= 0")
+        self._mean = float(mean)
+        
+    def draw(self) -> float:
+        """
+        Draw a value from the Exponential distribution.
+        """
+        return -self._mean * math.log(self._stream.next_float())
+
+    @property
+    def mean(self) -> float:
+        """Return the parameter value mean"""
+        return self._mean
+    
+    def __str__(self) -> str:
+        return f"DisExponential[mean={self._mean}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
 class DistGamma(Distribution):
     """
     The Gamma distribution is a continuous distribution that yields positive
