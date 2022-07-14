@@ -4,7 +4,6 @@ This module contains generic utilities for the pydsol code.
 import logging
 import math
 import sys
-from typing import Any
 
 __all__ = [
     "DSOLError",
