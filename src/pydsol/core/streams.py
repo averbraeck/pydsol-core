@@ -180,7 +180,7 @@ class MersenneTwister(StreamInterface):
         lo: int
             the minimal value (inclusive)
         hi: int
-            the maximum value (nnclusive)
+            the maximum value (inclusive)
             
         Returns
         -------
