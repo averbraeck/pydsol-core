@@ -3,7 +3,7 @@ import math
 from typing import Union
 
 from pydsol.core.streams import StreamInterface
-from pydsol.core.utils import get_module_logger, beta
+from pydsol.core.utils import get_module_logger, beta, erf_inv
 
 __all__ = [
     "Distribution",
@@ -191,9 +191,9 @@ class DistBeta(DistContinuous):
         TypeError when alpha1 or alpha2 is not a float or int
         ValueError when alpha1 <= 0 or alpha2 <= 0
         """
-        if not (isinstance(alpha1, float) or isinstance(alpha1, int)):
+        if not isinstance(alpha1, (float, int)):
             raise TypeError(f"parameter alpha1 {alpha1} is not a float")
-        if not (isinstance(alpha2, float) or isinstance(alpha2, int)):
+        if not isinstance(alpha2, (float, int)):
             raise TypeError(f"parameter alpha2 {alpha2} is not a float")
         if alpha1 <= 0:
             raise ValueError(f"parameter alpha1 {alpha1} should be > 0")
@@ -416,7 +416,7 @@ class DistConstant(DistContinuous):
         TypeError when constant is not a float or int
         """
         super().__init__(stream)
-        if not (isinstance(constant, float) or isinstance(constant, int)):
+        if not isinstance(constant, (float, int)):
             raise TypeError(f"constant {constant} is not a float / int")
         self._constant = constant
         
@@ -487,7 +487,7 @@ class DistErlang(DistContinuous):
         TypeError when k is not an int
         ValueError when k <= 0 or scale <= 0
         """
-        if not (isinstance(scale, float) or isinstance(scale, int)):
+        if not isinstance(scale, (float, int)):
             raise TypeError(f"parameter scale {scale} is not a float")
         if not isinstance(k, int):
             raise TypeError(f"parameter k {k} is not an int")
@@ -580,7 +580,7 @@ class DistExponential(DistContinuous):
         ValueError when mean <= 0
         """
         super().__init__(stream)
-        if not (isinstance(mean, float) or isinstance(mean, int)):
+        if not isinstance(mean, (float, int)):
             raise TypeError(f"parameter mean {mean} is not a float or int")
         if mean <= 0:
             raise ValueError(f"parameter mean {mean} <= 0")
@@ -621,9 +621,12 @@ class DistGamma(DistContinuous):
 
     def __init__(self, stream: StreamInterface, shape: float, scale: float):
         """
-        Constructs a new Beta distribution, with two shape parameters shape
-        and scale. The Beta distribution is a continuous distribution and
-        will return a number between 0 and 1 as the result.
+        Constructs a new Gamma distribution, with two parameters: shape
+        and scale. The Gamma distribution is a continuous distribution and
+        will return a positive number. The Gamma distribution represents 
+        the time to complete some task, e.g. customer service or machine 
+        repair. The parameters are not rate-related, but average-related, 
+        so the mean is (shape * scale) and the variance is (shape * scale ** 2).
         
         Parameters
         ----------
@@ -641,9 +644,9 @@ class DistGamma(DistContinuous):
         ValueError when shape <= 0 or scale <= 0
         """
         super().__init__(stream)
-        if not (isinstance(shape, float) or isinstance(shape, int)):
+        if not isinstance(shape, (float, int)):
             raise TypeError(f"parameter shape {shape} is not a float")
-        if not (isinstance(scale, float) or isinstance(scale, int)):
+        if not isinstance(scale, (float, int)):
             raise TypeError(f"parameter scale {scale} is not a float")
         if shape <= 0:
             raise ValueError(f"parameter shape {shape} should be > 0")
@@ -740,7 +743,7 @@ class DistGeometric(DistDiscrete):
     There are two variants, one that indicates the number of Bernoulli trials 
     to get the first success (1, 2, 3, ...), and one that indicates the 
     number of failures before the first success (0, 1, 2, ...). In line
-    with Law &amp; Kelton, the version of the number of failures before 
+    with Law & Kelton, the version of the number of failures before 
     the first success is modeled here, so X ={0, 1, 2, ...}.
     For more information on this distribution see 
     https://mathworld.wolfram.com/GeometricDistribution.html. 
@@ -796,6 +799,209 @@ class DistGeometric(DistDiscrete):
     
     def __str__(self) -> str:
         return f"DisGeometric[p={self._p}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
+
+class DistNormal(DistContinuous):
+    """
+    The Normal distribution is a continuous distribution that plays an 
+    important role in statistics. When adding (samples from) one or more
+    distributions, the distribution of the sum and of the sample average 
+    becomes normally distributed as a result of the Central Limit Theorem.
+    Still, the Normal distribution is not used often in (discrete event)
+    simulation because it is unbounded and can return negative values. 
+    Therefore, its use for processing times and inter-arrival times, but
+    even something like a length, should be discouraged. Instead, 
+    distributions like Exponential, Gamma, Erlang, Pearson, or Weibull 
+    (bounded by 0 -- always positive) or Triangular, Uniform or Beta
+    (bounded by a minimum and maximum value) are to be preferred.
+    """
+
+    def __init__(self, stream: StreamInterface, mu: float = 0.0, 
+                 sigma: float = 1.0):
+        """
+        Constructs a new Normal distribution, with two parameters mu for
+        the mean, and sigma for the standard deviation. The Normal 
+        distribution is a continuous distribution and will return a number 
+        between minus infinity and infinity as the result. When the parameters
+        are not specified, the so-called standard-normal distribution is
+        created, with mu equal to 0.0, and sigma equal to 1.0.
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        mu: float or int
+            the mean of the Normal distribution
+        sigma: float or int
+            the standard deviation of the Normal distribution
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when mu or sigma is not a float or int
+        ValueError when sigma <= 0
+        """
+        super().__init__(stream)
+        if not isinstance(mu, (float, int)):
+            raise TypeError(f"parameter mu {mu} is not a float or int")
+        if not isinstance(sigma, (float, int)):
+            raise TypeError(f"parameter sigma {sigma} is not a float or int")
+        if sigma <= 0:
+            raise ValueError(f"parameter sigma {sigma} should be > 0")
+        self._mu: float = float(mu)
+        self._sigma: float = float(sigma)
+        self._saved_gaussian: float = 0.0  # helper variable
+        self._have_saved_gaussian = False  # helper variable
+        
+        
+    def draw(self) -> float:
+        """
+        Draw a value from the Normal distribution with mean mu and standard
+        deviation sigma.
+        """
+        return self._mu + self._sigma * self._next_gaussian()
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        return (1.0 / (self._sigma * math.sqrt(2.0 * math.pi))
+                * math.exp(-0.5 * ((x - self._mu) / self._sigma) ** 2))
+        
+    def cumulative_probability(self, x: float):
+        """Return the cumulative probability of x for this Normal distribution""" 
+        return (0.5 + 0.5 * math.erf((x - self._mu) 
+                / (math.sqrt(2.0) * self._sigma)))
+
+    def inverse_cumulative_probability(self, y: float):
+        """Return the x-value of the given cumulative probability y."""
+        return self._mu + self._sigma * math.sqrt(2.0) * erf_inv(2.0 * y - 1.0)
+
+    def _set_stream(self, stream: StreamInterface):
+        """Internal method to initialize the underlying distribution when
+        a new random stream is set for this distribution."""
+        super()._set_stream(stream)
+        self._have_saved_gaussian = False  # helper variable
+
+    def _next_gaussian(self):
+        """
+        Generates the next pseudorandom, Gaussian (normally) distributed 
+        float value, with mean 0.0 and standard deviation 1.0.
+        See section 3.4.1 of The Art of Computer Programming, Volume 2 by 
+        Donald Knuth.
+        """
+        if self._have_saved_gaussian:
+            self._have_saved_gaussian = False
+            return self._saved_gaussian
+        s = 1.0
+        while s >= 1.0:
+            v1 = 2.0 * self._stream.next_float() - 1.0  # between -1 and 1
+            v2 = 2.0 * self._stream.next_float() - 1.0  # between -1 and 1
+            s = v1 * v1 + v2 * v2
+        norm = math.sqrt(-2.0 * math.log(s) / s)
+        self._saved_gaussian = v2 * norm
+        self._have_saved_gaussian = True
+        return v1 * norm
+        
+    @property
+    def mu(self) -> float:
+        """Return the parameter value mu, the mean of the Normal distribution"""
+        return self._mu
+
+    @property
+    def sigma(self) -> float:
+        """Return the parameter value sigma, the standard deviation of the
+        Normal distribution"""
+        return self._sigma
+    
+    def __str__(self) -> str:
+        return f"DistNormal[mu={self._mu}, sigma={self._sigma}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class DistLogNormal(DistNormal):
+    """
+    The LogNormal distribution for random variable X is such that 
+    ln(X) ~ Normal(mu, sigma).
+    For more information on this distribution see
+    https://mathworld.wolfram.com/LogNormalDistribution.html.
+    """
+
+    def __init__(self, stream: StreamInterface, mu: float = 0.0, 
+                 sigma: float = 1.0):
+        """
+        Constructs a new LogNormal distribution, with two parameters: mu for
+        the mean of the underlying Normal distribution, and sigma for the 
+        standard deviation of the underlying Normal distribution. The 
+        LogNormal distribution is a continuous distribution that yields 
+        positive values. The LogNormal distribution for random variable X 
+        is such that ln(X) ~ Normal(mu, sigma).
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        mu: float or int
+            the mean of the underlying Normal distribution
+        sigma: float or int
+            the standard deviation of the underlying Normal distribution
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when mu or sigma is not a float or int
+        ValueError when sigma <= 0
+        """
+        super().__init__(stream, mu, sigma)
+        # the constant in the lognormal calculation: 2 * sigma^2.
+        self._c2sigma2 = 2.0 * sigma * sigma
+        # the constant in the lognormal calculation: SQRT(2 * pi * sigma^2).
+        self._c2pisigma2 = math.sqrt(math.pi * self._c2sigma2)
+
+    def draw(self) -> float:
+        """
+        Draw a value from the LogNormal distribution with mean mu and standard
+        deviation sigma for the underlying Normal distribution.
+        """
+        return math.exp(super().draw())
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x > 0.0:
+            xminmu = math.log(x) - self._mu
+            return (math.exp(-1 * xminmu * xminmu / self._c2sigma2) 
+                    / (x * self._c2pisigma2))
+        return 0.0 
+        
+    def cumulative_probability(self, x: float):
+        """Return the cumulative probability of x for this LogNormal 
+        distribution""" 
+        if x > 0.0:
+            return super().cumulative_probability(math.log(x)) 
+        return 0.0 
+
+    def inverse_cumulative_probability(self, y: float):
+        """Return the x-value of the given cumulative probability y."""
+        return math.exp(super().inverse_cumulative_probability(y))
+
+    @property
+    def mu(self) -> float:
+        """Return the parameter value mu, note that this is the mean of the
+        underlying Normal distribution"""
+        return self._mu
+
+    @property
+    def sigma(self) -> float:
+        """Return the parameter value sigma, note that this is the standard
+        deviation of the underlying Normal distribution"""
+        return self._sigma
+    
+    def __str__(self) -> str:
+        return f"DistLogNormal[Normal.mu={self._mu}, Mormal.sigma={self._sigma}]"
     
     def __repr__(self) -> str:
         return str(self)
