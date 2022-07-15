@@ -291,7 +291,7 @@ class DistBinomial(DistDiscrete):
     def draw(self) -> int:
         """
         Draw a value from the Binomial distribution, where the return value is
-        th number of successes in n independent Bernoulli trials.
+        the number of successes in n independent Bernoulli trials.
         """
         x: int = 0
         for _ in range(self._n):
@@ -317,7 +317,7 @@ class DistBinomial(DistDiscrete):
         return self._n
     
     def __str__(self) -> str:
-        return f"DisBinomial[p={self._p}, n={self._n}]"
+        return f"DistBinomial[p={self._p}, n={self._n}]"
     
     def __repr__(self) -> str:
         return str(self)
@@ -385,7 +385,7 @@ class DistDiscreteUniform(DistDiscrete):
         return self._hi
     
     def __str__(self) -> str:
-        return f"DisDiscreteUniform[lo={self._lo}, hi={self._hi}]"
+        return f"DistDiscreteUniform[lo={self._lo}, hi={self._hi}]"
     
     def __repr__(self) -> str:
         return str(self)
@@ -542,7 +542,7 @@ class DistErlang(DistContinuous):
         return self._k
     
     def __str__(self) -> str:
-        return f"DisErlang[scale={self._scale}, k={self._k}]"
+        return f"DistErlang[scale={self._scale}, k={self._k}]"
     
     def __repr__(self) -> str:
         return str(self)
@@ -604,7 +604,7 @@ class DistExponential(DistContinuous):
         return self._mean
     
     def __str__(self) -> str:
-        return f"DisExponential[mean={self._mean}]"
+        return f"DistExponential[mean={self._mean}]"
     
     def __repr__(self) -> str:
         return str(self)
@@ -798,11 +798,94 @@ class DistGeometric(DistDiscrete):
         return self._p
     
     def __str__(self) -> str:
-        return f"DisGeometric[p={self._p}]"
+        return f"DistGeometric[p={self._p}]"
     
     def __repr__(self) -> str:
         return str(self)
 
+
+class DistNegBinomial(DistDiscrete):
+    """
+    The Negative Binomial distribution, also known as the Pascal distribution 
+    or Polya distribution. It gives the probability of x failures where 
+    there are s-1 successes in a total of x+s-1 Bernoulli trials, and 
+    trial (x+s) is a success. The chance for success is p for each trial. 
+    For more information on this distribution see
+    https://mathworld.wolfram.com/NegativeBinomialDistribution.html.
+    """
+    
+    def __init__(self, stream: StreamInterface, s: int, p: float):
+        """
+        Constructs a Negative Binomial distribution. It gives the probability 
+        of x failures where there are s-1 successes in a total of x+s-1 
+        Bernoulli trials, and trial (x+s) is a success
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        s: int
+            the number of successes in the sequence of (x+n) trials, 
+            where trial (x+n) is a success.
+        p: float
+            the probability of success for each individual trial
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when p is not a float
+        TypeError when s is not an int
+        ValueError when p < 0 or p > 1 or s <= 0
+        """
+        super().__init__(stream)
+        if not isinstance(p, float):
+            raise TypeError(f"parameter p {p} is not a float")
+        if not isinstance(s, int):
+            raise TypeError(f"parameter s {s} is not an int")
+        if not 0 <= p <= 1:
+            raise ValueError(f"parameter p {p} not between 0 and 1")
+        if s <= 0:
+            raise ValueError(f"parameter s {s} <= 0")
+        self._p = p
+        self._s = s
+        # helper variable equal to ln(1-p) to avoid repetitive calculation.
+        self._lnp = math.log(1.0 - self._p)
+        
+    def draw(self) -> int:
+        """
+        Draw a value from the Binomial distribution, where the return value is
+        the number of successes in n independent Bernoulli trials.
+        """
+        x: int = 0
+        for _ in range(self._s):
+            u = self._stream.next_float()
+            x += math.floor(math.log(u) / self._lnp)
+        return x
+
+    def probability(self, observation: int) -> float:
+        """Returns the probability of the observation for the distribution."""
+        if isinstance(observation, int) and observation >= 0:
+            return (math.comb(self._s + observation - 1, observation) 
+                    * self._p ** self._s * (1.0 - self._p) ** (observation))
+        return 0.0;
+
+    @property
+    def p(self) -> float:
+        """Return the parameter value p, the probability of success for 
+        each individual trial in the negative binomial distribution."""
+        return self._p
+    
+    @property
+    def s(self) -> int:
+        """Return the parameter value s, the number of successes in the 
+        sequence of (x+n) trials, where trial (x+n) is a success."""
+        return self._s
+    
+    def __str__(self) -> str:
+        return f"DistNegBinomial[p={self._p}, s={self._s}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class DistNormal(DistContinuous):
@@ -820,8 +903,8 @@ class DistNormal(DistContinuous):
     (bounded by a minimum and maximum value) are to be preferred.
     """
 
-    def __init__(self, stream: StreamInterface, mu: float = 0.0, 
-                 sigma: float = 1.0):
+    def __init__(self, stream: StreamInterface, mu: float=0.0,
+                 sigma: float=1.0):
         """
         Constructs a new Normal distribution, with two parameters mu for
         the mean, and sigma for the standard deviation. The Normal 
@@ -856,7 +939,6 @@ class DistNormal(DistContinuous):
         self._sigma: float = float(sigma)
         self._saved_gaussian: float = 0.0  # helper variable
         self._have_saved_gaussian = False  # helper variable
-        
         
     def draw(self) -> float:
         """
@@ -931,8 +1013,8 @@ class DistLogNormal(DistNormal):
     https://mathworld.wolfram.com/LogNormalDistribution.html.
     """
 
-    def __init__(self, stream: StreamInterface, mu: float = 0.0, 
-                 sigma: float = 1.0):
+    def __init__(self, stream: StreamInterface, mu: float=0.0,
+                 sigma: float=1.0):
         """
         Constructs a new LogNormal distribution, with two parameters: mu for
         the mean of the underlying Normal distribution, and sigma for the 
