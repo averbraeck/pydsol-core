@@ -26,12 +26,12 @@ class RunControl(Generic[TIME]):
                  run_length: TIME):
         if not isinstance(name, str):
             raise DSOLError("name {name} should be a str")
-        if not (isinstance(start_time, float) or isinstance(start_time, int)):
+        if not isinstance(start_time, (float, int)):
             raise DSOLError("start_time {start_time} should be numeric")
         if not (isinstance(warmup_period, float) or \
                 isinstance(warmup_period, int)):
             raise DSOLError("warmup_period {warmup_period} should be numeric")
-        if not (isinstance(run_length, float) or isinstance(run_length, int)):
+        if not isinstance(run_length, (float, int)):
             raise DSOLError("run_length {run_length} should be numeric")
         self._name = name
         self._start_sim_time = start_time

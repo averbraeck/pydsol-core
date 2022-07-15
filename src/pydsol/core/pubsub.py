@@ -329,7 +329,7 @@ class TimedEvent(Event):
             if the EventType specified metadata and the content is not a dict
             if the dict content is not consistent with the EventType metadata
         """
-        if not (isinstance(timestamp, int) or isinstance(timestamp, float)):
+        if not isinstance(timestamp, (int, float)):
             raise EventError("timestamp is not an int or a float")
         self._timestamp = timestamp
         super().__init__(event_type, content, check)

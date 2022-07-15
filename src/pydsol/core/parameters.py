@@ -4,7 +4,6 @@ from typing import Union
 from pydsol.core.units import Quantity
 from pydsol.core.utils import get_module_logger
 
-
 __all__ = [
     "InputParameter",
     "InputParameterMap",
@@ -210,9 +209,9 @@ class InputParameterInt(InputParameter):
                          read_only=read_only)
         if not isinstance(default_value, int):
             raise TypeError(f"default value {default_value} is not an int")
-        if not (isinstance(min_value, int) or isinstance(min_value, float)):
+        if not isinstance(min_value, (int, float)):
             raise TypeError(f"min value {min_value} is not an int or float")
-        if not (isinstance(max_value, int) or isinstance(max_value, float)):
+        if not isinstance(max_value, (int, float)):
             raise TypeError(f"max value {max_value} is not an int or float")
         if not isinstance(format_str, str):
             raise TypeError(f"format string {format_str} is not a str")
@@ -267,9 +266,9 @@ class InputParameterFloat(InputParameter):
         if not (isinstance(default_value, float) or 
                 isinstance(default_value, int)):
             raise TypeError(f"default value {default_value} is not float/int")
-        if not (isinstance(min_value, int) or isinstance(min_value, float)):
+        if not isinstance(min_value, (int, float)):
             raise TypeError(f"min value {min_value} is not an int or float")
-        if not (isinstance(max_value, int) or isinstance(max_value, float)):
+        if not isinstance(max_value, (int, float)):
             raise TypeError(f"max value {max_value} is not an int or float")
         if not isinstance(format_str, str):
             raise TypeError(f"format string {format_str} is not a str")
@@ -302,7 +301,7 @@ class InputParameterFloat(InputParameter):
     def value(self, value: float):
         if self.read_only:
             raise ValueError(f"parameter {self.key} is read only")
-        if not (isinstance(value, float) or isinstance(value, int)):
+        if not isinstance(value, (float, int)):
             raise ValueError(f"parameter value {value} not a float")
         if not self._min <= value <= self._max:
             raise ValueError(f"parameter value {value} not between " + \
@@ -371,9 +370,9 @@ class InputParameterQuantity(InputParameter):
                          read_only=read_only)
         if not isinstance(default_value, Quantity):
             raise TypeError(f"default value {default_value} is not a Quantity")
-        if not (isinstance(min_si, int) or isinstance(min_si, float)):
+        if not isinstance(min_si, (int, float)):
             raise TypeError(f"min si value {min_si} is not an int or float")
-        if not (isinstance(max_si, int) or isinstance(max_si, float)):
+        if not isinstance(max_si, (int, float)):
             raise TypeError(f"max si value {max_si} is not an int or float")
         if not isinstance(format_str, str):
             raise TypeError(f"format string {format_str} is not a str")
