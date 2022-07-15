@@ -952,12 +952,12 @@ class DistNormal(DistContinuous):
         return (1.0 / (self._sigma * math.sqrt(2.0 * math.pi))
                 * math.exp(-0.5 * ((x - self._mu) / self._sigma) ** 2))
         
-    def cumulative_probability(self, x: float):
+    def cumulative_probability(self, x: float) -> float:
         """Return the cumulative probability of x for this Normal distribution""" 
         return (0.5 + 0.5 * math.erf((x - self._mu) 
                 / (math.sqrt(2.0) * self._sigma)))
 
-    def inverse_cumulative_probability(self, y: float):
+    def inverse_cumulative_probability(self, y: float) -> float:
         """Return the x-value of the given cumulative probability y."""
         return self._mu + self._sigma * math.sqrt(2.0) * erf_inv(2.0 * y - 1.0)
 
@@ -967,7 +967,7 @@ class DistNormal(DistContinuous):
         super()._set_stream(stream)
         self._have_saved_gaussian = False  # helper variable
 
-    def _next_gaussian(self):
+    def _next_gaussian(self) -> float:
         """
         Generates the next pseudorandom, Gaussian (normally) distributed 
         float value, with mean 0.0 and standard deviation 1.0.
@@ -1000,6 +1000,177 @@ class DistNormal(DistContinuous):
     
     def __str__(self) -> str:
         return f"DistNormal[mu={self._mu}, sigma={self._sigma}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class DistNormalTrunc(DistContinuous):
+    """
+    The Truncated Normal distribution. For more information on the truncated 
+    normal distribution see:  
+    https://en.wikipedia.org/wiki/Truncated_normal_distribution.
+    """
+
+    def __init__(self, stream: StreamInterface, mu: float=0.0,
+                 sigma: float=1.0, lo: float=-math.inf, hi: float=math.inf):
+        """
+        Constructs a new Truncated Normal distribution, with two parameters 
+        mu for the mean, and sigma for the standard deviation. A lo and hi 
+        x-value indicate where the distribution will be 'cut off'. 
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        mu: float or int
+            the mean of the Normal distribution, , before applying the 
+            cutoff by the lo and hi values
+        sigma: float or int
+            the standard deviation of the Normal distribution, before applying
+            the cutoff by the lo and hi values
+        lo: float or int
+            lowest value of the 'remaining' distribution
+        hi: float or int
+            highest value of the 'remaining' distribution
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when mu, sigma, lo or hi are not float or int
+        ValueError when sigma <= 0
+        ValueError when max <= min
+        ValueError when the probabilities are so small that drawing becomes 
+            impossible. The cutoff point is at an interval with an overall 
+            probability of less than 1E-6
+        """
+        super().__init__(stream)
+        if not isinstance(mu, (float, int)):
+            raise TypeError(f"parameter mu {mu} is not a float or int")
+        if not isinstance(sigma, (float, int)):
+            raise TypeError(f"parameter sigma {sigma} is not a float or int")
+        if not isinstance(lo, (float, int)):
+            raise TypeError(f"parameter lo {lo} is not a float or int")
+        if not isinstance(hi, (float, int)):
+            raise TypeError(f"parameter hi {hi} is not a float or int")
+        if sigma <= 0:
+            raise ValueError(f"parameter sigma {sigma} should be > 0")
+        if hi <= lo:
+            raise ValueError(f"parameter hi {hi} <= lo {lo}")
+        self._mu: float = float(mu)
+        self._sigma: float = float(sigma)
+        self._lo = float(lo)
+        self._hi = float(hi)
+        self._cum_prob_lo = self.cumulative_probability_not_truncated(lo)
+        self._cum_prob_diff = self.cumulative_probability_not_truncated(hi) \
+                            -self._cum_prob_lo
+        if self._cum_prob_diff < 1E-6:
+            raise ValueError(f"the indicated interval on this normal "\
+            +f"distribution has a very low probability of {self._cum_prob_diff}")
+        self._prob_dens_factor = 1.0 / self._cum_prob_diff
+        
+    def draw(self) -> float:
+        """
+        Draw a value from the Normal distribution with mean mu and standard
+        deviation sigma on the interval (lo, hi)
+        """
+        d: float = (
+            self.inverse_cumulative_probability_not_truncated(self._cum_prob_lo 
+            +self._cum_prob_diff * self._stream.next_float()))
+        # if inverse cumulative probability gets close to 1, inf is returned.
+        # This corresponds to a value of 'max' for the truncated distribution.
+        if math.isinf(d):
+            if d < 0:
+                return self._lo
+            else:
+                return self._hi
+        if d < self._lo:
+            # rounding error?
+            if abs(d - self._lo) < 1E-6 * abs(self._lo):
+                return self._lo
+            else:
+                raise ValueError(f"drawn value {d} outside of interval "\
+                    f"[min, max] = [{self._lo}, {self._hi}]") 
+        if d > self._hi:
+            # rounding error?
+            if abs(d - self._hi) < 1E-6 * abs(self._hi):
+                return self._hi
+            else:
+                raise ValueError(f"drawn value {d} outside of interval "\
+                    f"[min, max] = [{self._lo}, {self._hi}]") 
+        return d
+    
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x < self._lo or x > self._hi:
+            return 0.0
+        return (self._prob_dens_factor / (self._sigma * math.sqrt(2.0 * math.pi))
+                * math.exp(-0.5 * ((x - self._mu) / self._sigma) ** 2))
+
+    def cumulative_probability(self, x: float) -> float:
+        """Return the cumulative probability of x for the truncated 
+        distribution""" 
+        if x < self._lo:
+            return 0.0
+        if x > self._hi:
+            return 1.0
+        return ((self.cumulative_probability_not_truncated(x) 
+                -self._cum_prob_lo) * self._prob_dens_factor)  
+
+    def cumulative_probability_not_truncated(self, x: float) -> float:
+        """Return the cumulative probability of x for the non-truncated  
+        distribution""" 
+        return (0.5 + 0.5 * math.erf((x - self._mu) 
+                / (math.sqrt(2.0) * self._sigma)))
+
+    def inverse_cumulative_probability(self, y: float) -> float:
+        """Return the x-value of the given cumulative probability y
+        for the truncated distribution."""
+        if y < 0 or y > 1:
+            raise ValueError(f"probability {y} not inn interval [0, 1]")
+        # For extreme cases we return the min and max directly. The method 
+        # inverse_cumulative_probability_not_truncated() can only return 
+        # values from "mu - 10*sigma" to "mu + 10*sigma". If min or max is 
+        # beyond these values, those values would show erroneous results. For 
+        # any cumulative probability that is slightly above 0.0 or slightly  
+        # below 1.0, values in the range from "mu - 10*sigma" to 
+        # "mu + 10*sigma" will always provide a sensible result.
+        if y == 0:
+            return self._lo
+        if y == 1:
+            return self._hi
+        return self.inverse_cumulative_probability_not_truncated(
+                        self._cum_prob_lo + y * self._cum_prob_diff)
+
+    def inverse_cumulative_probability_not_truncated(self, y: float) -> float:
+        """Return the x-value of the given cumulative probability y
+        for the non-truncated distribution."""
+        return self._mu + self._sigma * math.sqrt(2.0) * erf_inv(2.0 * y - 1.0)
+       
+    @property
+    def mu(self) -> float:
+        """Return the parameter value mu, the mean of the Normal distribution"""
+        return self._mu
+
+    @property
+    def sigma(self) -> float:
+        """Return the parameter value sigma, the standard deviation of the
+        Normal distribution"""
+        return self._sigma
+
+    @property
+    def lo(self) -> float:
+        """Return the lower bound of the truncated distribution"""
+        return self._lo
+
+    @property
+    def hi(self) -> float:
+        """Return the upper bound of the truncated distribution"""
+        return self._hi
+    
+    def __str__(self) -> str:
+        return f"DistNormalTrunc[mu={self._mu}, sigma={self._sigma}" + \
+               f", lo={self._lo}, hi={self._hi}]"
     
     def __repr__(self) -> str:
         return str(self)
@@ -1059,14 +1230,14 @@ class DistLogNormal(DistNormal):
                     / (x * self._c2pisigma2))
         return 0.0 
         
-    def cumulative_probability(self, x: float):
+    def cumulative_probability(self, x: float) -> float:
         """Return the cumulative probability of x for this LogNormal 
         distribution""" 
         if x > 0.0:
             return super().cumulative_probability(math.log(x)) 
         return 0.0 
 
-    def inverse_cumulative_probability(self, y: float):
+    def inverse_cumulative_probability(self, y: float) -> float:
         """Return the x-value of the given cumulative probability y."""
         return math.exp(super().inverse_cumulative_probability(y))
 
