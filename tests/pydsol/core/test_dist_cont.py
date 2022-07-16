@@ -8,7 +8,8 @@ import math
 import pytest
 
 from pydsol.core.distributions import Distribution, DistBeta, DistGamma, \
-    DistConstant, DistErlang, DistExponential, DistPearson5, DistPearson6
+    DistConstant, DistErlang, DistExponential, DistPearson5, DistPearson6, \
+    DistTriangular, DistUniform
 from pydsol.core.statistics import Tally
 from pydsol.core.streams import MersenneTwister, StreamInterface
 from pydsol.core.utils import beta
@@ -63,9 +64,11 @@ def test_c_mean_variance():
     c_dist(100000, DistPearson6(stream, 2, 3, 4), 4.0 * 2 / (3 - 1),
             4.0 * 4 * 2 * (2 + 3 - 1) / ((3 - 1) * (3 - 1) * (3 - 2)),
             0.0, nan, 0.5)  # wide range of outcomes for variance
-    # c_dist("DistTriangular", DistTriangular(stream, 1, 4, 9), (1 + 4 + 9) / 3.0,
-    #         (1 * 1 + 4 * 4 + 9 * 9 - 1 * 4 - 1 * 9 - 4 * 9) / 18.0, 1.0, 9.0, 0.01)
-    # c_dist("DistUniform", DistUniform(stream, 0, 1), 0.5, 1.0 / 12.0, 0.0, 1.0, 0.01)
+    c_dist(100000, DistTriangular(stream, 1, 4, 9), (1 + 4 + 9) / 3.0,
+            (1 * 1 + 4 * 4 + 9 * 9 - 1 * 4 - 1 * 9 - 4 * 9) / 18.0, 
+            1.0, 9.0, 0.01)
+    c_dist(100000, DistUniform(stream, 0, 1), 0.5, 1.0 / 12.0, 
+           0.0, 1.0, 0.01)
 
 
 def test_beta():
@@ -321,7 +324,6 @@ def test_gamma():
     with pytest.raises(ValueError):
         DistGamma(stream, 0.1, -2.0)
 
-
 """
 Calculation of Pearson5(2, 1) probability density function in R with 
 the following script:
@@ -565,6 +567,99 @@ def test_pearson6():
         DistPearson6(stream, 0.1, 2.0, -3.0)
     with pytest.raises(ValueError):
         DistPearson6(stream, 0.1, 2.0, 0.0)
+
+
+def test_triangular():
+    stream: StreamInterface = MersenneTwister(10)
+    dist: DistTriangular = DistTriangular(stream, 1, 2, 4)
+    assert stream == dist.stream
+    assert dist.lo == 1
+    assert dist.mode == 2
+    assert dist.hi == 4
+    assert "Triangular" in str(dist)
+    assert "4.0" in str(dist)
+    assert "1.0" in str(dist)
+    assert "2.0" in repr(dist)
+    value: float = dist.draw()
+    assert value >= 0
+    assert dist.draw() != value
+    dist.stream = MersenneTwister(10)
+    assert dist.draw() == value
+
+    assert dist.probability_density(-1.0) == 0
+    assert dist.probability_density(1.0) == 0
+    assert dist.probability_density(4.0) == 0
+    assert dist.probability_density(5.0) == 0
+
+    for x in [xx / 100 for xx in range(0, 500, 2)]:
+        if 1 <= x <= 2:
+            assert math.isclose(dist.probability_density(x),
+                2 * (x - 1) / ((4 - 1) * (2 - 1)), abs_tol=0.0001)
+        elif 2 <= x <= 4:
+            assert math.isclose(dist.probability_density(x),
+                2 * (4 - x) / ((4 - 1) * (4 - 2)), abs_tol=0.0001)
+        else:
+            assert dist.probability_density(x) == 0
+
+    with pytest.raises(TypeError):
+        DistTriangular('x', 1, 2, 3)
+    with pytest.raises(TypeError):
+        DistTriangular(stream, 'x', 2, 3)
+    with pytest.raises(TypeError):
+        DistTriangular(stream, 1, 'x', 3)
+    with pytest.raises(TypeError):
+        DistTriangular(stream, 1, 2, 'x')
+    with pytest.raises(ValueError):
+        DistTriangular(stream, 2.5, 2.0, 3.0)
+    with pytest.raises(ValueError):
+        DistTriangular(stream, 0.0, 2.0, 1.0)
+    with pytest.raises(ValueError):
+        DistTriangular(stream, 3.0, 3.0, 3.0)
+    with pytest.raises(ValueError):
+        DistTriangular(stream, 1, 1, 1)
+
+
+def test_uniform():
+    stream: StreamInterface = MersenneTwister(10)
+    dist: DistUniform = DistUniform(stream, 1, 4)
+    assert stream == dist.stream
+    assert dist.lo == 1
+    assert dist.hi == 4
+    assert "Uniform" in str(dist)
+    assert "4.0" in str(dist)
+    assert "1.0" in repr(dist)
+    value: float = dist.draw()
+    assert value >= 0
+    assert dist.draw() != value
+    dist.stream = MersenneTwister(10)
+    assert dist.draw() == value
+
+    assert dist.probability_density(-1.0) == 0
+    assert dist.probability_density(0.999999) == 0
+    assert math.isclose(dist.probability_density(1.0), 1 / 3, abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(2.5), 1 / 3, abs_tol=0.0001)
+    assert math.isclose(dist.probability_density(4.0), 1 / 3, abs_tol=0.0001)
+    assert dist.probability_density(4.000001) == 0
+    assert dist.probability_density(5.0) == 0
+
+    for x in [xx / 100 for xx in range(0, 500, 2)]:
+        if 1 <= x <= 4:
+            assert math.isclose(dist.probability_density(x), 1 / 3, abs_tol=0.0001)
+        else:
+            assert dist.probability_density(x) == 0
+
+    with pytest.raises(TypeError):
+        DistUniform('x', 1, 3)
+    with pytest.raises(TypeError):
+        DistUniform(stream, 'x', 2)
+    with pytest.raises(TypeError):
+        DistUniform(stream, 1, 'x')
+    with pytest.raises(ValueError):
+        DistUniform(stream, 2.5, 2.0)
+    with pytest.raises(ValueError):
+        DistUniform(stream, 3.0, 3.0)
+    with pytest.raises(ValueError):
+        DistUniform(stream, 1, 1)
 
 
 if __name__ == "__main__":
