@@ -19,7 +19,7 @@ __all__ = [
     "DistGamma",
     "DistGeometric",
     "DistLogNormal",
-    "DistLogNormalTrunc",
+#   "DistLogNormalTrunc",
     "DistNegBinomial",
     "DistNormal",
     "DistNormalTrunc",
@@ -1255,6 +1255,184 @@ class DistLogNormal(DistNormal):
     
     def __str__(self) -> str:
         return f"DistLogNormal[Normal.mu={self._mu}, Mormal.sigma={self._sigma}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class DistPearson5(DistContinuous):
+    """
+    The Pearson5 distribution with a shape parameter alpha and a scale 
+    parameter beta. The distribution is sometimes called the inverse 
+    gamma distribution, because if X ~ PT5(alpha, beta) if and only if
+    Y = 1 / X ~ gamma(alpha, 1/beta). For more information on this distribution 
+    see https://en.wikipedia.org/wiki/Inverse-gamma_distribution.
+    """
+    
+    def __init__(self, stream: StreamInterface, alpha: float, beta: float):
+        """
+        The Pearson5 distribution with a shape parameter alpha and a scale 
+        parameter beta. The distribution is sometimes called the inverse 
+        gamma distribution, because if X ~ PT5(alpha, beta) if and only if
+        Y = 1 / X ~ gamma(alpha, 1/beta).
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        alpha: float
+            the shape parameter of the Pearson5 distribution
+        beta: float
+            the scale parameter of the Pearson5 distribution
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when alpha is not a float or int
+        TypeError when beta is not a float or int
+        ValueError when alpha <= 0 or beta <= 0
+        """
+        if not isinstance(alpha, (float, int)):
+            raise TypeError(f"parameter alpha {alpha} is not a float / int")
+        if not isinstance(beta, (float, int)):
+            raise TypeError(f"parameter beta {beta} is not a float / int")
+        if alpha <= 0:
+            raise ValueError(f"parameter alpha {alpha} <= 0")
+        if beta <= 0:
+            raise ValueError(f"parameter beta {beta} <= 0")
+        self._alpha = float(alpha)
+        self._beta = float(beta)
+        super().__init__(stream)  # after setting alpha and beta
+
+    def draw(self) -> float:
+        """
+        Draw a value from the Pearson5 distribution. Based on the algorithm in 
+        Law & Kelton, Simulation Modeling and Analysis, 1991, p. 492-493.
+        """
+        return 1.0 / self._dist.draw()
+
+    def _set_stream(self, stream: StreamInterface):
+        """Internal method to initialize the underlying distribution when
+        a new random stream is set for this distribution."""
+        super()._set_stream(stream)
+        self._dist = DistGamma(stream, self._alpha, 1.0 / self._beta)
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x > 0:
+            return ((self._beta ** self._alpha) * (x ** (-self._alpha - 1))
+                    * math.exp(-self._beta / x) / math.gamma(self._alpha)) 
+        return 0.0
+
+    @property
+    def alpha(self) -> float:
+        """Return the parameter value alpha"""
+        return self._alpha
+    
+    @property
+    def beta(self) -> int:
+        """Return the parameter value beta"""
+        return self._beta
+    
+    def __str__(self) -> str:
+        return f"DistPearson5[alpha={self._alpha}, beta={self._beta}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class DistPearson6(DistContinuous):
+    """
+    The Pearson6 distribution with two shape parameters alpha1 and aplha2,
+    and a scale parameter beta. For more information on this distribution 
+    see https://mathworld.wolfram.com/Pearson6Distribution.html.
+    """
+    
+    def __init__(self, stream: StreamInterface, alpha1: float,
+                 alpha2: float, beta: float):
+        """
+        Construct a new Pearson6 distribution with two shape parameters 
+        alpha1 and aplha2, and a scale parameter beta. 
+        
+        Parameters
+        ----------
+        stream StreamInterface
+            the random stream to use for this distribution
+        alpha1: float
+            the first shape parameter of the Pearson6 distribution
+        alpha2: float
+            the second shape parameter of the Pearson6 distribution
+        beta: float
+            the scale parameter of the Pearson6 distribution
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when alpha1 is not a float or int
+        TypeError when alpha2 is not a float or int
+        TypeError when beta is not a float or int
+        ValueError when alpha1 <= 0 or alpha2 <= 0 or beta <= 0
+        """
+        if not isinstance(alpha1, (float, int)):
+            raise TypeError(f"parameter alpha1 {alpha1} is not a float / int")
+        if not isinstance(alpha2, (float, int)):
+            raise TypeError(f"parameter alpha2 {alpha2} is not a float / int")
+        if not isinstance(beta, (float, int)):
+            raise TypeError(f"parameter beta {beta} is not a float / int")
+        if alpha1 <= 0:
+            raise ValueError(f"parameter alpha1 {alpha1} <= 0")
+        if alpha2 <= 0:
+            raise ValueError(f"parameter alpha2 {alpha2} <= 0")
+        if beta <= 0:
+            raise ValueError(f"parameter beta {beta} <= 0")
+        self._alpha1 = float(alpha1)
+        self._alpha2 = float(alpha2)
+        self._beta = float(beta)
+        super().__init__(stream)  # after setting alpha1, alpha2 and beta
+
+    def draw(self) -> float:
+        """
+        Draw a value from the Pearson6 distribution. Based on the algorithm in 
+        Law & Kelton, Simulation Modeling and Analysis, 1991, p. 494.
+        But since dist1 and dist2 are both scaled by beta, the result is 
+        beta/beta = 1, without the scale parameter. So, in contrast with 
+        Law & Kelton and Banks (2000), a multiplication with beta is added.
+        """
+        return self._beta * self._dist1.draw() / self._dist2.draw()
+
+    def _set_stream(self, stream: StreamInterface):
+        """Internal method to initialize the underlying distribution when
+        a new random stream is set for this distribution."""
+        super()._set_stream(stream)
+        self._dist1 = DistGamma(stream, self._alpha1, self._beta)
+        self._dist2 = DistGamma(stream, self._alpha2, self._beta)
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x > 0:
+            return (math.pow(x / self._beta, self._alpha1 - 1) 
+                   / (self._beta * beta(self._alpha1, self._alpha2)
+                   * math.pow(1 + x / self._beta, self._alpha1 + self._alpha2))) 
+        return 0.0
+
+    @property
+    def alpha1(self) -> float:
+        """Return the parameter value alpha1"""
+        return self._alpha1
+
+    @property
+    def alpha2(self) -> float:
+        """Return the parameter value alpha2"""
+        return self._alpha2
+    
+    @property
+    def beta(self) -> int:
+        """Return the parameter value beta"""
+        return self._beta
+    
+    def __str__(self) -> str:
+        return f"DistPearson6[alpha1={self._alpha1}, alpha2={self._alpha2}, "\
+            +f"beta={self._beta}]"
     
     def __repr__(self) -> str:
         return str(self)
