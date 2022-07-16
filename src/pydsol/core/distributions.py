@@ -115,7 +115,7 @@ class DistBernoulli(DistDiscrete):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         p: float
             the probability for success of the Bernoulli distribution
@@ -178,7 +178,7 @@ class DistBeta(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         alpha1: float or int
             the first shape parameter
@@ -262,7 +262,7 @@ class DistBinomial(DistDiscrete):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         n: int
             the number of independent trials for the Binomial distribution
@@ -339,7 +339,7 @@ class DistDiscreteUniform(DistDiscrete):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         lo: int
             the lowest value to draw (inclusive)
@@ -405,7 +405,7 @@ class DistConstant(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         constant: float or int
             the value to return
@@ -469,7 +469,7 @@ class DistErlang(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         scale: float
             the mean of a single sample from the exponential distribution, 
@@ -562,13 +562,13 @@ class DistExponential(DistContinuous):
         """
         Construct a new exponential distribution. The exponential 
         distribution describes the interarrival times of entities to a
-         system that occur randomly at a constant rate. The exponential 
-         distribution can also be characterized by this rate parameter lambda
-         where mean = 1 / lambda.
+        system that occur randomly at a constant rate. The exponential 
+        distribution can also be characterized by this rate parameter lambda
+        where mean = 1 / lambda.
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         mean: float
             the mean of the interarrival time. Equal to 1/rate or 1/lambda.
@@ -630,7 +630,7 @@ class DistGamma(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         shape: float or int
             the shape parameter, also called alpha or k
@@ -757,7 +757,7 @@ class DistGeometric(DistDiscrete):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         p: float
             the probability for success for each individual Bernoulli trial
@@ -822,7 +822,7 @@ class DistNegBinomial(DistDiscrete):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         s: int
             the number of successes in the sequence of (x+n) trials, 
@@ -915,7 +915,7 @@ class DistNormal(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         mu: float or int
             the mean of the Normal distribution
@@ -1021,7 +1021,7 @@ class DistNormalTrunc(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         mu: float or int
             the mean of the Normal distribution, , before applying the 
@@ -1196,7 +1196,7 @@ class DistLogNormal(DistNormal):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         mu: float or int
             the mean of the underlying Normal distribution
@@ -1278,7 +1278,7 @@ class DistPearson5(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         alpha: float
             the shape parameter of the Pearson5 distribution
@@ -1356,7 +1356,7 @@ class DistPearson6(DistContinuous):
         
         Parameters
         ----------
-        stream StreamInterface
+        stream: StreamInterface
             the random stream to use for this distribution
         alpha1: float
             the first shape parameter of the Pearson6 distribution
@@ -1433,6 +1433,86 @@ class DistPearson6(DistContinuous):
     def __str__(self) -> str:
         return f"DistPearson6[alpha1={self._alpha1}, alpha2={self._alpha2}, "\
             +f"beta={self._beta}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class DistPoisson(DistDiscrete):
+    """
+    The Poisson distribution models the number of occurrences per time unit 
+    of an event when the events take place randomly. It is for instance 
+    used to model the number of arrivals per time unit when the interarrival
+    times are Exponentially distributed (leading to random arrivals over time).
+    For more information on this distribution see
+    https://mathworld.wolfram.com/PoissonDistribution.html. 
+    """
+    
+    def __init__(self, stream: StreamInterface, rate: float):
+        """
+        Constructs a Poisson distribution. The Poisson distribution models 
+        the number of occurrences per time unit of an event when the events 
+        take place randomly. It is for instance used to model the number of 
+        arrivals per time unit when the interarrival times are Exponentially 
+        distributed (leasing to random arrivals over time). The parameter 
+        lambda is the average number of arrivals per time unit (and in case
+        of a generation process 1 / mean-interarrival-time. 
+        
+        Parameters
+        ----------
+        stream: StreamInterface
+            the random stream to use for this distribution
+        rate: int
+            the average number of events per time unit, equal to 
+            (1 / inter-arrival time) of the events. Usually indicated with
+            the Greek letter lambda, but that is a reserved word in Python.
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when rate is not a float
+        ValueError when rate <= 0
+        """
+        super().__init__(stream)
+        if not isinstance(rate, (float, int)):
+            raise TypeError(f"parameter rate {rate} is not a float / int")
+        if rate <= 0:
+            raise ValueError(f"parameter rate {rate} <= 0")
+        self._rate = rate
+        # helper variable to avoid repetitive calculation.
+        self._expl = math.exp(-self._rate)
+        
+    def draw(self) -> int:
+        """
+        Draw a value from the Poisson distribution, where the return value is
+        the number of events per time unit where events occur randomly with
+        the given rate. Adapted from Fortran program in Shannon, Systems 
+        Simulation, 1975, p. 359.
+        """
+        s = 1.0
+        x = -1
+        while True:
+            s *= self._stream.next_float()
+            x += 1
+            if s <= self._expl:
+                break
+        return x
+
+    def probability(self, observation: int) -> float:
+        """Returns the probability of the observation for the distribution."""
+        if isinstance(observation, int) and observation >= 0:
+            return (math.exp(-self._rate) * (self._rate ** observation)
+                    / math.factorial(observation))
+        return 0.0;
+
+    @property
+    def rate(self) -> float:
+        """Return the rate parameter value, the average number of events
+        per time unit that is modeled by the Poisson distribution"""
+        return self._rate
+    
+    def __str__(self) -> str:
+        return f"DistPoisson[rate={self._rate}]"
     
     def __repr__(self) -> str:
         return str(self)
