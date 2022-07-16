@@ -60,9 +60,9 @@ def test_c_mean_variance():
            0.5 * 0.2 * 0.2, 0.0, nan, 0.1)
     c_dist(100000, DistPearson5(stream, 3, 1), 0.5, 0.25,
            0.0, nan, 0.01)
-    c_dist(10000000, DistPearson6(stream, 2, 3, 4), 4.0 * 2 / (3 - 1),
+    c_dist(100000, DistPearson6(stream, 2, 3, 4), 4.0 * 2 / (3 - 1),
             4.0 * 4 * 2 * (2 + 3 - 1) / ((3 - 1) * (3 - 1) * (3 - 2)),
-            0.0, nan, 0.05)
+            0.0, nan, 0.5)  # wide range of outcomes for variance
     # c_dist("DistTriangular", DistTriangular(stream, 1, 4, 9), (1 + 4 + 9) / 3.0,
     #         (1 * 1 + 4 * 4 + 9 * 9 - 1 * 4 - 1 * 9 - 4 * 9) / 18.0, 1.0, 9.0, 0.01)
     # c_dist("DistUniform", DistUniform(stream, 0, 1), 0.5, 1.0 / 12.0, 0.0, 1.0, 0.01)
