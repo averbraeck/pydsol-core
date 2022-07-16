@@ -1,3 +1,18 @@
+"""
+InputParameters describe different types of input parameters for the model.
+All parameters for a model are contained in a hierarchical map where
+successive keys can be retrieved using a dot-notation between the key 
+elements. Suppose a model has two servers: server1 and server2. Each of the
+servers has an average service time and a number of resources. This can be
+codes using keys 'server1.avg_serice_time', 'server1.nr_resources',
+'server2.avg_serice_time', 'server2.nr_resources'. This means that the 
+key 'server1' contains an InputParameterMap with an instance of 
+InputParameterFloat for the service time, and InputParameterInt for the
+number of resources. Readers for the input parameter map can read the model
+parameters, e.g., from the screen, a web page, an Excel file, a properties 
+file, or a JSON file.        
+"""
+
 import math
 from typing import Union
 
@@ -20,7 +35,9 @@ logger = get_module_logger('parameters')
 
 
 class InputParameter:
-
+    """
+    User readable and settable properties.
+    """
     def __init__(self, key: str, name: str, default_value,
                  display_priority: Union[int, float], *,
                  parent: "InputParameterMap"=None, description: str=None,
