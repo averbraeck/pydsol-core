@@ -16,13 +16,13 @@ This module has been based on the Java DJUNITS project (Delft Java units), as
 documented at https://djunits.org. 
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 import math
 import re
 from typing import TypeVar, Generic
 
+from pydsol.core.distributions import Distribution
 from pydsol.core.utils import get_module_logger
-
 
 __all__ = [
     "Quantity",
@@ -68,6 +68,49 @@ __all__ = [
     "Temperature",
     "Torque",
     "Volume",
+
+    "SIDist",
+    "AbsorbedDoseDist",
+    "AccelerationDist",
+    "AmountOfSubstanceDist",
+    "AngleDist",
+    "AngularAccelerationDist",
+    "AngularVelocityDist",
+    "AreaDist",
+    "CatalyticActivityDist",
+    "DensityDist",
+    "DimensionlessDist",
+    "DurationDist",
+    "ElectricalCapacitanceDist",
+    "ElectricalChargeDist",
+    "ElectricalConductanceDist",
+    "ElectricalCurrentDist",
+    "ElectricalInductanceDist",
+    "ElectricalPotentialDist",
+    "ElectricalResistanceDist",
+    "EnergyDist",
+    "EquivalentDoseDist",
+    "FlowMassDist",
+    "FlowVolumeDist",
+    "ForceDist",
+    "FrequencyDist",
+    "IlluminanceDist",
+    "LengthDist",
+    "LinearDensity"
+    "LuminousFluxDist",
+    "LuminousIntensityDist",
+    "MagneticFluxDist",
+    "MagneticFluxDensityDist",
+    "MassDist",
+    "MomentumDist",
+    "PowerDist",
+    "PressureDist",
+    "RadioActivityDist",
+    "SolidAngleDist",
+    "SpeedDist",
+    "TemperatureDist",
+    "TorqueDist",
+    "VolumeDist",
     ]
 
 logger = get_module_logger('units')
@@ -536,7 +579,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not type(self) == type(other):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) < float(other)
          
     def __le__(self, other) -> bool:
@@ -551,7 +594,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not type(self) == type(other):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) <= float(other)
          
     def __gt__(self, other) -> bool:
@@ -565,7 +608,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not type(self) == type(other):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) > float(other)
          
     def __ge__(self, other) -> bool:
@@ -580,7 +623,7 @@ class Quantity(Generic[Q], ABC, float):
         """
         if not type(self) == type(other):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) >= float(other)
          
     def __str__(self):
@@ -1165,7 +1208,7 @@ class SI(float):
         """
         if not (isinstance(other, SI) and self._sisig == other._sisig):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) < float(other)
          
     def __le__(self, other) -> bool:
@@ -1180,7 +1223,7 @@ class SI(float):
         """
         if not (isinstance(other, SI) and self._sisig == other._sisig):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) <= float(other)
          
     def __gt__(self, other) -> bool:
@@ -1194,7 +1237,7 @@ class SI(float):
         """
         if not (isinstance(other, SI) and self._sisig == other._sisig):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) > float(other)
          
     def __ge__(self, other) -> bool:
@@ -1209,7 +1252,7 @@ class SI(float):
         """
         if not (isinstance(other, SI) and self._sisig == other._sisig):
             raise TypeError(f"comparing incompatible quantities " 
-                    + f"{type(self).__name__} and {type(other).__name__}")
+                    +f"{type(self).__name__} and {type(other).__name__}")
         return float(self) >= float(other)
          
     def __str__(self):
@@ -2605,3 +2648,505 @@ for q in QUANTITIES:
     q._mul[Dimensionless] = q
     q._div[Dimensionless] = q
     q._div[q] = Dimensionless
+
+# -----------------------------------------------------------------------------
+# Distributions with units
+# -----------------------------------------------------------------------------
+
+
+class QuantityDist(Generic[Q], ABC):
+    """
+    Abstract class defining distribution functions of quantities.
+    The quantity is created with a wapped distribution function and a unit.
+    Drawing the random value is done using the unit, so not using the base
+    (si) unit. When a Length(Uniform(stream, 1, 3), 'km') is created, a
+    draw() will result in a Length between 1 and 3 kilometers.
+    """ 
+
+    def __init__(self, wrapped_distribution: Distribution, unit: str):
+        """
+        Create a random distribution function that returns a quantity.  
+        """
+        if not isinstance(wrapped_distribution, Distribution):
+            raise TypeError("Wrapped distribution not a Distribution")
+        if not isinstance(unit, str):
+            raise TypeError(f"Unit {unit} not a string")
+        if not unit in self.quantity._units:
+            raise ValueError(f"Unit {unit} not defined for this quantity")
+        self._dist = wrapped_distribution
+        self._unit = unit
+        
+    @abstractmethod
+    def draw(self) -> Q:
+        """Draw an AbsorbedDose from the wrapped distribution"""
+
+
+class SIDist(QuantityDist):
+    """Probability distribution for generic SI quantity"""
+
+    def __init__(self, wrapped_distribution: Distribution, unit: str):
+        """
+        Create a random distribution function that returns a quantity.  
+        """
+        if not isinstance(wrapped_distribution, Distribution):
+            raise TypeError("Wrapped distribution not a Distribution")
+        if not isinstance(unit, str):
+            raise TypeError(f"Unit {unit} not a string")
+        # Test the SI unit by creating a value, errors will be caught there
+        self._dist = wrapped_distribution
+        self._unit = SI(1.0, unit)
+
+    def draw(self):
+        """Draw an SI quantity from the wrapped distribution"""
+        return self._unit * self._dist.draw()
+
+        
+class AbsorbedDoseDist(QuantityDist):
+    """Probability distribution for AbsorbedDose quantity"""
+
+    quantity = AbsorbedDose
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an AbsorbedDose from the wrapped distribution"""
+        return AbsorbedDose(self._dist.draw(), self._unit)
+
+
+class AccelerationDist(QuantityDist):
+    """Probability distribution for Acceleration quantity"""
+
+    quantity = Acceleration
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Acceleration from the wrapped distribution"""
+        return Acceleration(self._dist.draw(), self._unit)
+
+
+class AmountOfSubstanceDist(QuantityDist):
+    """Probability distribution for AmountOfSubstance quantity"""
+
+    quantity = AmountOfSubstance
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an AmountOfSubstance from the wrapped distribution"""
+        return AmountOfSubstance(self._dist.draw(), self._unit)
+
+
+class AngleDist(QuantityDist):
+    """Probability distribution for Angle quantity"""
+
+    quantity = Angle
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Angle from the wrapped distribution"""
+        return Angle(self._dist.draw(), self._unit)
+
+
+class AngularAccelerationDist(QuantityDist):
+    """Probability distribution for AngularAcceleration quantity"""
+
+    quantity = AngularAcceleration
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an AngularAcceleration from the wrapped distribution"""
+        return AngularAcceleration(self._dist.draw(), self._unit)
+
+
+class AngularVelocityDist(QuantityDist):
+    """Probability distribution for AngularVelocity quantity"""
+
+    quantity = AngularVelocity
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an AngularVelocity from the wrapped distribution"""
+        return AngularVelocity(self._dist.draw(), self._unit)
+
+
+class AreaDist(QuantityDist):
+    """Probability distribution for Area quantity"""
+
+    quantity = Area
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Area from the wrapped distribution"""
+        return Area(self._dist.draw(), self._unit)
+
+
+class CatalyticActivityDist(QuantityDist):
+    """Probability distribution for CatalyticActivity quantity"""
+
+    quantity = CatalyticActivity
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an CatalyticActivity from the wrapped distribution"""
+        return CatalyticActivity(self._dist.draw(), self._unit)
+
+
+class DensityDist(QuantityDist):
+    """Probability distribution for Density quantity"""
+
+    quantity = Density
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Density from the wrapped distribution"""
+        return Density(self._dist.draw(), self._unit)
+
+
+class DimensionlessDist(QuantityDist):
+    """Probability distribution for Dimensionless quantity"""
+
+    quantity = Dimensionless
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Dimensionless from the wrapped distribution"""
+        return Dimensionless(self._dist.draw(), self._unit)
+
+
+class DurationDist(QuantityDist):
+    """Probability distribution for Duration quantity"""
+
+    quantity = Duration
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Duration from the wrapped distribution"""
+        return Duration(self._dist.draw(), self._unit)
+
+
+class ElectricalCapacitanceDist(QuantityDist):
+    """Probability distribution for ElectricalCapacitance quantity"""
+
+    quantity = ElectricalCapacitance
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an ElectricalCapacitance from the wrapped distribution"""
+        return ElectricalCapacitance(self._dist.draw(), self._unit)
+
+
+class ElectricalChargeDist(QuantityDist):
+    """Probability distribution for ElectricalCharge quantity"""
+
+    quantity = ElectricalCharge
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an ElectricalCharge from the wrapped distribution"""
+        return ElectricalCharge(self._dist.draw(), self._unit)
+
+
+class ElectricalConductanceDist(QuantityDist):
+    """Probability distribution for ElectricalConductance quantity"""
+
+    quantity = ElectricalConductance
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an ElectricalConductance from the wrapped distribution"""
+        return ElectricalConductance(self._dist.draw(), self._unit)
+
+
+class ElectricalCurrentDist(QuantityDist):
+    """Probability distribution for ElectricalCurrent quantity"""
+
+    quantity = ElectricalCurrent
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an ElectricalCurrent from the wrapped distribution"""
+        return ElectricalCurrent(self._dist.draw(), self._unit)
+
+
+class ElectricalInductanceDist(QuantityDist):
+    """Probability distribution for ElectricalInductance quantity"""
+
+    quantity = ElectricalInductance
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an ElectricalInductance from the wrapped distribution"""
+        return ElectricalInductance(self._dist.draw(), self._unit)
+
+
+class ElectricalPotentialDist(QuantityDist):
+    """Probability distribution for ElectricalPotential quantity"""
+
+    quantity = ElectricalPotential
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an ElectricalPotential from the wrapped distribution"""
+        return ElectricalPotential(self._dist.draw(), self._unit)
+
+
+class ElectricalResistanceDist(QuantityDist):
+    """Probability distribution for ElectricalResistance quantity"""
+
+    quantity = ElectricalResistance
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an ElectricalResistance from the wrapped distribution"""
+        return ElectricalResistance(self._dist.draw(), self._unit)
+
+
+class EnergyDist(QuantityDist):
+    """Probability distribution for Energy quantity"""
+
+    quantity = Energy
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Energy from the wrapped distribution"""
+        return Energy(self._dist.draw(), self._unit)
+
+
+class EquivalentDoseDist(QuantityDist):
+    """Probability distribution for EquivalentDose quantity"""
+
+    quantity = EquivalentDose
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an EquivalentDose from the wrapped distribution"""
+        return EquivalentDose(self._dist.draw(), self._unit)
+
+
+class FlowMassDist(QuantityDist):
+    """Probability distribution for FlowMass quantity"""
+
+    quantity = FlowMass
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an FlowMass from the wrapped distribution"""
+        return FlowMass(self._dist.draw(), self._unit)
+
+
+class FlowVolumeDist(QuantityDist):
+    """Probability distribution for FlowVolume quantity"""
+
+    quantity = FlowVolume
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an FlowVolume from the wrapped distribution"""
+        return FlowVolume(self._dist.draw(), self._unit)
+
+
+class ForceDist(QuantityDist):
+    """Probability distribution for Force quantity"""
+
+    quantity = Force
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Force from the wrapped distribution"""
+        return Force(self._dist.draw(), self._unit)
+
+
+class FrequencyDist(QuantityDist):
+    """Probability distribution for Frequency quantity"""
+
+    quantity = Frequency
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Frequency from the wrapped distribution"""
+        return Frequency(self._dist.draw(), self._unit)
+
+
+class IlluminanceDist(QuantityDist):
+    """Probability distribution for Illuminance quantity"""
+
+    quantity = Illuminance
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Illuminance from the wrapped distribution"""
+        return Illuminance(self._dist.draw(), self._unit)
+
+
+class LengthDist(QuantityDist):
+    """Probability distribution for Length quantity"""
+
+    quantity = Length
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Length from the wrapped distribution"""
+        return Length(self._dist.draw(), self._unit)
+
+
+class LinearDensityDist(QuantityDist):
+    """Probability distribution for LinearDensity quantity"""
+
+    quantity = LinearDensity
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an LinearDensity from the wrapped distribution"""
+        return LinearDensity(self._dist.draw(), self._unit)
+
+
+class LuminousFluxDist(QuantityDist):
+    """Probability distribution for LuminousFlux quantity"""
+
+    quantity = LuminousFlux
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an LuminousFlux from the wrapped distribution"""
+        return LuminousFlux(self._dist.draw(), self._unit)
+
+
+class LuminousIntensityDist(QuantityDist):
+    """Probability distribution for LuminousIntensity quantity"""
+
+    quantity = LuminousIntensity
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an LuminousIntensity from the wrapped distribution"""
+        return LuminousIntensity(self._dist.draw(), self._unit)
+
+
+class MagneticFluxDensityDist(QuantityDist):
+    """Probability distribution for MagneticFluxDensity quantity"""
+
+    quantity = MagneticFluxDensity
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an MagneticFluxDensity from the wrapped distribution"""
+        return MagneticFluxDensity(self._dist.draw(), self._unit)
+
+
+class MagneticFluxDist(QuantityDist):
+    """Probability distribution for MagneticFlux quantity"""
+
+    quantity = MagneticFlux
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an MagneticFlux from the wrapped distribution"""
+        return MagneticFlux(self._dist.draw(), self._unit)
+
+
+class MassDist(QuantityDist):
+    """Probability distribution for Mass quantity"""
+
+    quantity = Mass
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Mass from the wrapped distribution"""
+        return Mass(self._dist.draw(), self._unit)
+
+
+class MomentumDist(QuantityDist):
+    """Probability distribution for Momentum quantity"""
+
+    quantity = Momentum
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Momentum from the wrapped distribution"""
+        return Momentum(self._dist.draw(), self._unit)
+
+
+class PowerDist(QuantityDist):
+    """Probability distribution for Power quantity"""
+
+    quantity = Power
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Power from the wrapped distribution"""
+        return Power(self._dist.draw(), self._unit)
+
+
+class PressureDist(QuantityDist):
+    """Probability distribution for Pressure quantity"""
+
+    quantity = Pressure
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Pressure from the wrapped distribution"""
+        return Pressure(self._dist.draw(), self._unit)
+
+
+class RadioActivityDist(QuantityDist):
+    """Probability distribution for RadioActivity quantity"""
+
+    quantity = RadioActivity
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an RadioActivity from the wrapped distribution"""
+        return RadioActivity(self._dist.draw(), self._unit)
+
+
+class SolidAngleDist(QuantityDist):
+    """Probability distribution for SolidAngle quantity"""
+
+    quantity = SolidAngle
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an SolidAngle from the wrapped distribution"""
+        return SolidAngle(self._dist.draw(), self._unit)
+
+
+class SpeedDist(QuantityDist):
+    """Probability distribution for Speed quantity"""
+
+    quantity = Speed
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Speed from the wrapped distribution"""
+        return Speed(self._dist.draw(), self._unit)
+
+
+class TemperatureDist(QuantityDist):
+    """Probability distribution for Temperature quantity"""
+
+    quantity = Temperature
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Temperature from the wrapped distribution"""
+        return Temperature(self._dist.draw(), self._unit)
+
+
+class TorqueDist(QuantityDist):
+    """Probability distribution for Torque quantity"""
+
+    quantity = Torque
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Torque from the wrapped distribution"""
+        return Torque(self._dist.draw(), self._unit)
+
+
+class VolumeDist(QuantityDist):
+    """Probability distribution for Volume quantity"""
+
+    quantity = Volume
+    """The associated quantity"""
+
+    def draw(self):
+        """Draw an Volume from the wrapped distribution"""
+        return Volume(self._dist.draw(), self._unit)
