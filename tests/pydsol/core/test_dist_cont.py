@@ -9,7 +9,7 @@ import pytest
 
 from pydsol.core.distributions import Distribution, DistBeta, DistGamma, \
     DistConstant, DistErlang, DistExponential, DistPearson5, DistPearson6, \
-    DistTriangular, DistUniform
+    DistTriangular, DistUniform, DistWeibull
 from pydsol.core.statistics import Tally
 from pydsol.core.streams import MersenneTwister, StreamInterface
 from pydsol.core.utils import beta
@@ -65,10 +65,11 @@ def test_c_mean_variance():
             4.0 * 4 * 2 * (2 + 3 - 1) / ((3 - 1) * (3 - 1) * (3 - 2)),
             0.0, nan, 0.5)  # wide range of outcomes for variance
     c_dist(100000, DistTriangular(stream, 1, 4, 9), (1 + 4 + 9) / 3.0,
-            (1 * 1 + 4 * 4 + 9 * 9 - 1 * 4 - 1 * 9 - 4 * 9) / 18.0, 
+            (1 * 1 + 4 * 4 + 9 * 9 - 1 * 4 - 1 * 9 - 4 * 9) / 18.0,
             1.0, 9.0, 0.01)
-    c_dist(100000, DistUniform(stream, 0, 1), 0.5, 1.0 / 12.0, 
+    c_dist(100000, DistUniform(stream, 0, 1), 0.5, 1.0 / 12.0,
            0.0, 1.0, 0.01)
+    c_dist(100000, DistWeibull(stream, 1.5, 1), 0.9027, 0.3756, 0.0, nan, 0.01)
 
 
 def test_beta():
@@ -660,6 +661,51 @@ def test_uniform():
         DistUniform(stream, 3.0, 3.0)
     with pytest.raises(ValueError):
         DistUniform(stream, 1, 1)
+
+
+def test_weibull():
+    stream: StreamInterface = MersenneTwister(10)
+    dist: DistWeibull = DistWeibull(stream, 3, 1)
+    assert stream == dist.stream
+    assert dist.alpha == 3
+    assert dist.beta == 1
+    assert "Weibull" in str(dist)
+    assert "3.0" in str(dist)
+    assert "1.0" in repr(dist)
+    value: float = dist.draw()
+    assert value >= 0
+    assert dist.draw() != value
+    dist.stream = MersenneTwister(10)
+    assert dist.draw() == value
+
+    assert dist.probability_density(-1.0) == 0
+    assert dist.probability_density(0.0) == 0
+
+    for a in [xx / 10 for xx in range(5, 55, 5)]:
+        for b in [xx / 10 for xx in range(5, 55, 5)]:
+            dist: DistWeibull = DistWeibull(stream, a, b)
+            for x in [xx / 100 for xx in range(2, 1000, 2)]:
+                if x == 0:
+                    assert dist.probability_density(x) == 0
+                else:
+                    assert math.isclose(dist.probability_density(x),
+                        a * math.pow(b, -a) * math.pow(x, a - 1) 
+                        * math.exp(-math.pow(x / b, a)), abs_tol=0.001)
+
+    with pytest.raises(TypeError):
+        DistWeibull('x', 1, 3)
+    with pytest.raises(TypeError):
+        DistWeibull(stream, 'x', 2)
+    with pytest.raises(TypeError):
+        DistWeibull(stream, 1, 'x')
+    with pytest.raises(ValueError):
+        DistWeibull(stream, 0.0, 2.0)
+    with pytest.raises(ValueError):
+        DistWeibull(stream, -1.0, 3.0)
+    with pytest.raises(ValueError):
+        DistWeibull(stream, 1, 0)
+    with pytest.raises(ValueError):
+        DistWeibull(stream, 1, -1)
 
 
 if __name__ == "__main__":
