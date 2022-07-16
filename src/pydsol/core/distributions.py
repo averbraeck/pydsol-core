@@ -1688,3 +1688,76 @@ class DistUniform(DistContinuous):
     
     def __repr__(self) -> str:
         return str(self)
+
+
+class DistWeibull(DistContinuous):
+    """
+    The Weibull distribution with a shape parameter alpha and a scale 
+    parameter beta. For more information on this distribution see 
+    https://mathworld.wolfram.com/WeibullDistribution.html. 
+    """
+    
+    def __init__(self, stream: StreamInterface, alpha: float, beta: float):
+        """
+        Construct a new Weibull distribution. The Weibull distribution USES
+        a shape parameter alpha and a scale parameter beta.
+        
+        Parameters
+        ----------
+        stream: StreamInterface
+            the random stream to use for this distribution
+        alpha: float
+            the shape parameter of the Weibull distribution
+        beta: float
+            the scale parameter of the Weibull distribution
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when alpha is not a float or int
+        TypeError when beta is not a float or int
+        ValueError when alpha <= 0 or beta <= 0
+        """
+        super().__init__(stream)
+        if not isinstance(alpha, (float, int)):
+            raise TypeError(f"parameter alpha {alpha} is not a float / int")
+        if not isinstance(beta, (float, int)):
+            raise TypeError(f"parameter beta {beta} is not a float / int")
+        if alpha <= 0:
+            raise ValueError(f"parameter alpha {alpha} <= 0")
+        if beta <= 0:
+            raise ValueError(f"parameter beta {beta} <= 0")
+        self._alpha = float(alpha)
+        self._beta = float(beta)
+
+    def draw(self) -> float:
+        """
+        Draw a value from the Weibull distribution.
+        """
+        return (self._beta * math.pow(-math.log(self._stream.next_float()), 
+                                      1.0 / self._alpha))
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x > 0:
+            return (self._alpha 
+                * math.pow(self._beta, -self._alpha) 
+                * math.pow(x, self._alpha - 1) 
+                * math.exp(-math.pow(x / self._beta, self._alpha))) 
+        return 0.0
+
+    @property
+    def alpha(self) -> float:
+        """Return the parameter value alpha"""
+        return self._alpha
+
+    @property
+    def beta(self) -> int:
+        """Return the parameter value beta"""
+        return self._beta
+    
+    def __str__(self) -> str:
+        return f"DistWeibull[alpha={self._alpha}, beta={self._beta}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
