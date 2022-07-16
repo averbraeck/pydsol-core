@@ -6,8 +6,28 @@ import math
 
 import pytest
 
+from pydsol.core.distributions import DistUniform
+from pydsol.core.streams import MersenneTwister, StreamInterface
 from pydsol.core.units import Duration, Length, Area, Speed, Quantity, \
-    Frequency, Dimensionless, Volume, SI, Force, Energy
+    Frequency, Dimensionless, Volume, SI, Force, Energy, AbsorbedDose, \
+    Acceleration, AmountOfSubstance, Angle, AngularAcceleration, AngularVelocity, \
+    CatalyticActivity, Density, ElectricalCapacitance, ElectricalCharge, \
+    ElectricalConductance, ElectricalCurrent, ElectricalInductance, \
+    ElectricalPotential, ElectricalResistance, EquivalentDose, FlowMass, \
+    FlowVolume, Illuminance, LinearDensity, LuminousFlux, LuminousIntensity, \
+    MagneticFluxDensity, MagneticFlux, Mass, Momentum, Power, Pressure, \
+    RadioActivity, SolidAngle, Temperature, Torque, AbsorbedDoseDist, \
+    AccelerationDist, AmountOfSubstanceDist, AngleDist, AngularAccelerationDist, \
+    AngularVelocityDist, AreaDist, CatalyticActivityDist, DensityDist, \
+    DimensionlessDist, DurationDist, ElectricalCapacitanceDist, \
+    ElectricalChargeDist, ElectricalConductanceDist, ElectricalCurrentDist, \
+    ElectricalInductanceDist, ElectricalPotentialDist, ElectricalResistanceDist, \
+    EnergyDist, EquivalentDoseDist, FlowMassDist, FlowVolumeDist, ForceDist, \
+    FrequencyDist, IlluminanceDist, LengthDist, LinearDensityDist, \
+    LuminousFluxDist, LuminousIntensityDist, MagneticFluxDensityDist, \
+    MagneticFluxDist, MassDist, MomentumDist, PowerDist, PressureDist, \
+    RadioActivityDist, SolidAngleDist, SpeedDist, TemperatureDist, TorqueDist, \
+    VolumeDist, SIDist
 
 
 def test_assign():
@@ -439,5 +459,140 @@ def test_si_cmp():
         assert SI(10, 'm') >= Length(10, 'm')
 
 
+QUANTITIES = (
+        AbsorbedDose,
+        Acceleration,
+        AmountOfSubstance,
+        Angle,
+        AngularAcceleration,
+        AngularVelocity,
+        Area,
+        CatalyticActivity,
+        Density,
+        Dimensionless,
+        Duration,
+        ElectricalCapacitance,
+        ElectricalCharge,
+        ElectricalConductance,
+        ElectricalCurrent,
+        ElectricalInductance,
+        ElectricalPotential,
+        ElectricalResistance,
+        Energy,
+        EquivalentDose,
+        FlowMass,
+        FlowVolume,
+        Force,
+        Frequency,
+        Illuminance,
+        Length,
+        LinearDensity,
+        LuminousFlux,
+        LuminousIntensity,
+        MagneticFluxDensity,
+        MagneticFlux,
+        Mass,
+        Momentum,
+        Power,
+        Pressure,
+        RadioActivity,
+        SolidAngle,
+        Speed,
+        Temperature,
+        Torque,
+        Volume,
+    )
+
+
+def test_all_units():
+    for q in QUANTITIES:
+        for u in q._units:
+            assert isinstance(q(1.0, u).si, float)
+        assert q(1.0, q._baseunit).si == 1.0
+        
+
+QUANTITIESDIST = (
+        AbsorbedDoseDist,
+        AccelerationDist,
+        AmountOfSubstanceDist,
+        AngleDist,
+        AngularAccelerationDist,
+        AngularVelocityDist,
+        AreaDist,
+        CatalyticActivityDist,
+        DensityDist,
+        DimensionlessDist,
+        DurationDist,
+        ElectricalCapacitanceDist,
+        ElectricalChargeDist,
+        ElectricalConductanceDist,
+        ElectricalCurrentDist,
+        ElectricalInductanceDist,
+        ElectricalPotentialDist,
+        ElectricalResistanceDist,
+        EnergyDist,
+        EquivalentDoseDist,
+        FlowMassDist,
+        FlowVolumeDist,
+        ForceDist,
+        FrequencyDist,
+        IlluminanceDist,
+        LengthDist,
+        LinearDensityDist,
+        LuminousFluxDist,
+        LuminousIntensityDist,
+        MagneticFluxDensityDist,
+        MagneticFluxDist,
+        MassDist,
+        MomentumDist,
+        PowerDist,
+        PressureDist,
+        RadioActivityDist,
+        SolidAngleDist,
+        SpeedDist,
+        TemperatureDist,
+        TorqueDist,
+        VolumeDist,
+    )
+
+
+def test_all_units_dist():
+    for i in range(len(QUANTITIES)):
+        stream: StreamInterface = MersenneTwister(20)
+        dist = DistUniform(stream, 1, 10)
+        q = QUANTITIES[i]
+        qd = QUANTITIESDIST[i]
+        for u in q._units:
+            qdist = qd(dist, u)
+            assert isinstance(qdist.draw().si, float)
+            assert isinstance(qdist.draw(), q)
+        qdist = qd(dist, q._baseunit)
+        assert 1 <= qdist.draw().si <= 10
+        
+        with pytest.raises(TypeError):
+            LengthDist('x', 'km')
+        with pytest.raises(TypeError):
+            LengthDist(dist, 6)
+        with pytest.raises(ValueError):
+            LengthDist(dist, 'cd')
+
+
+def test_si_dist():
+        stream: StreamInterface = MersenneTwister(20)
+        dist = DistUniform(stream, 1, 10)
+        qsid = SIDist(dist, 'kgm/s2')
+        for _ in range(100):
+            v: SI = qsid.draw()
+            assert 1 <= v.si <= 10
+            assert v.siunit() == 'kgm/s2'
+
+        with pytest.raises(TypeError):
+            SIDist('x', 'km')
+        with pytest.raises(TypeError):
+            SIDist(dist, 6)
+        with pytest.raises(ValueError):
+            SIDist(dist, 'cdcdcd')
+
+    
 if __name__ == '__main__':
     pytest.main()
