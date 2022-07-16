@@ -1517,3 +1517,174 @@ class DistPoisson(DistDiscrete):
     def __repr__(self) -> str:
         return str(self)
 
+
+class DistTriangular(DistContinuous):
+    """
+    The Triangular distribution is a bounded distribution with a mode. 
+    Since 'min' and 'max' are functions in Python, the normally used terms 
+    (min, mode, max) to characterize a Triangular distribution have been
+    replaced by (lo, mode, hi). For more information on this distribution see
+    https://mathworld.wolfram.com/TriangularDistribution.html. 
+    """
+    
+    def __init__(self, stream: StreamInterface, lo: float,
+                 mode: float, hi: float):
+        """
+        Construct a new Triangular distribution. The Triangular distribution 
+        is a bounded distribution with a mode. Since 'min' and 'max' are 
+        functions in Python, the normally used terms (min, mode, max) to 
+        characterize a Triangular distribution have been replaced by 
+        (lo, mode, hi).
+        
+        Parameters
+        ----------
+        stream: StreamInterface
+            the random stream to use for this distribution
+        lo: float
+            the left bound of the distribution; lowest value that can be drawn
+        mode: float
+            the mode of the distribution (peak with the highest probability
+            of being drawn) 
+        hi: float
+            the right bound of the distribution; highest value that can be drawn
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when lo is not a float or int
+        TypeError when mode is not a float or int
+        TypeError when hi is not a float or int
+        ValueError when mode < lo or mode > hi or lo == hi
+        """
+        super().__init__(stream)
+        if not isinstance(lo, (float, int)):
+            raise TypeError(f"parameter lo {lo} is not a float / int")
+        if not isinstance(mode, (float, int)):
+            raise TypeError(f"parameter mode {mode} is not a float / int")
+        if not isinstance(hi, (float, int)):
+            raise TypeError(f"parameter hi {hi} is not a float / int")
+        if mode < lo:
+            raise ValueError(f"parameter mode {mode} < lo {lo}")
+        if mode > hi:
+            raise ValueError(f"parameter mode {mode} > hi {hi}")
+        if lo == hi:
+            raise ValueError(f"parameter lo {lo} == hi {hi}")
+        self._lo = float(lo)
+        self._mode = float(mode)
+        self._hi = float(hi)
+
+    def draw(self) -> float:
+        """
+        Draw a value from the Triangular distribution.
+        """
+        u: float = self._stream.next_float()
+        if u <= (self._mode - self._lo) / (self._hi - self._lo):
+            return (self._lo + math.sqrt((self._mode - self._lo) 
+                * (self._hi - self._lo) * u))
+        return self._hi - math.sqrt((self._hi - self._lo) 
+                * (self._hi - self._mode) * (1.0 - u))
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if x >= self._lo and x <= self._mode:
+            return (2.0 * (x - self._lo) / ((self._hi - self._lo) 
+                    * (self._mode - self._lo)))
+        if x >= self._mode and x <= self._hi:
+            return (2.0 * (self._hi - x) / ((self._hi - self._lo) 
+                    * (self._hi - self._mode)))
+        return 0.0
+
+    @property
+    def lo(self) -> float:
+        """Return the parameter value lo"""
+        return self._lo
+
+    @property
+    def mode(self) -> float:
+        """Return the parameter value mode"""
+        return self._mode
+    
+    @property
+    def hi(self) -> int:
+        """Return the parameter value hi"""
+        return self._hi
+    
+    def __str__(self) -> str:
+        return f"DistTriangular[lo={self._lo}, mode={self._mode}, "\
+            +f"hi={self._hi}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class DistUniform(DistContinuous):
+    """
+    The Uniform distribution is a bounded distribution with equal probability
+    of drawing a number between the low bound and the high bound. Since 'min' 
+    and 'max' are functions in Python, the normally used terms (min, max) to 
+    characterize a Uniform distribution have been replaced by (lo, hi). 
+    For more information on this distribution see
+    https://mathworld.wolfram.com/UniformDistribution.html. 
+    """
+    
+    def __init__(self, stream: StreamInterface, lo: float, hi: float):
+        """
+        Construct a new Uniform distribution. The Uniform distribution is a 
+        bounded distribution with equal probability of drawing a number 
+        between the low bound and the high bound. Since 'min' and 'max' are 
+        functions in Python, the normally used terms (min, max) to 
+        characterize a Uniform distribution have been replaced by (lo, hi).
+        
+        Parameters
+        ----------
+        stream: StreamInterface
+            the random stream to use for this distribution
+        lo: float
+            the left bound of the distribution; lowest value that can be drawn
+        hi: float
+            the right bound of the distribution; highest value that can be drawn
+            
+        Raises
+        ------
+        TypeError when stream is not implementing StreamInterface
+        TypeError when lo is not a float or int
+        TypeError when hi is not a float or int
+        ValueError when hi <= lo
+        """
+        super().__init__(stream)
+        if not isinstance(lo, (float, int)):
+            raise TypeError(f"parameter lo {lo} is not a float / int")
+        if not isinstance(hi, (float, int)):
+            raise TypeError(f"parameter hi {hi} is not a float / int")
+        if hi <= lo:
+            raise ValueError(f"parameter hi {hi} <= lo {lo}")
+        self._lo = float(lo)
+        self._hi = float(hi)
+
+    def draw(self) -> float:
+        """
+        Draw a value from the Uniform distribution.
+        """
+        return self._lo + (self._hi - self._lo) * self._stream.next_float()
+
+    def probability_density(self, x: float) -> float:
+        """Returns the probability density value for value x."""
+        if self._lo <= x <= self._hi:
+            return 1.0 / (self._hi - self._lo) 
+        return 0.0
+
+    @property
+    def lo(self) -> float:
+        """Return the parameter value lo"""
+        return self._lo
+
+    @property
+    def hi(self) -> int:
+        """Return the parameter value hi"""
+        return self._hi
+    
+    def __str__(self) -> str:
+        return f"DistUniform[lo={self._lo}, hi={self._hi}]"
+    
+    def __repr__(self) -> str:
+        return str(self)
