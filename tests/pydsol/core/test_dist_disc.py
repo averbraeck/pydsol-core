@@ -8,7 +8,7 @@ import math
 import pytest
 
 from pydsol.core.distributions import Distribution, DistBernoulli, DistBinomial, \
-    DistDiscreteUniform, DistGeometric, DistNegBinomial
+    DistDiscreteUniform, DistGeometric, DistNegBinomial, DistPoisson
 from pydsol.core.statistics import Tally
 from pydsol.core.streams import MersenneTwister, StreamInterface
 
@@ -47,8 +47,8 @@ def test_d_mean_variance():
     d_dist("DistNegBinomial", DistNegBinomial(stream, 10, 0.25),
            10 * (1.0 - 0.25) / 0.25, 10 * (1.0 - 0.25) / (0.25 * 0.25),
            0.0, nan, 0.05)
-    # d_dist("DistPoisson", DistPoisson(stream, 8.21), 8.21, 8.21, 
-    #        0.0, nan, 0.01)
+    d_dist("DistPoisson", DistPoisson(stream, 8.21), 8.21, 8.21,
+           0.0, nan, 0.01)
 
 
 def test_bernoulli():
@@ -247,6 +247,35 @@ def test_neg_binomial():
         DistNegBinomial(stream, 4, -1.1)
     with pytest.raises(ValueError):
         DistNegBinomial(stream, 4, 1.1)
+
+
+def test_poisson():
+    for rate in [x / 10.0 for x in range(1, 20, 3)]:
+        stream: StreamInterface = MersenneTwister(10)
+        dist: DistPoisson = DistPoisson(stream, rate)
+        assert stream == dist.stream
+        assert dist.rate == rate
+        assert "Poisson" in str(dist)
+        assert str(rate) in repr(dist)
+        value: int = dist.draw()
+        assert value >= 0
+        dist.stream = MersenneTwister(10)
+        assert dist.draw() == value
+        assert dist.probability(-1) == 0.0
+        assert dist.probability(0.5) == 0.0
+        for x in range(50):
+            assert math.isclose(dist.probability(x),
+                math.exp(-rate) * math.pow(rate, x) / math.factorial(x),
+                abs_tol=0.001)
+
+    with pytest.raises(TypeError):
+        DistPoisson('x', 4)
+    with pytest.raises(TypeError):
+        DistPoisson(stream, 'x')
+    with pytest.raises(ValueError):
+        DistPoisson(stream, 0)
+    with pytest.raises(ValueError):
+        DistPoisson(stream, -1)
 
     
 if __name__ == "__main__":
