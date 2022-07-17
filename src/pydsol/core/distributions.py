@@ -122,9 +122,9 @@ class DistBernoulli(DistDiscrete):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when p is not a float
-        ValueError when p < 0 or p > 1
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when p is not a float
+        ValueError: when p < 0 or p > 1
         """
         super().__init__(stream)
         if not isinstance(p, float):
@@ -187,9 +187,9 @@ class DistBeta(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when alpha1 or alpha2 is not a float or int
-        ValueError when alpha1 <= 0 or alpha2 <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when alpha1 or alpha2 is not a float or int
+        ValueError: when alpha1 <= 0 or alpha2 <= 0
         """
         if not isinstance(alpha1, (float, int)):
             raise TypeError(f"parameter alpha1 {alpha1} is not a float")
@@ -271,10 +271,10 @@ class DistBinomial(DistDiscrete):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when p is not a float
-        TypeError when n is not an int
-        ValueError when p < 0 or p > 1 or n <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when p is not a float
+        TypeError: when n is not an int
+        ValueError: when p < 0 or p > 1 or n <= 0
         """
         super().__init__(stream)
         if not isinstance(p, float):
@@ -348,9 +348,9 @@ class DistDiscreteUniform(DistDiscrete):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when lo or hi is not an int
-        ValueError when lo >= hi
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when lo or hi is not an int
+        ValueError: when lo >= hi
         """
         super().__init__(stream)
         if not isinstance(lo, int):
@@ -412,8 +412,8 @@ class DistConstant(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when constant is not a float or int
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when constant is not a float or int
         """
         super().__init__(stream)
         if not isinstance(constant, (float, int)):
@@ -482,10 +482,10 @@ class DistErlang(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when scale is not a float or int
-        TypeError when k is not an int
-        ValueError when k <= 0 or scale <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when scale is not a float or int
+        TypeError: when k is not an int
+        ValueError: when k <= 0 or scale <= 0
         """
         if not isinstance(scale, (float, int)):
             raise TypeError(f"parameter scale {scale} is not a float")
@@ -575,9 +575,9 @@ class DistExponential(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when mean is not a float or int
-        ValueError when mean <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when mean is not a float or int
+        ValueError: when mean <= 0
         """
         super().__init__(stream)
         if not isinstance(mean, (float, int)):
@@ -639,9 +639,9 @@ class DistGamma(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when shape or scale is not a float or int
-        ValueError when shape <= 0 or scale <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when shape or scale is not a float or int
+        ValueError: when shape <= 0 or scale <= 0
         """
         super().__init__(stream)
         if not isinstance(shape, (float, int)):
@@ -764,9 +764,9 @@ class DistGeometric(DistDiscrete):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when p is not a float
-        ValueError when p < 0 or p > 1
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when p is not a float
+        ValueError: when p < 0 or p > 1
         """
         super().__init__(stream)
         if not isinstance(p, float):
@@ -832,10 +832,10 @@ class DistNegBinomial(DistDiscrete):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when p is not a float
-        TypeError when s is not an int
-        ValueError when p < 0 or p > 1 or s <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when p is not a float
+        TypeError: when s is not an int
+        ValueError: when p < 0 or p > 1 or s <= 0
         """
         super().__init__(stream)
         if not isinstance(p, float):
@@ -924,9 +924,9 @@ class DistNormal(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when mu or sigma is not a float or int
-        ValueError when sigma <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when mu or sigma is not a float or int
+        ValueError: when sigma <= 0
         """
         super().__init__(stream)
         if not isinstance(mu, (float, int)):
@@ -1036,11 +1036,11 @@ class DistNormalTrunc(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when mu, sigma, lo or hi are not float or int
-        ValueError when sigma <= 0
-        ValueError when max <= min
-        ValueError when the probabilities are so small that drawing becomes 
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when mu, sigma, lo or hi are not float or int
+        ValueError: when sigma <= 0
+        ValueError: when max <= min
+        ValueError: when the probabilities are so small that drawing becomes 
             impossible. The cutoff point is at an interval with an overall 
             probability of less than 1E-6
         """
@@ -1205,9 +1205,9 @@ class DistLogNormal(DistNormal):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when mu or sigma is not a float or int
-        ValueError when sigma <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when mu or sigma is not a float or int
+        ValueError: when sigma <= 0
         """
         super().__init__(stream, mu, sigma)
         # the constant in the lognormal calculation: 2 * sigma^2.
@@ -1287,10 +1287,10 @@ class DistPearson5(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when alpha is not a float or int
-        TypeError when beta is not a float or int
-        ValueError when alpha <= 0 or beta <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when alpha is not a float or int
+        TypeError: when beta is not a float or int
+        ValueError: when alpha <= 0 or beta <= 0
         """
         if not isinstance(alpha, (float, int)):
             raise TypeError(f"parameter alpha {alpha} is not a float / int")
@@ -1367,11 +1367,11 @@ class DistPearson6(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when alpha1 is not a float or int
-        TypeError when alpha2 is not a float or int
-        TypeError when beta is not a float or int
-        ValueError when alpha1 <= 0 or alpha2 <= 0 or beta <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when alpha1 is not a float or int
+        TypeError: when alpha2 is not a float or int
+        TypeError: when beta is not a float or int
+        ValueError: when alpha1 <= 0 or alpha2 <= 0 or beta <= 0
         """
         if not isinstance(alpha1, (float, int)):
             raise TypeError(f"parameter alpha1 {alpha1} is not a float / int")
@@ -1469,9 +1469,9 @@ class DistPoisson(DistDiscrete):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when rate is not a float
-        ValueError when rate <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when rate is not a float
+        ValueError: when rate <= 0
         """
         super().__init__(stream)
         if not isinstance(rate, (float, int)):
@@ -1550,11 +1550,11 @@ class DistTriangular(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when lo is not a float or int
-        TypeError when mode is not a float or int
-        TypeError when hi is not a float or int
-        ValueError when mode < lo or mode > hi or lo == hi
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when lo is not a float or int
+        TypeError: when mode is not a float or int
+        TypeError: when hi is not a float or int
+        ValueError: when mode < lo or mode > hi or lo == hi
         """
         super().__init__(stream)
         if not isinstance(lo, (float, int)):
@@ -1646,10 +1646,10 @@ class DistUniform(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when lo is not a float or int
-        TypeError when hi is not a float or int
-        ValueError when hi <= lo
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when lo is not a float or int
+        TypeError: when hi is not a float or int
+        ValueError: when hi <= lo
         """
         super().__init__(stream)
         if not isinstance(lo, (float, int)):
@@ -1713,10 +1713,10 @@ class DistWeibull(DistContinuous):
             
         Raises
         ------
-        TypeError when stream is not implementing StreamInterface
-        TypeError when alpha is not a float or int
-        TypeError when beta is not a float or int
-        ValueError when alpha <= 0 or beta <= 0
+        TypeError: when stream is not implementing StreamInterface
+        TypeError: when alpha is not a float or int
+        TypeError: when beta is not a float or int
+        ValueError: when alpha <= 0 or beta <= 0
         """
         super().__init__(stream)
         if not isinstance(alpha, (float, int)):
