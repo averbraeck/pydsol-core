@@ -82,12 +82,6 @@ class SimEvent(SimEventInterface):
         the method to call, stored as the attr of the target
     _kwargs : dict
         a dict with arguments to use for the method
-        
-    Methods
-    -------
-    execute()
-        execute the stored method on the target object; typically called
-        by the event list
     """
     
     # Internal static event counter to allocate the unique id to a SimEvent
