@@ -38,22 +38,22 @@ class SimEventInterface(ABC):
     
     @abstractmethod
     def execute(self):
-        """execute the event, usually as a method call on an object"""
+        """execute the event, usually as a method call on an object."""
 
     @property 
     @abstractmethod
     def time(self) -> Union[int, float]:
-        """return the absolute execution time, float or int"""
+        """Return the absolute execution time, float or int."""
 
     @property 
     @abstractmethod
     def priority(self) -> int:
-        """return the priority; higher value is higher priority"""
+        """Return the priority; higher value is higher priority."""
 
     @property 
     @abstractmethod
     def id(self) -> int:
-        """return the unique id of of the SimEvent"""
+        """Return the unique id of of the SimEvent."""
 
 
 class SimEvent(SimEventInterface):
@@ -104,21 +104,20 @@ class SimEvent(SimEventInterface):
             the object instance on which the method has to be called
         method : str
             the name of the method to call, as a string
-        priority : int, optional
+        priority : int (optional)
             the priority of the event when two events are scheduled at the
             same time. Higher numbers indicate higher priority. Typically,
             priorities are numbered 1 through 10 with a default priority of 5.
             When not provided, the default priority of 5 will be used.
-        **kwargs, optional
+        **kwargs: dict (optional)
             the arguments of the method call provided as comma-separated
             arg=value pairs
             
         Raises
         ------
-        DSOLError
-            when one of the arguments is not of the correct type, when the
-            method does not exist for the target, or when the method is not 
-            callable on the target.
+        DSOLError: when one of the arguments is not of the correct type, when 
+            the method does not exist for the target, or when the method is 
+            not callable on the target.
         """
         self._absolute_time: Union[int, float] = time
         self._priority: int = priority
@@ -148,13 +147,13 @@ class SimEvent(SimEventInterface):
         
         Returns
         -------
-        None. This is quite important. Since the method will be called 
-        asynchronously, no object can do anything with a return value.
+        None
+            This is quite important. Since the method will be called 
+            asynchronously, no object can do anything with a return value.
         
         Raises
         ------
-        DSOLError
-            when the method call fails or returns an exception
+        DSOLError: when the method call fails or returns an exception
         """
         try:
             self._method(**self._kwargs)
@@ -219,31 +218,31 @@ class SimEvent(SimEventInterface):
     
     @property 
     def time(self) -> Union[float, int]: 
-        """return the absolute execution time, float or int"""
+        """Return the absolute execution time, float or int."""
         return self._absolute_time
     
     @property 
     def priority(self) -> int: 
-        """return the priority; higher value is higher priority"""
+        """Return the priority; higher value is higher priority."""
         return self._priority
     
     @property 
     def id(self) -> int: 
-        """return the unique id of of the SimEvent"""
+        """Return the unique id of of the SimEvent."""
         return self._id
     
     @property
     def target(self) -> object:
-        """return the target object instance to execute the method call on""" 
+        """Return the target object instance to execute the method call on.""" 
         return self._target
     
     @property
     def method(self) -> str: 
-        """return the name of the method to be called on the target"""
+        """Return the name of the method to be called on the target."""
         return self._method.__name__
     
     @property
     def kwargs(self) -> dict: 
-        """return the dict of arguments to be passed to the method"""
+        """Return the dict of arguments to be passed to the method."""
         return self._kwargs
     
