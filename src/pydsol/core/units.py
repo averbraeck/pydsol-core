@@ -1316,6 +1316,7 @@ class SI(float):
 
 
 class Acceleration(Quantity['Acceleration']):
+    
     _baseunit = 'm/s2'
     _units = {'m/s2': 1.0, 'm/sec^2': 1.0, 'km/h2': 7.71604938271605E-5,
               'km/hr^2': 7.71604938271605E-5,
@@ -2230,6 +2231,7 @@ class AbsorbedDose(Quantity['AbsorbedDose']):
 
 
 class AmountOfSubstance(Quantity['AmountOfSubstance']):
+    """Amount of substance is expressed in mol."""
     _baseunit = 'mol'
     _units = {'pmol': 1.0E-12, 'nmol': 1.0E-9, 'μmol': 1.0E-6,
               'mumol': 1.0E-6, 'mmol': 0.001, 'cmol': 0.01, 'dmol': 0.1,
