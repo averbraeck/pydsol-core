@@ -350,18 +350,18 @@ class Quantity(Generic[Q], ABC, float):
         Return a new quantity containing the multiplication of this quantity 
         by one of the following types:
         a) A provided factor (where the factor comes last in the 
-           multiplication). The factor has to be of type float or int. 
-           The result of Area(25.0, 'm^2') * 2 = Area(50.0, 'm^2').
+        multiplication). The factor has to be of type float or int. 
+        The result of Area(25.0, 'm^2') * 2 = Area(50.0, 'm^2').
         b) A pre-defined quantity for multiplication. As an example, for
-           length the multiplication for another length has been pre-defined
-           with the resulting Quantity type being an Area. So Length(2.0, 'm')
-           times Length(300, 'cm') leads to Area(6.0, 'm2').
+        Length the multiplication for another length has been pre-defined
+        with the resulting Quantity type being an Area. So Length(2.0, 'm')
+        times Length(300, 'cm') leads to Area(6.0, 'm2').
         c) A quantity for which the multiplication has not been predefined.
-           The result will be an instance of SI with the correct value and 
-           SI signature. Force(4.0, 'N') * Force(2.0, 'N') results in:
-           SI(8.0, 'kg.m2/s4'). 
+        The result will be an instance of SI with the correct value and 
+        SI signature. Force(4.0, 'N') * Force(2.0, 'N') results in:
+        SI(8.0, 'kg.m2/s4'). 
         d) An SI value. This results in another SI value. So, Force(2.0, 'N')
-           times SI(3.0, 'sr.cd/s-2') results in SI(6.0, 'sr.kg.m.cd/s-4'). 
+        times SI(3.0, 'sr.cd/s-2') results in SI(6.0, 'sr.kg.m.cd/s-4'). 
         
         Raises
         ------
@@ -472,18 +472,18 @@ class Quantity(Generic[Q], ABC, float):
         Return a new quantity containing the division of this quantity 
         by one of the following types:
         a) A provided factor (where the factor comes last in the 
-           multiplication). The factor has to be of type float or int. 
-           The result of Area(25.0, 'ha') / 2 = Area(12.5, 'ha').
+        multiplication). The factor has to be of type float or int. 
+        The result of Area(25.0, 'ha') / 2 = Area(12.5, 'ha').
         b) A pre-defined quantity for division. As an example, for length 
-           the division by Duration has been pre-defined with the resulting 
-           Quantity type being a Speed. So Length(3.0, 'km') divided by
-           Duration(1, 'min') leads to Speed(50.0, 'm/s').
+        the division by Duration has been pre-defined with the resulting 
+        Quantity type being a Speed. So Length(3.0, 'km') divided by
+        Duration(1, 'min') leads to Speed(50.0, 'm/s').
         c) A quantity for which the division has not been predefined.
-           The result will be an instance of SI with the correct value and 
-           SI signature. Speed(10.0, 'm/s') / Force(2.0, 'N') results in:
-           SI(5.0, 's/kg'). 
+        The result will be an instance of SI with the correct value and 
+        SI signature. Speed(10.0, 'm/s') / Force(2.0, 'N') results in:
+        SI(5.0, 's/kg'). 
         d) An SI value. This results in another SI value. So, Force(6.0, 'N')
-           / SI(3.0, 'sr.cd/s-2') results in SI(2.0, 'kg.m/sr.cd'). 
+        / SI(3.0, 'sr.cd/s-2') results in SI(2.0, 'kg.m/sr.cd'). 
         
         Raises
         ------
@@ -629,7 +629,7 @@ class Quantity(Generic[Q], ABC, float):
     def __str__(self):
         """
         Return a string representation of the quantity, where the chosen unit 
-        follows the value without a space.
+        follows the value after a space.
         """
         return str(self.displayvalue) + ' ' + \
             self._displayunits.get(self._unit, self._unit)
@@ -637,7 +637,7 @@ class Quantity(Generic[Q], ABC, float):
     def __repr__(self):
         """
         Return a string representation of the quantity, where the chosen unit 
-        follows the value without a space.
+        follows the value after a space.
         """
         return str(self)
 
@@ -997,13 +997,13 @@ class SI(float):
         quantity by the provided object. The other object can be of the 
         following types:
         a) float or int. In that case, multiplication with a constant takes
-           place, and the si signature and unit stay the same.
+        place, and the si signature and unit stay the same.
         b) Quantity. The internal si-values in the base unit will be 
-           multiplied, and the exponents of the signature of the unit will 
-           be added: SI(4, 'm^3/s') * Length(5, 'm') -> SI(20.0, 'm^4/s').
+        multiplied, and the exponents of the signature of the unit will 
+        be added: SI(4, 'm^3/s') * Length(5, 'm') -> SI(20.0, 'm^4/s').
         c) Other SI quantity.The internal si-values in the base unit will be 
-           multiplied, and the exponents of the signature of the unit will 
-           be added SI(2.0, 'm^3/s^2') * SI(4.0, 's/m') -> SI(8.0, 'm^2/s').
+        multiplied, and the exponents of the signature of the unit will 
+        be added SI(2.0, 'm^3/s^2') * SI(4.0, 's/m') -> SI(8.0, 'm^2/s').
         
         Raises
         ------
