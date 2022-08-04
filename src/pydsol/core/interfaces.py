@@ -28,6 +28,7 @@ __all__ = [
     "SimulatorInterface",
     "ReplicationInterface",
     "ExperimentInterface",
+    "InputParameterInterface",
     "ModelInterface",
     "StatisticsInterface",
     "SimStatisticsInterface",
@@ -318,7 +319,7 @@ class InputParameterInterface(ABC):
 
     @property    
     @abstractmethod
-    def display_priority(self) -> float:
+    def display_priority(self) -> float: 
         """
         Return the number indicating the order of display of the parameter 
         in the parent parameter map. Floats make it easy to insert an extra 
@@ -336,7 +337,7 @@ class InputParameterInterface(ABC):
 
     @property
     @abstractmethod
-    def parent(self) -> "InputParameterMap":
+    def parent(self):
         """
         Return the parent map in which the parameter can be retrieved using 
         its  key. Typically, only the root InputParameterMap has no parent, 
