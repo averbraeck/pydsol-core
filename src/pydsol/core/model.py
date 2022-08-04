@@ -71,3 +71,4 @@ class DSOLModel(ModelInterface):
     def get_output_statistic(self, key: str) -> StatisticsInterface:
         """retrieve an output statistic from the output statistics map."""
         return self._output_statistics[key]
+
