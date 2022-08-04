@@ -150,7 +150,7 @@ class SimulatorInterface(ABC, Generic[TIME]):
         """Stops or pauses the simulator, and fire a STOP_EVENT when the 
         simulator is stopped. 
         
-        NOTE
+        Note
         ----
         Note that when the simulator was already stopped, an exception 
         will be raised, and no event will be fired."""
@@ -243,20 +243,153 @@ class ExperimentInterface(ABC, Generic[TIME]):
     END_EXPERIMENT_EVENT: EventType = EventType("END_EXPERIMENT_EVENT")
 
 
-class ModelInterface(ABC):
+class InputParameterInterface(ABC):
+    """
+    Input parameters describe different types of input parameters for the 
+    model. All parameters for a model are contained in a hierarchical map 
+    where successive keys can be retrieved using a dot-notation between 
+    the key elements. Suppose a model has two servers: server1 and server2. 
+    Each of the servers has an average service time and a number of resources. 
+    This can be coded using keys ‘server1.avg_serice_time’, 
+    ‘server1.nr_resources’, ‘server2.avg_serice_time’, ‘server2.nr_resources’. 
+    This means that the key ‘server1’ contains an `InputParameterMap` with an 
+    instance of InputParameterFloat for the service time, and 
+    `InputParameterInt` for the number of resources. Readers for the input 
+    parameter map can read the model parameters, e.g., from the screen, 
+    a web page, an Excel file, a properties file, or a JSON file.
+    
+    This generic interface describes the minimum set of methods and
+    properties that an InputParameter should have. The definition of the
+    interface avoids circular references. 
+    """
+    
+    @property
+    @abstractmethod
+    def key(self) -> str:
+        """
+        Return the key of the parameter that can be a part of the 
+        dot-notation to uniquely identify the model parameter. The key 
+        does not contain the name of the parent. The key is set at time 
+        of construction and it is immutable.
+        """
     
     @abstractmethod
-    def construct_model(self):
-        """code to construct the model for each replication"""
+    def extended_key(self):
+        """
+        Return the extended key of this InputParameter including parents 
+        with a dot-notation. The name of this parameter is the last entry 
+        in the dot notation.
+        """
+
+    @property    
+    @abstractmethod
+    def name(self) -> str:
+        """
+        Returns the concise description of the input parameter, which can 
+        be used in a GUI to identify the parameter to the user.
+        """
+
+    @property    
+    @abstractmethod
+    def description(self) -> str:
+        """
+        Returns description or explanation of the InputParameter. For instance,
+        an indication of the bounds or the type. This value is purely there 
+        for the user interface.
+        """
+
+    @property    
+    @abstractmethod
+    def default_value(self) -> object:
+        """
+        Returns the default (initial) value of the parameter. The actual 
+        return type will be defined in subclasses of `InputParameter`. 
+        The default value is immutable.
+        """
+
+    @property    
+    @abstractmethod
+    def value(self) -> object:
+        """
+        Returns the actual value of the parameter. The value is initialized
+        with default_value and is updated based on user input or data input.
+        The actual type will be defined in subclasses of `InputParameter`.
+        """
+
+    @value.setter
+    @abstractmethod
+    def value(self, value: object):
+        """
+        Set (overwrite) the actual value of the parameter.
+        """
+
+    @property    
+    @abstractmethod
+    def display_priority(self) -> float:
+        """
+        Return the number indicating the order of display of the parameter 
+        in the parent parameter map. Floats make it easy to insert an extra 
+        parameter between parameters that have already been allocated 
+        subsequent integer values.
+        """
+
+    @property    
+    @abstractmethod
+    def read_only(self) -> bool:
+        """
+        Return whether a user is prohibited from changing the value of the
+        parameter or not.
+        """
 
     @property
     @abstractmethod
-    def simulator(self):
-        """return the simulator for this model"""
+    def parent(self) -> "InputParameterMap":
+        """
+        Return the parent map in which the parameter can be retrieved using 
+        its  key. Typically, only the root InputParameterMap has no parent, 
+        and all other parameters have an InputParameterMap as parent.
+        """
+
+
+class ModelInterface(ABC):
+    """
+    The ModelInterface defines the minimum set of methods that a simulation
+    model in the pydsol-framework should implement. Every model consists of
+    the business logic (state transitions initialized in the 
+    `construct_model` method), input parameters, output statistics, and a
+    reference to the simulator that executes the model. 
+    
+    The most important method for the Model is the `construct_model` method.
+    This method is called for each replication to initialize the model to
+    its initial state. The state of the model should be the same every time
+    after the `construct_model` method has been called. Constant parts of 
+    the model that might be expensive to calculate (e.g., maps, large graphs, 
+    information from databases) does not have to be calculated every time 
+    in the `construct_model` method, but can be defined once in the `__init__`
+    method instead.
+    """
+    
+    @abstractmethod
+    def construct_model(self):
+        """
+        Code to construct the model logic for each replication. This 
+        method is called for each replication to initialize the model to
+        its initial state. The state of the model should be the same every 
+        time after the `construct_model` method has been called. Constant 
+        parts of the model that might be expensive to calculate (e.g., maps, 
+        large graphs, information from databases) does not have to be 
+        calculated every time in the `construct_model` method, but can be 
+        defined once in the `__init__` method instead.
+        """
+
+    @property
+    @abstractmethod
+    def simulator(self) -> SimulatorInterface:
+        """Return the simulator for this model."""
 
     @abstractmethod
     def add_parameter(self, input_parameter):
-        """add an input parameter to the input parameter map."""
+        """Add an input parameter to the input parameter map."""
 
     @abstractmethod
     def set_parameter(self, key: str, value: object):
@@ -286,13 +419,14 @@ class ModelInterface(ABC):
 class StatisticsInterface(ABC):
     """
     The StatisticsInterface is a tagging interface for statistics classes. 
+    It defines the minimum set of method that any statistic in the
+    pydsol-framework needs to implement.
     """
     
     @abstractmethod
     def initialize(self) -> None:
         """Initialize the statistic. This can happen at a the start and/or
-        at a simulation replication warmup event.
-        """
+        at a simulation replication warmup event."""
 
     @property
     @abstractmethod
@@ -335,9 +469,6 @@ class StatEvents:
     events, all events are defines in one place as `StatEvents.XXX_EVENT`.
     
     The events that can be used are listed below.
-    
-    Event Types
-    -----------
     """
 
     DATA_EVENT: EventType = EventType("DATA_EVENT")
