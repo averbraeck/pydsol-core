@@ -699,5 +699,5 @@ class SimpleStreamUpdater(StreamUpdater):
         if replication_nr < 0:
             raise ValueError("replication_nr < 0")
         stream.set_seed(stream.original_seed() + replication_nr * 
-                        (1_000_037L + hash(stream_id)))
+                        (1_000_037 + hash(stream_id)))
 
