@@ -2,7 +2,11 @@
 InputParameters describe different types of input parameters for the model.
 All parameters for a model are contained in a hierarchical map where
 successive keys can be retrieved using a dot-notation between the key 
-elements. Suppose a model has two servers: server1 and server2. Each of the
+elements. 
+
+Example
+-------
+Suppose a model has two servers: server1 and server2. Each of the
 servers has an average service time and a number of resources. This can be
 codes using keys 'server1.avg_serice_time', 'server1.nr_resources',
 'server2.avg_serice_time', 'server2.nr_resources'. This means that the 
@@ -18,6 +22,7 @@ from typing import Union
 
 from pydsol.core.units import Quantity
 from pydsol.core.utils import get_module_logger
+from pydsol.core.interfaces import InputParameterInterface
 
 __all__ = [
     "InputParameter",
@@ -34,14 +39,109 @@ __all__ = [
 logger = get_module_logger('parameters')
 
 
-class InputParameter:
+class InputParameter(InputParameterInterface):
     """
-    User readable and settable properties.
+    The InputParameter is a user readable and settable property for the 
+    simulation model. All parameters for a model are contained in a 
+    hierarchical map where successive keys can be retrieved using a 
+    dot-notation between the key elements.
+    
+    Attributes
+    ----------
+    _key: str
+        The key of the parameter that can be a part of the dot-notation to 
+        uniquely identify the model parameter. The key does not contain the 
+        name of the parent, and should not contain any periods. It should 
+        also be unique within its node of the input parameter tree. The key 
+        is immutable.
+    _name: str
+        Concise description of the input parameter, which can be used
+        in a GUI to identify the parameter to the user.
+    _default_value: object
+        The default (initial) value of the parameter. The actual type will 
+        be defined in subclasses of `InputParameter`. The default value is
+        immutable.
+    _display_priority: float
+        A number indicating the order of display of the parameter in the 
+        parent parameter map. Floats are allowed to make it easy to insert 
+        an extra parameter between parameters that have already been 
+        allocated subsequent integer values.
+    _parent: InputParameterMap (optional)
+        The parent map in which the parameter can be retrieved using its  key. 
+        Typically, only the root InputParameterMap has no parent, and all 
+        other parameters have an InputParameterMap as parent.
+    _description: str (optional)
+        A description or explanation of the InputParameter. For instance,
+        an indication of the bounds or the type. This value is purely there 
+        for the user interface.
+    _read_only: bool (optional)
+        Whether a user is prohibited from changing the value of the
+        parameter or not (default false, so the parameter *can* be changed).
+    _value: object
+        The actual value of the parameter. The value is initialized with
+        default_value and is updated based on user input or data input.
+        The actual type will be defined in subclasses of `InputParameter`.
     """
+    
     def __init__(self, key: str, name: str, default_value,
                  display_priority: Union[int, float], *,
                  parent: "InputParameterMap"=None, description: str=None,
                  read_only: bool=False):
+        """
+        Create a new InputParameter. 
+        
+        Parameters
+        ----------
+        key: str
+            The key of the parameter that can be a part of the 
+            dot-notation to uniquely identify the model parameter. The key 
+            does not contain the name of the parent, and should not contain
+            any periods. It should also be unique within its node of the 
+            input parameter tree. The key is set at time of construction and 
+            it is immutable.
+        name: str
+            Concise description of the input parameter, which can be used
+            in a GUI to identify the parameter to the user.
+        default_value: object
+            The default (initial) value of the parameter. The actual type
+            will be defined in subclasses of `InputParameter`.
+        display_priority: Union[int, float]
+            A number indicating the order of display of the parameter
+            in the parent parameter map. Floats are allowed to make it
+            easy to insert an extra parameter between parameters that
+            have already been allocated subsequent integer values. 
+        parent: InputParameterMap (optional)
+            The parent map in which the parameter can be retrieved using its
+            key. Typically, only the root InputParameterMap has no parent,
+            and all other parameters have an InputParameterMap as parent.
+        description: str (optional)
+            A description or explanation of the InputParameter. For instance,
+            an indication of the bounds or the type. This value is purely 
+            there for the user interface.
+        read_only: bool (optional)
+            Whether a user is prohibited from changing the value of the
+            parameter or not (default false, so the parameter *can* be 
+            changed).
+            
+        Raises
+        ------
+        TypeError
+            when key is not a string
+        ValueError
+            when key is an empty string, or key contains a period
+        ValueError
+            when key is not unique in the InputParameterMap
+        TypeError
+            when name is not a string
+        ValueError
+            when name is an empty string
+        TypeError
+            when display priority is not a number
+        TypeError
+            when parent is not an InputParametermap or None
+        TypeError
+            when read_only is not a bool
+        """
         if not isinstance(key, str):
             raise TypeError(f"parameter key {key} not a string")
         if len(key) == 0:
@@ -62,22 +162,46 @@ class InputParameter:
         self._key: str = key
         self._name: str = name
         if description == None:
-            self._description: str = name
+            self._description: str = ""
         else:
             self._description: str = description
         self._default_value = default_value
-        self._display_priority: float = display_priority
+        self._display_priority: float = float(display_priority)
         self._read_only: bool = read_only
         self._value = default_value
         self._parent: "InputParameterMap" = parent
         if parent is not None:
+            # will take care of error for duplicate keys
             parent.add(self)
     
     @property    
     def key(self) -> str:
+        """
+        Return the key of the parameter that can be a part of the 
+        dot-notation to uniquely identify the model parameter. The key 
+        does not contain the name of the parent. The key is set at time 
+        of construction and it is immutable.
+        
+        Returns
+        -------
+        str
+            The key of the parameter that can be a part of the 
+            dot-notation to uniquely identify the model parameter.
+        """
         return self._key
     
     def extended_key(self):
+        """
+        Return the extended key of this InputParameter including parents 
+        with a dot-notation. The name of this parameter is the last entry 
+        in the dot notation.
+        
+        Returns
+        -------
+        str
+            The extended key of this InputParameter including parents 
+            with a dot-notation.
+        """
         if self._parent == None:
             return self._key
         else:
@@ -85,36 +209,117 @@ class InputParameter:
 
     @property    
     def name(self) -> str:
+        """
+        Returns the concise description of the input parameter, which can 
+        be used in a GUI to identify the parameter to the user.
+        
+        Returns
+        -------
+        str
+            The concise description of the input parameter, which can 
+            be used in a GUI to identify the parameter to the user.
+        """
         return self._name
 
     @property    
     def description(self) -> str:
+        """
+        Returns a description or explanation of the InputParameter. For 
+        instance, an indication of the bounds or the type. This value is 
+        purely there for the user interface.
+        
+        Returns
+        -------
+        str
+            A description or explanation of the InputParameter.
+        """
         return self._description
 
     @property    
     def default_value(self) -> object:
+        """
+        Returns the default (initial) value of the parameter. The actual 
+        return type will be defined in subclasses of `InputParameter`. 
+        The default value is immutable.
+        
+        Returns
+        -------
+        object
+            The default (initial) value of the parameter.
+        """
         return self._default_value
 
     @property    
     def value(self) -> object:
+        """
+        Returns the actual value of the parameter. The value is initialized
+        with default_value and is updated based on user input or data input.
+        The actual type will be defined in subclasses of `InputParameter`.
+        
+        Returns
+        -------
+        object
+            The actual value of the parameter.
+        """
         return self._value
 
     @value.setter
-    def value(self, value: int):
+    def value(self, value: object):
+        """
+        Set (overwrite) the actual value of the parameter.
+        
+        Parameters
+        ----------
+        value: object
+            The new value of the parameter.
+        """
         if self.read_only:
             raise ValueError("parameter {self.key} is read only")
         self._value = value
 
     @property    
     def display_priority(self) -> float:
+        """
+        Return the number indicating the order of display of the parameter 
+        in the parent parameter map. Floats make it easy to insert an extra 
+        parameter between parameters that have already been allocated 
+        subsequent integer values.
+        
+        Returns
+        -------
+        float
+            The number indicating the order of display of the parameter 
+            in the parent parameter map.
+        """
         return self._display_priority
 
     @property    
     def read_only(self) -> bool:
+        """
+        Return whether a user is prohibited from changing the value of the
+        parameter or not.
+        
+        Returns
+        -------
+        bool
+            Whether a user is prohibited from changing the value of the
+            parameter or not.
+        """
         return self._read_only
 
     @property
     def parent(self) -> "InputParameterMap":
+        """
+        Return the parent map in which the parameter can be retrieved using 
+        its  key. Typically, only the root InputParameterMap has no parent, 
+        and all other parameters have an InputParameterMap as parent.
+        
+        Returns
+        -------
+        InputParameterMap
+            the parent map in which the parameter can be retrieved using 
+            its  key.
+        """
         return self._parent
 
     def __eq__(self, other): 
