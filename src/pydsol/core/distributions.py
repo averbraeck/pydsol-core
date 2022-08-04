@@ -1,3 +1,17 @@
+"""
+The distributions module contains continuous and discrete stochastic 
+distribution functions that are typically used in simulation. The
+distributions are all integrated with the stream and seed management from 
+the streams.py module. The continuous distributions can return information
+about their probability distribution, and the discrete distributions
+can return the probability of a certain observation. 
+
+Users can create new distributions (or wrap for instance NumPy distributions) 
+by extending the Distribution Abstract Base Class. By doing so, the newly
+created distributions will automatically be integrated with DSOL's stream
+and seed management.  
+"""
+
 from abc import ABC, abstractmethod
 import math
 from typing import Union
