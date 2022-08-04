@@ -316,13 +316,6 @@ class InputParameterInterface(ABC):
         The actual type will be defined in subclasses of `InputParameter`.
         """
 
-    @value.setter
-    @abstractmethod
-    def value(self, value: object):
-        """
-        Set (overwrite) the actual value of the parameter.
-        """
-
     @property    
     @abstractmethod
     def display_priority(self) -> float:
