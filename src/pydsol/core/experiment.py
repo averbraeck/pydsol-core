@@ -25,14 +25,13 @@ class RunControl(Generic[TIME]):
     def __init__(self, name: str, start_time: TIME, warmup_period: TIME,
                  run_length: TIME):
         if not isinstance(name, str):
-            raise DSOLError("name {name} should be a str")
+            raise TypeError("name {name} should be a str")
         if not isinstance(start_time, (float, int)):
-            raise DSOLError("start_time {start_time} should be numeric")
-        if not (isinstance(warmup_period, float) or \
-                isinstance(warmup_period, int)):
-            raise DSOLError("warmup_period {warmup_period} should be numeric")
+            raise TypeError("start_time {start_time} should be numeric")
+        if not isinstance(warmup_period, (float, int)):
+            raise TypeError("warmup_period {warmup_period} should be numeric")
         if not isinstance(run_length, (float, int)):
-            raise DSOLError("run_length {run_length} should be numeric")
+            raise TypeError("run_length {run_length} should be numeric")
         self._name = name
         self._start_sim_time = start_time
         self._end_sim_time = start_time + run_length
