@@ -60,7 +60,8 @@ class StreamInterface(ABC):
          
         Returns
         -------
-        bool: a pseudo-random boolean with 50/50 chance for true or false
+        bool
+            a pseudo-random boolean with 50/50 chance for true or false
         """
 
     @abstractmethod
@@ -71,7 +72,8 @@ class StreamInterface(ABC):
 
         Returns
         -------
-        float: a pseudo-random number between 0 and 1
+        float
+            a pseudo-random number between 0 and 1
         """
 
     @abstractmethod
@@ -89,7 +91,8 @@ class StreamInterface(ABC):
             
         Returns
         -------
-        int: a value between lo and hi (both inclusive)
+        int
+            a value between lo and hi (both inclusive)
         """
 
     @abstractmethod
@@ -99,7 +102,8 @@ class StreamInterface(ABC):
         
         Returns
         -------
-        int: the seed
+        int
+            the seed
         """
 
     @abstractmethod
@@ -110,7 +114,8 @@ class StreamInterface(ABC):
 
         Returns
         -------
-        int: the original seed of the generator when it was first initialized
+        int
+            the original seed of the generator when it was first initialized
         """
 
     @abstractmethod
@@ -132,24 +137,25 @@ class StreamInterface(ABC):
         """
 
     @abstractmethod
-    def save_state(self) -> bytearray:
+    def save_state(self) -> object:
         """
         Save the state of the RNG into a byte array, e.g. to roll it 
         back to this state.
         
         Returns
         -------
-        bytearray: the state as an object specific to the RNG.
+        object
+            the state as an object specific to the RNG.
         """
 
     @abstractmethod
-    def restore_state(self, state: bytearray):
+    def restore_state(self, state: object):
         """
         Restore the state from an earlier saved state object.
         
         Parameters
         ----------
-        state: bytearray
+        state: object
             state Object; the earlier saved state to which the RNG rolls back.
         """
 
@@ -159,16 +165,33 @@ class MersenneTwister(StreamInterface):
     The MersenneTwister class is the default random stream in pydsol. The
     class wraps the builtin Random class of Python, to enforce the fixed and
     stable StreamInterface for the random number class. 
+    
+    Attributes
+    ----------
+    _original_seed: int
+        The seed value that the random stream has been initialized with 
+        originally.
+    _random: Random
+        The wrapped Python implementation of the Mersenne Twister.
     """
     
     def __init__(self, seed:int=None):
         """
         Create a new random stream to be used in a simulation. The model can
         define and use as many different and independent random streams as 
-        needed. Note that when no initial seed is given, the class uses the
+        needed.
+        
+        Note
+        ----
+        Note that when no initial seed is given, the class uses the
         current time in milliseconds as the seed -- an unknown number, but
         still reproducible when the stream uses calls reset(), or saves and
-        retrieves its state. 
+        retrieves its state.
+        
+        Parameters
+        ----------
+        seed: int (optional)
+            
         """
         if seed is None:
             seed: int = round(time.time() * 1000)
@@ -187,7 +210,8 @@ class MersenneTwister(StreamInterface):
          
         Returns
         -------
-        bool: a pseudo-random boolean with 50/50 chance for true or false
+        bool
+            a pseudo-random boolean with 50/50 chance for true or false
         """
         return self._random.random() < 0.5
 
@@ -198,7 +222,8 @@ class MersenneTwister(StreamInterface):
 
         Returns
         -------
-        float: a pseudo-random number between 0 and 1
+        float
+            a pseudo-random number between 0 and 1
         """
         return self._random.random()
     
@@ -216,7 +241,8 @@ class MersenneTwister(StreamInterface):
             
         Returns
         -------
-        int: a value between lo and hi (both inclusive)
+        int
+            a value between lo and hi (both inclusive)
         """
         return lo + math.floor((hi - lo + 1) * self._random.random())
     
@@ -226,7 +252,8 @@ class MersenneTwister(StreamInterface):
         
         Returns
         -------
-        int: the seed
+        int
+            the seed
         """
         return self._seed
 
@@ -237,7 +264,8 @@ class MersenneTwister(StreamInterface):
 
         Returns
         -------
-        int: the original seed of the generator when it was first initialized
+        int
+            the original seed of the generator when it was first initialized
         """
         return self._original_seed
 
@@ -268,7 +296,8 @@ class MersenneTwister(StreamInterface):
         
         Returns
         -------
-        object: the state as an object specific to the RNG.
+        object
+            the state as an object specific to the RNG.
         """
         return self._random.getstate()
 
@@ -358,7 +387,7 @@ class StreamInformation:
         
         Returns
         -------
-        dict[str, StreamInterface]: 
+        dict[str, StreamInterface]
             The dict with streams of this model
         """
         return self._streams
@@ -375,7 +404,7 @@ class StreamInformation:
         
         Returns
         -------
-        StreamInterface: 
+        StreamInterface
             The stream belonging to the stream_id, or None if not present
         
         Raises
@@ -466,7 +495,7 @@ class StreamSeedInformation(StreamInformation):
         
         Returns
         -------
-        dict[str, list[int]]: 
+        dict[str, list[int]]
             The dict with seed lists of this model
         """
         return self._seeds
