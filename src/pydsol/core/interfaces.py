@@ -184,7 +184,25 @@ class SimulatorInterface(ABC, Generic[TIME]):
     
 
 class ReplicationInterface(ABC, Generic[TIME]):
+    """
+    The ReplicationInterface defines the method that an Replication needs
+    to implement. It also defines the events that will be fired to 
+    indicate that the execution of a replication on the simulator has
+    started, and that a replication on the simulator has ended. A 
+    replication provides a start time, warmup time, and duration to the
+    simulator and model, and it is related to a unique set of seed values
+    for the random streams used in the stochastic simulation. 
     
+    Event Types
+    -----------
+    START_REPLICATION_EVENT: EventType
+        Will be fired when the execution of the replication has started.
+    END_REPLICATION_EVENT: EventType
+        Will be fired when the execution of the replication has completed.
+    WARMUP_EVENT: EventType
+        Will be fired when the warmup period has been reached, and the
+        defined statistics in the model will be cleared.
+    """   
     START_REPLICATION_EVENT: EventType = EventType("START_REPLICATION_EVENT")
     END_REPLICATION_EVENT: EventType = EventType("END_REPLICATION_EVENT")
     WARMUP_EVENT: EventType = EventType("WARMUP_EVENT")
@@ -192,17 +210,17 @@ class ReplicationInterface(ABC, Generic[TIME]):
     @property
     @abstractmethod
     def start_sim_time(self) -> TIME:
-        """return the absolute start time of the replication"""
+        """Return the absolute start time of the replication"""
 
     @property
     @abstractmethod
     def warmup_sim_time(self) -> TIME:
-        """return the absolute warmup time of the replication"""
+        """Return the absolute warmup time of the replication"""
 
     @property
     @abstractmethod
     def end_sim_time(self) -> TIME:
-        """return the absolute end time of the replication"""
+        """Return the absolute end time of the replication"""
     
     
 class ExperimentInterface(ABC, Generic[TIME]):
@@ -310,19 +328,32 @@ class SimStatisticsInterface(StatisticsInterface):
 
 
 class StatEvents:
-
-    DATA_EVENT: EventType = EventType("DATA_EVENT")
-    """The DATA_EVENT is the incoming event for EventBased statistics that
-    contains a new value for the statistics. The payload is a single float.
-    This event can be used by the EventBasedCounter and EventBasedTally 
-    and its subclasses. The event is fired from outside to these statistics."""
+    """
+    StatEvents contains the set of events that different statistics in
+    the statistics module can fire. To avoid circular references between the
+    statistics module that fires the events, and modules that listen to 
+    events, all events are defines in one place as `StatEvents.XXX_EVENT`.
     
+    The events that can be used are listed below.  
+    """
+
+    """
+    #: EventType: The DATA_EVENT is the incoming event for EventBased
+        statistics that contains a new value for the statistics. The payload 
+        is a single float. This event can be used by the EventBasedCounter 
+        and EventBasedTally and its subclasses. The event is fired from 
+        outside to these statistics.
+    """
+    DATA_EVENT: EventType = EventType("DATA_EVENT")
+    
+    """
+    #: EventType; The WEIGHT_DATA_EVENT is the incoming event for weighted 
+        EventBased statistics that contains a new weight-value pair for the 
+        statistics. The payload is a tuple (weight, value). This event can be 
+        used by the EventBasedWeightedTally and its subclasses.The event is 
+        fired from outside to the statistics.
+    """
     WEIGHT_DATA_EVENT: EventType = EventType("WEIGHT_DATA_EVENT")
-    """The WEIGHT_DATA_EVENT is the incoming event for weighted EventBased 
-    statistics that contains a new weight-value pair for the statistics. 
-    The payload is a tuple (weight, value). This event can be used by the 
-    EventBasedWeightedTally and its subclasses.The event is fired from outside 
-    to the statistics."""
 
     TIMESTAMP_DATA_EVENT: EventType = EventType("TIMESTAMP_DATA_EVENT")
     """The TIMESTAMP_DATA_EVENT is the incoming event for weighted EventBased 
