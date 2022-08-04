@@ -1,4 +1,3 @@
-
 """
 Test the input parameter classes
 """ 
@@ -33,7 +32,7 @@ def test_parameter():
     assert p.extended_key() == "root.p-key"
     assert m.get("p-key") == p
     assert p.parent == m
-    assert p.description == "p-name"
+    assert p.description == ""
     assert not p.read_only
     p.value = 20.0
     assert p.value == 20.0
