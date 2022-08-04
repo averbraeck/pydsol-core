@@ -14,6 +14,21 @@ float class, and the actual unit is stored in the Quantity class as a str.
 
 This module has been based on the Java DJUNITS project (Delft Java units), as
 documented at https://djunits.org. 
+
+Terminology
+-----------
+si: float
+    The si-value of a quantity.
+sidict: dict[str, int]
+    Dictionary that maps SI-units onto the exponents of the signature, 
+    e.g., {'m': 1, 's': -2} for Acceleration.
+sisig: list[int]
+    List with a length of 9, mapping the 2 plus 7 SI units onto the
+    exponents of the signature, e.g., [0, 0, 0, 1, -2, 0, 0, 0, 0] for
+    Acceleration.
+siunit: str
+    String representation of the unit using the SI units, e.g., 'm/s2'
+    for Acceleration. 
 """
 
 from abc import ABC, abstractmethod
@@ -120,8 +135,8 @@ Q = TypeVar('Q')
 
 class Quantity(Generic[Q], ABC, float):
     """
-    Abstract class properties
-    -------------------------
+    Attributes
+    ----------
     _baseunit : dict
         Defines the baseunit for this quantity, preferably an SI unit.
         The baseunit is coded as a string, and should be present in the 
@@ -162,8 +177,8 @@ class Quantity(Generic[Q], ABC, float):
         does not have to be added. It will be automatically computed at 
         the end of the module.
         
-    Used terminology for si-related functions and variables
-    -------------------------------------------------------
+    Terminology
+    -----------
     si: float
         The si-value of a quantity.
     sidict: dict[str, int]
