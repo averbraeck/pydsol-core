@@ -334,26 +334,26 @@ class StatEvents:
     statistics module that fires the events, and modules that listen to 
     events, all events are defines in one place as `StatEvents.XXX_EVENT`.
     
-    The events that can be used are listed below.  
+    The events that can be used are listed below.
+    
+    Event Types
+    -----------
     """
 
-    """
-    #: EventType: The DATA_EVENT is the incoming event for EventBased
-        statistics that contains a new value for the statistics. The payload 
-        is a single float. This event can be used by the EventBasedCounter 
-        and EventBasedTally and its subclasses. The event is fired from 
-        outside to these statistics.
-    """
     DATA_EVENT: EventType = EventType("DATA_EVENT")
+    """
+    The DATA_EVENT is the incoming event for EventBased statistics that 
+    contains a new value for the statistics. The payload is a single float. 
+    This event can be used by the EventBasedCounter and EventBasedTally 
+    and its subclasses. The event is fired from outside to these statistics.
+    """
     
-    """
-    #: EventType; The WEIGHT_DATA_EVENT is the incoming event for weighted 
-        EventBased statistics that contains a new weight-value pair for the 
-        statistics. The payload is a tuple (weight, value). This event can be 
-        used by the EventBasedWeightedTally and its subclasses.The event is 
-        fired from outside to the statistics.
-    """
     WEIGHT_DATA_EVENT: EventType = EventType("WEIGHT_DATA_EVENT")
+    """The WEIGHT_DATA_EVENT is the incoming event for weighted EventBased 
+    statistics that contains a new weight-value pair for the statistics. 
+    The payload is a tuple (weight, value). This event can be used by the 
+    EventBasedWeightedTally and its subclasses.The event is fired from 
+    outside to the statistics."""
 
     TIMESTAMP_DATA_EVENT: EventType = EventType("TIMESTAMP_DATA_EVENT")
     """The TIMESTAMP_DATA_EVENT is the incoming event for weighted EventBased 
