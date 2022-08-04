@@ -1,3 +1,31 @@
+"""
+Stream and seed management is core to any good experimental design for
+a simulation study. Simulation experiments should be fully reproducible
+for scientific reasons. Yet, we also want different replications to use
+different values for the stochastic variables. Seed management and the 
+ability to set and change seeds is needed to accomplish this. To use 
+techniques for variance reduction such as Common Random Numbers, multiple 
+so-called streams of random values need to be defined in the simulation model. 
+The StreamInterface and MersenneTwister implementation in this module make
+it possible to have multiple random number streams, to reset the streams
+independent of each other, and to save and retrieve the state of a random 
+number generator.
+
+This module contains one implementation of a Random Number Generator (RNG),
+the Mersenne Twister that is considered the standard for modern stochastic
+model implementations. The MersenneTwister class in the streams module wraps
+the Random class from Python that already contains a decent implementation 
+of the Mersenne Twister. Other RNGs can be easily added by extending the
+StreamInterface Abstract Base Class, and implementing the abstract methods.
+
+In addition to providing RNGs, the streams module also contains helper 
+classes for stream and seed management. Again, when modelers want to use
+a different algorithm than the ones provided here, it is sufficient to 
+extend the StreamUpdater Abstract Base Class and implement the update_seed 
+method. After this, the seed management class can be seamlessly used in
+the model and experiment modules.         
+"""
+
 from abc import ABC, abstractmethod
 from random import Random
 import time
