@@ -40,9 +40,10 @@ def sign(x: float) -> float:
     """
     Return the sign of x. Analogous to other programming languages, the
     following convention is used:
+    
     * return -1  for negative x
     * return +1  for positive x
-    * return 0   when x s zero
+    * return 0   when x is zero
     * return nan when x is nan
     """
     if math.isnan(x):
@@ -61,8 +62,10 @@ def erf_inv(y: float) -> float:
     
     Raises
     ------
-    TypeError when y is not a number
-    ValueError when y is not between -1 and 1 (inclusive)
+    TypeError
+        when y is not a number
+    ValueError
+        when y is not between -1 and 1 (inclusive)
     """
     if not isinstance(y, (float, int)):
         raise TypeError(f"Parameter y {y} is not a number")
@@ -112,8 +115,10 @@ def beta(z: float, w: float) -> float:
     
     Raises
     ------
-    TypeEsception when z or w are not numbers 
-    ValueException when z < 0 or w < 0
+    TypeError
+        when z or w are not numbers 
+    ValueError
+        when z < 0 or w < 0
     """
     if not isinstance(w, (float, int)):
         raise TypeError(f"Parameter w {w} is not a number")
