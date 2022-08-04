@@ -80,34 +80,34 @@ class SimulatorInterface(ABC, Generic[TIME]):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Return the name of the simulator"""
+        """Return the name of the simulator."""
         
     @property
     @abstractmethod
     def time_type(self) -> type:
-        """return the time type of the simulator"""
+        """Return the time type of the simulator."""
 
     @property
     @abstractmethod
     def simulator_time(self) -> TIME:
-        """return the current absolute time of the simulator"""
+        """Return the current absolute time of the simulator."""
 
     @property
     @abstractmethod
     def replication(self) -> 'ReplicationInterface':
-        """return the replication with which the simulator has been 
-        initialized, or None when initialize has not yet been called"""
+        """Return the replication with which the simulator has been 
+        initialized, or None when initialize has not yet been called."""
     
     @property
     @abstractmethod
     def model(self) -> 'ModelInterface':
-        """return the model that is being simulated, or None when 
-        initialize for a model has not yet been called"""
+        """Return the model that is being simulated, or None when 
+        initialize for a model has not yet been called."""
         
     @abstractmethod
     def initialize(self, model: 'ModelInterface',
                    replication: 'ReplicationInterface'):
-        """initialize the simulator with a replication for a model"""
+        """Initialize the simulator with a replication for a model."""
 
     @abstractmethod
     def add_initial_method(self, target, method: str, **kwargs):
@@ -120,28 +120,40 @@ class SimulatorInterface(ABC, Generic[TIME]):
         
     @abstractmethod
     def cleanup(self):
-        """clean up after a replication has finished, and prepare for the
-        next replication to run"""
+        """Clean up after a replication has finished, and prepare for the
+        next replication to run."""
 
     @abstractmethod
     def start(self):
-        """Starts the simulator, and fire a START_EVENT that the simulator 
-        was started. Note that when the simulator was already started an 
-        exception will be thrown, and no event will be fired. The start 
-        uses the RunUntil property with a value of the end time of the 
-        replication when starting the simulator."""
+        """Starts the simulator, and fire a START_EVENT when the simulator 
+        is started. The start method uses the RunUntil property with a 
+        value of the end time of the replication when starting the simulator.
+        
+        Note
+        ----
+        Note that when the simulator was already started, an 
+        exception will be raised, and no event will be fired."""
 
     @abstractmethod
     def step(self):
-        """Steps the simulator, and fire a STEP_EVENT to indicate the 
-        simulator made a step. Note that when the simulator is running
-        an exception will be thrown, and no event will be fired."""
+        """Steps the simulator, and fire a START_EVENT before the execution
+        of the event, and a STOP_EVENT after the execution of the event to 
+        indicate the simulator made a step. 
+        
+        Note
+        ----
+        Note that when the simulator is already  running, an exception 
+        will be raised, and no event will be fired."""
 
     @abstractmethod
     def stop(self):
-        """Stops the simulator, and fire a STOP_EVENT that the simulator 
-        was stopped. Note that when the simulator was already stopped an 
-        exception will be thrown, and no event will be fired."""
+        """Stops or pauses the simulator, and fire a STOP_EVENT when the 
+        simulator is stopped. 
+        
+        NOTE
+        ----
+        Note that when the simulator was already stopped, an exception 
+        will be raised, and no event will be fired."""
 
     @abstractmethod
     def run_up_to(self, stop_time: TIME):
@@ -194,7 +206,21 @@ class ReplicationInterface(ABC, Generic[TIME]):
     
     
 class ExperimentInterface(ABC, Generic[TIME]):
+    """
+    The ExperimentInterface defines the method that an Experiment needs
+    to implement. It also defines the events that will be fired to 
+    indicate that the execution of an experiment on the simulator has
+    started, and that an experiment on the simulator has ended. An 
+    experiment consists of a number of replications for the model that 
+    will be executed with the same start time, warmup time, and duration. 
     
+    Event Types
+    -----------
+    START_EXPERIMENT_EVENT: EventType
+        Will be fired when the execution of the experiment has started.
+    END_EXPERIMENT_EVENT: EventType
+        Will be fired when the execution of the experiment has completed.
+    """
     START_EXPERIMENT_EVENT: EventType = EventType("START_EXPERIMENT_EVENT")
     END_EXPERIMENT_EVENT: EventType = EventType("END_EXPERIMENT_EVENT")
 
