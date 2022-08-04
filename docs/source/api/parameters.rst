@@ -4,3 +4,4 @@
 
 .. automodule:: pydsol.core.parameters
    :members:
+   :inherited-members:
