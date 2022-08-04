@@ -1,17 +1,21 @@
 """
-The interfaces package defines common interfaces for the major classes 
+The interfaces module defines common interfaces for the major classes 
 in the pydsol framework. The use of interfaces (aka abstract base classes
 in Python) avoids circular references in the import of modules. 
 
 As an example, the Simulator class refers to a Replication and a Model in 
 its initialize method. Both the Replication classes and the Model class
-have references to, and use methods from the Simulator class.
+have references to, and use methods from the Simulator class. The interfaces
+module that defines the core 'contract' for the Simulator, Model, Experiment,
+Replication and Statistics helps to avoid circular references, but also 
+defines the core functionalities of these central classes in the pydscol
+framework.
 
 Instead of combining all classes in one huge pydsol module with 
 thousands of lines of code, the interfaces nicely decouple the definition
 of the classes and their implementation, and they avoid circular referencing 
-of modules to each other. Think of the interface module as the .h files 
-in C++.
+of modules to each other. Think of the use of this particular interface 
+module as the .h files in C++.
 """
 
 from abc import ABC, abstractmethod
@@ -41,6 +45,31 @@ TIME = TypeVar("TIME", float, int)
 
 
 class SimulatorInterface(ABC, Generic[TIME]):
+    """
+    The SimulatorInterface defines the key methods for any Simulator
+    to be used in the pydsol-framework. Different types of Simulators can
+    be used, e.g., fixed time increment simulators (time ticks) for ABM
+    and for solving differential equations, and variable time increments
+    for discrete-event models. Simulators can run as-fast-as-possible or
+    be synchronized with the wall clock time, etc. 
+    
+    Event Types
+    -----------
+    STARTING_EVENT: EventType
+        Will be fired when the simulator has been instructed to start. The 
+        actual start might not have happened yet.
+    START_EVENT: EventType
+        Will be fired when the simulator has actually started.
+    STOPPING_EVENT: EventType
+        Will be fired when the simulator has been instructed to stop or
+        pause. The actual stop might not have happened yet.
+    START_EVENT: EventType
+        Will be fired when the simulator has actually paused or stopped.
+    TIME_CHANGED_EVENT: EventType
+        Will be fired when the time of the simulation has changed. This 
+        event can be very useful, for instance, to draw time-dependent 
+        graphs. 
+    """
     
     STARTING_EVENT: EventType = EventType("STARTING_EVENT") 
     START_EVENT: EventType = EventType("START_EVENT") 
@@ -51,7 +80,7 @@ class SimulatorInterface(ABC, Generic[TIME]):
     @property
     @abstractmethod
     def name(self) -> str:
-        """return the name of the simulator"""
+        """Return the name of the simulator"""
         
     @property
     @abstractmethod
