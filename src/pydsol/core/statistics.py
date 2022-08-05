@@ -175,7 +175,7 @@ class Counter(StatisticsInterface):
     
 
 class Tally(StatisticsInterface):
-    """
+    r"""
     The Tally is a statistics object that calculates descriptive statistics
     for a number of observations, such as mean, variance, minimum, maximum, 
     skewness, etc. 
@@ -213,6 +213,21 @@ class Tally(StatisticsInterface):
     """
 
     def __init__(self, name: str):
+        """
+        Construct a new Tally statistics object. The Tally is a statistics 
+        object that calculates descriptive statistics for a number of 
+        observations, such as mean, variance, minimum, maximum, skewness, etc. 
+        
+        Parameters
+        ----------
+        name: str
+            The name by which the statistics object can be identified.
+            
+        Raises
+        ------
+        TypeError
+            when name is not a string
+        """
         if not isinstance(name, str):
             raise TypeError("tally name {name} not a str")
         self._name = name
@@ -306,7 +321,7 @@ class Tally(StatisticsInterface):
             self._max = value
         return value
 
-    def n(self):
+    def n(self) -> int:
         """
         Return the number of observations.
         
@@ -317,21 +332,99 @@ class Tally(StatisticsInterface):
         """
         return self._n
 
-    def min(self):
+    def min(self) -> float:
+        """
+        Return the observation with the lowest value. When no observations
+        were registered, NaN is returned.
+        
+        Returns
+        -------
+        float
+            The observation with the lowest value, or NaN when no observations
+            were registered.
+        """
         return self._min
 
-    def max(self):
+    def max(self) -> float:
+        """
+        Return the observation with the highest value. When no observations
+        were registered, NaN is returned.
+        
+        Returns
+        -------
+        float
+            The observation with the highest value, or NaN when no observations
+            were registered.
+        """
         return self._max
 
     def sample_mean(self) -> float:
+        r"""
+        Return the sample mean. When no observations were registered, 
+        NaN is returned.
+        
+        The sample mean of the Tally is calculated with the formula:
+    
+        .. math:: \mu = \sum_{i=1}^{n} {x_{i}} / n
+    
+        where n is the number of observations and :math:`x_{i}` are the 
+        observations.
+
+        Returns
+        -------
+        float
+            The sample mean, or NaN when no observations were registered.
+        """
         if self._n > 0:
             return self._m1
         return math.nan
 
     def population_mean(self) -> float:
+        r"""
+        Return the population mean, which is for this statistic the same as
+        the sample mean. When no observations were registered, NaN is returned.
+        
+        The population mean of the Tally is calculated with the formula:
+    
+        .. math:: \mu = \sum_{i=1}^{n} {x_{i}} / n
+    
+        where n is the number of observations and :math:`x_{i}` are the 
+        observations.
+        
+        Returns
+        -------
+        float
+            The population mean, or NaN when no observations were registered.
+        """
         return self.sample_mean()
 
-    def confidence_interval(self, alpha: float):
+    def confidence_interval(self, alpha: float) -> tuple[float]:
+        r"""
+        Return the confidence interval around the sample mean with the
+        provided alpha. When less than two observations were registered, 
+        (NaN, NaN) is returned.
+        
+        Parameters
+        ----------
+        alpha: float
+             Alpha is the significance level used to compute the confidence 
+             level. The confidence level equals :math:`100 * (1 - alpha)\%`, 
+             or in other words, an alpha of 0.05 indicates a 95 percent 
+             confidence level.
+        
+        Returns
+        -------
+        (float, float)
+            The confidence interval around the sample mean, or (NaN, NaN) 
+            when less than two observations were registered.
+            
+        Raises
+        ------
+        TypeError
+            when alpha is not a float
+        ValueError
+            when alpha is not between 0 and 1, inclusive
+        """
         if not isinstance(alpha, float):
             raise TypeError(f"alpha {alpha} not a float")
         if not 0 <= alpha <= 1:
@@ -345,25 +438,106 @@ class Tally(StatisticsInterface):
         return (max(self._min, sample_mean - confidence),
                 min(self._max, sample_mean + confidence))
     
-    def sample_stdev(self):
+    def sample_stdev(self) -> float:
+        r"""
+        Return the (unbiased) sample standard deviation of all observations 
+        since the initialization. The sample standard deviation is defined 
+        as the square root of the sample variance. When less than two 
+        observations were registered, NaN is returned.
+        
+        The formula is:
+        
+         .. math::
+            S = \sqrt{ {\frac{1}{n-1}} \left( \sum{x_{i}^2} - 
+            \left( \sum{x_{i}} \right)^2 / n \right) }
+        
+        Returns
+        -------
+        float
+            The (unbiased) sample standard deviation of all observations 
+            since the initialization, or NaN  when less than two observations 
+            were registered.
+        """
         if self._n > 1:
             return math.sqrt(self.sample_variance())
         return math.nan
     
     def population_stdev(self):
+        r"""
+        Return the current (biased) population standard deviation of all 
+        observations since the initialization. The population standard 
+        deviation is defined as the square root of the population variance. 
+        When no observations were registered, NaN is returned.
+        
+        The formula is:
+        
+         .. math::
+            \sigma = \sqrt{ {\frac{1}{n}} \left( \sum{x_{i}^2} - 
+            \left( \sum{x_{i}} \right)^2 / n \right) }
+        
+        Returns
+        -------
+        float
+            The (unbiased) sample standard deviation of all observations 
+            since the initialization, or NaN when no observations were 
+            registered.
+        """
         if self._n > 0:
             return math.sqrt(self.population_variance())
         return math.nan
     
     def sum(self):
+        """
+        Return the sum of all observations since the statistic initialization.
+        
+        Returns
+        -------
+        float
+            The sum of the observations.
+        """
         return self._sum
     
     def sample_variance(self):
+        r"""
+        Return the (unbiased) sample variance of all observations since
+        the statistic initialization. When less than two observations were 
+        registered, NaN is returned.
+        
+        The formula is:
+        
+         .. math::
+            S^2 = { {\frac{1}{n-1}} \left( \sum{x_{i}^2} - 
+            \left( \sum{x_{i}} \right)^2 / n \right) }
+        
+        Returns
+        -------
+        float
+            The (unbiased) sample variance of all observations since the 
+            initialization, or NaN  when less than two observations were 
+            registered.
+        """
         if self._n > 1:
             return self._m2 / (self._n - 1)
         return math.nan
     
     def population_variance(self):
+        r"""
+        Return the (biased) sample variance of all observations since
+        the statistic initialization. When no observations were registered, 
+        NaN is returned.
+        
+        The formula is:
+        
+         .. math::
+            \sigma^2 = { {\frac{1}{n}} \left( \sum{x_{i}^2} - 
+            \left( \sum{x_{i}} \right)^2 / n \right) }
+        
+        Returns
+        -------
+        float
+            The (biased) sample variance of all observations since the 
+            initialization, or NaN when no observations were registered.
+        """
         if self._n > 0:
             return self._m2 / (self._n)
         return math.nan
