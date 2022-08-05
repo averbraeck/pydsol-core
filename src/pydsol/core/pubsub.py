@@ -54,21 +54,25 @@ class EventType:
     EventType is a strongly typed identifier for an event, which can contain
     additional information about the event itself such as metadata. The
     EventType is typically instantiated as a static variable in a class.
-    An example would be:
     
-    class Producer
-        PRODUCTION_EVENT = EventType("PRODUCTION")
-        
-    The event type can then be used anywhere in the code as 
-    Producer.PRODUCTION_EVENT. Note that an Event and a SimEvent are two 
-    completely different concepts: Events are for the publish/subscribe
-    pattern, SimEvents are to store deferred method information.
-    
-    The implementation of the EventType takes care that there will not be
-    a problem with duplicate names for EventTypes. As part of the EventType,
-    the defining class is coded as well to make the EventType unique. So,
+    The implementation of the `EventType` takes care that there will not be
+    a problem with duplicate names for EventTypes. As part of the `EventType`,
+    the defining class is coded as well to make the `EventType` unique. So,
     in the above example, the name "Producer.PRODUCTION" is stored internally
-    as the unique name for the EventType.
+    as the unique name for the `EventType`.
+    
+    Example
+    -------
+        .. code-block:: python
+        
+           class Producer
+               PRODUCTION_EVENT = EventType("PRODUCTION")
+        
+        The event type can then be used anywhere in the code as 
+        `Producer.PRODUCTION_EVENT`. Note that an `Event` and a `SimEvent` 
+        are two completely different concepts: Events are for the 
+        publish/subscribe pattern, SimEvents are to store deferred method 
+        information.
     """
     
     # set of the defined types to check for name clashes
@@ -77,13 +81,17 @@ class EventType:
     
     def __init__(self, name: str, metadata: dict[str, Type]=None):
         """
-        Instantiate a new EventType, usually in a static manner. Example:
+        Instantiate a new EventType, usually in a static manner. 
         
-        class Producer
-            PRODUCTION_EVENT = EventType(Producer, "PRODUCTION")
+        Example
+        -------
+            .. code-block:: python
+        
+               class Producer
+                   PRODUCTION_EVENT = EventType("PRODUCTION")
             
-        The event type can then be used anywhere in the code as 
-        Producer.PRODUCTION_EVENT. 
+            The event type can then be used anywhere in the code as 
+            `Producer.PRODUCTION_EVENT`. 
         
         Parameters
         ----------
@@ -98,10 +106,13 @@ class EventType:
             
         Raises
         ------
-        EventError: when name is not a str, or defining_class is not a type
-        EventError: when there was already an event defined with this name 
+        EventError
+            when name is not a str, or defining_class is not a type
+        EventError
+            when there was already an event defined with this name 
             in the defining_class
-        EventError: when the metadata does not consist of [str, Type] pairs
+        EventError
+            when the metadata does not consist of [str, Type] pairs
             
         """
         if not isinstance(name, str):
@@ -178,10 +189,12 @@ class Event:
             
         Raises
         ------
-        EventError: if event_type is not an EventType
-        EventError: if the specified metadata and the content is not a dict
-        EventError: if the dict content is not consistent with the EventType 
-            metadata
+        EventError
+            if event_type is not an EventType
+        EventError
+            if the specified metadata and the content is not a dict
+        EventError
+            if the dict content is not consistent with the EventType metadata
         """
         if not isinstance(event_type, EventType):
             raise EventError("event_type is not an instance of EventType")
@@ -270,12 +283,14 @@ class TimedEvent(Event):
             
         Raises
         ------
-        EventError: if timestamp is not of type int or float
-        EventError: if event_type is not an EventType
-        EventError: if the EventType specified metadata and the content is 
-            not a dict
-        EventError: if the dict content is not consistent with the EventType 
-            metadata
+        EventError
+            if timestamp is not of type int or float
+        EventError
+            if event_type is not an EventType
+        EventError
+            if the EventType specified metadata and the content is not a dict
+        EventError
+            if the dict content is not consistent with the EventType metadata
         """
         if not isinstance(timestamp, (int, float)):
             raise EventError("timestamp is not an int or a float")
@@ -320,7 +335,7 @@ class EventListener(ABC):
 
     @abstractmethod
     def notify(self, event: Event):
-        """Handle an event received from an EvntProducer"""
+        """Handle an event received from an EventProducer"""
 
 
 class EventProducer:
@@ -364,7 +379,8 @@ class EventProducer:
             
         Raises
         ------
-        EventError: if any of the arguments is of the wrong type
+        EventError
+            if any of the arguments is of the wrong type
         """
         if not isinstance(event_type, EventType):
             raise EventError("event_type should be an EventType")
@@ -390,7 +406,8 @@ class EventProducer:
             
         Raises
         ------
-        EventError: if any of the arguments is of the wrong type
+        EventError
+            if any of the arguments is of the wrong type
         """
         if not isinstance(event_type, EventType):
             raise EventError("event_type should be an EventType")
@@ -428,7 +445,8 @@ class EventProducer:
         
         Raises
         ------
-        EventError: if any of the arguments is of the wrong type
+        EventError
+            if any of the arguments is of the wrong type
         """
         if not (event_type == None or isinstance(event_type, EventType)):
             raise EventError("event_type should be an EventType or None")
@@ -464,7 +482,8 @@ class EventProducer:
         
         Raises
         ------
-        EventError: if the event is not of the right type
+        EventError
+            if the event is not of the right type
         """
         if not isinstance(event, Event):
             raise EventError("event {event} not of type Event")
@@ -496,11 +515,12 @@ class EventProducer:
             
         Raises
         ------
-        EventError: if event_type is not an EventType
-        EventError: if the EventType specified metadata and the content 
-            is not a dict
-        EventError: if the dict content is not consistent with the EventType 
-            metadata
+        EventError
+            if event_type is not an EventType
+        EventError
+            if the EventType specified metadata and the content is not a dict
+        EventError
+            if the dict content is not consistent with the EventType metadata
         """
         event = Event(event_type, content, check)
         self.fire_event(event)
@@ -517,7 +537,8 @@ class EventProducer:
         
         Raises
         ------
-        EventError: if the timed_event is not of the right type
+        EventError
+            if the timed_event is not of the right type
         """
         if not isinstance(timed_event, TimedEvent):
             raise EventError("event {event} not of type TimedEvent")
@@ -552,12 +573,14 @@ class EventProducer:
             
         Raises
         ------
-        EventError: if timestamp is not of type int or float
-        EventError: if event_type is not an EventType
-        EventError: if the EventType specified metadata and the content 
-            is not a dict
-        EventError: if the dict content is not consistent with the EventType 
-            metadata
+        EventError
+            if timestamp is not of type int or float
+        EventError
+            if event_type is not an EventType
+        EventError
+            if the EventType specified metadata and the content is not a dict
+        EventError
+            if the dict content is not consistent with the EventType metadata
         """
         timed_event = TimedEvent(time, event_type, content, check)
         self.fire_timed_event(timed_event)
