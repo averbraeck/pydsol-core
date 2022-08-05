@@ -22,7 +22,7 @@ from pydsol.core.utils import get_module_logger, beta, erf_inv
 __all__ = [
     "Distribution",
     "DistContinuous",
-    "DistSiscrete",
+    "DistDiscrete",
     "DistBernoulli",
     "DistBeta",
     "DistBinomial",
