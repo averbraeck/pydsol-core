@@ -317,6 +317,15 @@ class InputParameterInterface(ABC):
         The actual type will be defined in subclasses of `InputParameter`.
         """
 
+    @abstractmethod
+    def set_value(self, value: object):
+        """
+        Provides a new value for the parameter. The actual type of `value` 
+        will be defined in subclasses of `InputParameter`. This is actually
+        a method and not a setter property because it can raise errors 
+        based on the validity of the value.
+        """
+
     @property    
     @abstractmethod
     def display_priority(self) -> float: 
