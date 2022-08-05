@@ -40,8 +40,8 @@ class Counter(StatisticsInterface):
     In simulation, the Counter can be used to count arrivals, the number of
     processed entities in servers, the number of entities in the system, etc.  
     
-    Private Attributes
-    ------------------
+    Attributes
+    ----------
     _name: str
         the name by which the statistics object can be identified
     _n: int
@@ -196,8 +196,8 @@ class Tally(StatisticsInterface):
     statistical values for waiting times in queues, time in system of entities, 
     processing times at a server, and throughput times of partial processes. 
     
-    Private Attributes
-    ------------------
+    Attributes
+    ----------
     _name: str
         the name by which the statistics object can be identified
     _n: int
