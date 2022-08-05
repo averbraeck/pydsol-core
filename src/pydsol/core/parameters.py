@@ -130,7 +130,7 @@ class InputParameter(InputParameterInterface):
         ValueError
             when key is an empty string, or key contains a period
         ValueError
-            when key is not unique in the InputParameterMap
+            when key is not unique in the parent InputParameterMap
         TypeError
             when name is not a string
         ValueError
@@ -361,20 +361,97 @@ class InputParameter(InputParameterInterface):
     
 
 class InputParameterMap(InputParameter):
-
+    """
+    The InputParameterMap contains a number of InputParameters, each of 
+    which can also be an InputParameterMap again. The InputParameterMap 
+    provides functions to add and remove sub-parameters, to retrieve 
+    sub-parameters based on their key, and to return a sorted set of 
+    InputParameters based on their displayValue.
+    
+    The `InputParameterMap` has all attributes of the `InputParameter`. 
+    The `_value` attribute is of the type `dict[str, InputParameter]`. 
+    """
+    
     def __init__(self, key: str, name: str, display_priority: float, *,
                  parent: "InputParameterMap"=None, description: str=None):
+        """
+        Create a new `InputParameterMap`. This can be the root map, or
+        a sub-map. The `InputParameterMap` has no default value, and is
+        read-only by definition. 
+        
+        Parameters
+        ----------
+        key: str
+            The key of the parameter that can be a part of the 
+            dot-notation to uniquely identify the model parameter. The key 
+            does not contain the name of the parent, and should not contain
+            any periods. It should also be unique within its node of the 
+            input parameter tree. The key is set at time of construction and 
+            it is immutable.
+        name: str
+            Concise description of the input parameter, which can be used
+            in a GUI to identify the parameter to the user.
+        display_priority: Union[int, float]
+            A number indicating the order of display of the parameter
+            in the parent parameter map. Floats are allowed to make it
+            easy to insert an extra parameter between parameters that
+            have already been allocated subsequent integer values. 
+        parent: InputParameterMap (optional)
+            The parent map in which the parameter can be retrieved using its
+            key. Typically, only the root InputParameterMap has no parent,
+            and all other parameters have an InputParameterMap as parent.
+        description: str (optional)
+            A description or explanation of the InputParameter. For instance,
+            an indication of the bounds or the type. This value is purely 
+            there for the user interface.
+            
+        Raises
+        ------
+        TypeError
+            when key is not a string
+        ValueError
+            when key is an empty string, or key contains a period
+        ValueError
+            when key is not unique in the parent InputParameterMap
+        TypeError
+            when name is not a string
+        ValueError
+            when name is an empty string
+        TypeError
+            when display priority is not a number
+        TypeError
+            when parent is not an InputParametermap or None
+        """
         super().__init__(key, name, None, display_priority,
                          parent=parent, description=description,
                          read_only=True)
         self._value: dict[str, InputParameter] = {}
 
     @property    
-    def value(self) -> dict:
+    def value(self) -> dict[str, InputParameter]:
+        """
+        Returns the dict defined in this `InputParameterMap`, 
+        which is the value.
+        
+        Returns
+        -------
+        dict[str, InputParameter]
+            The dict defined in this `InputParameterMap`.
+        """
         return self._value
 
     @value.setter
     def value(self, value):
+        """
+        Note
+        ----
+        `InputParameterMap` does not have a setter for the value.
+        
+        Raises
+        ------
+        NotImplementedError
+            when called.
+        """
         raise NotImplementedError("InputParameterMap value cannot be set")
     
     def add(self, input_parameter):
@@ -419,6 +496,25 @@ class InputParameterMap(InputParameter):
 
 
 class InputParameterInt(InputParameter):
+    """
+    InputParameterInt defines an integer input parameter with possible
+    lowest and highest values.
+    
+    The `InputParameterMap` has all attributes of the `InputParameter`. 
+    The `_value` attribute is of the type `int`. It also has the following
+    extra attributes:
+    
+    Attributes
+    ----------
+    _min: int
+        The lowest value (inclusive) that can be entered for this parameter.
+    _max: int
+        The highest value (inclusive) that can be entered for this parameter.
+    _format: str
+        The formatting string that is used in the user interface and when
+        printing the parameter, e.g. to limit the number of decimals,
+        to indicate the + or - sign, etc.
+    """
 
     def __init__(self, key: str, name: str, default_value: int,
                  display_priority: float, *,
@@ -426,6 +522,81 @@ class InputParameterInt(InputParameter):
                  read_only: bool=False,
                  min_value:int=-math.inf, max_value:int=math.inf,
                  format_str:str="%d"):
+        """
+        Create a new InputParameterInt that can contain an integer input
+        value for the simulation model. 
+        
+        Parameters
+        ----------
+        key: str
+            The key of the parameter that can be a part of the 
+            dot-notation to uniquely identify the model parameter. The key 
+            does not contain the name of the parent, and should not contain
+            any periods. It should also be unique within its node of the 
+            input parameter tree. The key is set at time of construction and 
+            it is immutable.
+        name: str
+            Concise description of the input parameter, which can be used
+            in a GUI to identify the parameter to the user.
+        default_value: int
+            The default (initial) value of the parameter.
+        display_priority: Union[int, float]
+            A number indicating the order of display of the parameter
+            in the parent parameter map. Floats are allowed to make it
+            easy to insert an extra parameter between parameters that
+            have already been allocated subsequent integer values. 
+        parent: InputParameterMap (optional)
+            The parent map in which the parameter can be retrieved using its
+            key. Typically, only the root InputParameterMap has no parent,
+            and all other parameters have an InputParameterMap as parent.
+        description: str (optional)
+            A description or explanation of the InputParameter. For instance,
+            an indication of the bounds or the type. This value is purely 
+            there for the user interface.
+        read_only: bool (optional)
+            Whether a user is prohibited from changing the value of the
+            parameter or not (default false, so the parameter *can* be 
+            changed).
+        min_value: int (optional)
+            The lowest value (inclusive) that can be entered for this
+            parameter.
+        max_value: int (optional)
+            The highest value (inclusive) that can be entered for this
+            parameter.
+        format_str: str (optional)
+            The formatting string that is used in the user interface and when
+            printing the parameter, e.g. to limit the number of decimals,
+            to indicate the + or - sign, etc.
+            
+        Raises
+        ------
+        TypeError
+            when key is not a string
+        ValueError
+            when key is an empty string, or key contains a period
+        ValueError
+            when key is not unique in the parent InputParameterMap
+        TypeError
+            when name is not a string
+        ValueError
+            when name is an empty string
+        TypeError
+            when display priority is not a number
+        TypeError
+            when parent is not an InputParametermap or None
+        TypeError
+            when read_only is not a bool
+        TypeError
+            when default_value is not an int
+        TypeError
+            when min_value or max_value is not an int or float
+        TypeError
+            when format_str is not a string
+        ValueError
+            when min_value >= max_value
+        ValueError
+            when default value not between min_value and max_value (inclusive)
+        """
         super().__init__(key, name, default_value, display_priority,
                          parent=parent, description=description,
                          read_only=read_only)
@@ -464,6 +635,23 @@ class InputParameterInt(InputParameter):
     
     @value.setter
     def value(self, value: int):
+        """
+        Set (overwrite) the actual value of the parameter.
+        
+        Parameters
+        ----------
+        value: int
+            The new value of the parameter.
+            
+        Raises
+        ------
+        ValueError
+            if the parameter is read-only
+        ValueError
+            if the new value is not an int
+        ValueError
+            if the new value is not between the min_value and max_value
+        """
         if self.read_only:
             raise ValueError(f"parameter {self.key} is read only")
         if not isinstance(value, int):
@@ -475,6 +663,10 @@ class InputParameterInt(InputParameter):
 
         
 class InputParameterFloat(InputParameter):
+    """
+    InputParameterFloat defines a floating point input parameter with possible
+    lowest and highest values. 
+    """
 
     def __init__(self, key: str, name: str, default_value: float,
                  display_priority: float, *,
@@ -532,6 +724,9 @@ class InputParameterFloat(InputParameter):
 
         
 class InputParameterStr(InputParameter):
+    """
+    InputParameterStr defines a string input parameter. 
+    """
 
     def __init__(self, key: str, name: str, default_value: str,
                  display_priority: float, *,
@@ -555,6 +750,9 @@ class InputParameterStr(InputParameter):
 
         
 class InputParameterBool(InputParameter):
+    """
+    InputParameterBool defines a boolean input parameter. 
+    """
 
     def __init__(self, key: str, name: str, default_value: bool,
                  display_priority: float, *,
@@ -580,6 +778,13 @@ class InputParameterBool(InputParameter):
 
         
 class InputParameterQuantity(InputParameter):
+    """
+    InputParameterStr defines an input parameter that can contain a 
+    quantity. For example, a Length, Speed or Duration can be entered
+    with the corresponding unit. Limits for lowest values and highest values
+    (in the SI or base unit) can be provided for error checking, e.g.,
+    to indicate that a value should be positive. 
+    """
 
     def __init__(self, key: str, name: str, default_value: Quantity,
                  display_priority: float, *,
@@ -641,6 +846,12 @@ class InputParameterQuantity(InputParameter):
 
         
 class InputParameterSelectionList(InputParameter):
+    """
+    InputParameterStr defines a string input parameter that has to be a 
+    member of a provided list of strings. In a user interface, this can
+    be indicated as a pick list. An example is a list of the state codes 
+    of the USA.   
+    """
 
     def __init__(self, key: str, name: str, options: list[str],
                  default_value: str, display_priority: float, *,
@@ -681,6 +892,12 @@ class InputParameterSelectionList(InputParameter):
 
 
 class InputParameterUnit(InputParameterSelectionList):
+    """
+    InputParameterStr defines an input parameter that is a unit for a 
+    given quantity type. The `InputParameterUnit` class extends the
+    `InputParameterSelectionList` class and autogenerates a list of
+    units to select from.
+    """
 
     def __init__(self, key: str, name: str, quantity: type[Quantity],
                  default_value: str, display_priority: float, *,
@@ -694,8 +911,8 @@ class InputParameterUnit(InputParameterSelectionList):
         super().__init__(key, name, list(quantity._units.keys()),
                          default_value, display_priority, parent=parent,
                          description=description, read_only=read_only)
-        self._type = quantity 
+        self._type: type[Quantity] = quantity 
 
     @property    
-    def unittype(self) -> str:
+    def unittype(self) -> type[Quantity]:
         return self._type
