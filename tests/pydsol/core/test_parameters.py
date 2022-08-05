@@ -34,7 +34,7 @@ def test_parameter():
     assert p.parent == m
     assert p.description == ""
     assert not p.read_only
-    p.value = 20.0
+    p.set_value(20.0)
     assert p.value == 20.0
     assert p.default_value == 30.0
     
@@ -47,7 +47,7 @@ def test_parameter():
                                        read_only=True, parent=m)
     assert r.read_only
     with pytest.raises(ValueError):
-        r.value = 9.0
+        r.set_value(9.0)
         
     assert list(m.value.keys()) == ["o-key", "p-key", "q-key", "r-key"]
 
@@ -68,7 +68,7 @@ def test_parameter():
     with pytest.raises(TypeError):
         InputParameter("k", "n", 1, 1.0, read_only=3)
     with pytest.raises(NotImplementedError):
-        m.value = {}
+        m.set_value({})
     with pytest.raises(TypeError):
         m.add('x')
     with pytest.raises(ValueError):
@@ -134,7 +134,7 @@ def test_parameter_int():
     assert p.value == 4
     assert p.display_priority == 1
     assert p.read_only == False
-    p.value = 5
+    p.set_value(5)
     assert p.value == 5
     assert p.min_value == -math.inf
     assert p.max_value == +math.inf
@@ -166,11 +166,11 @@ def test_parameter_int():
     with pytest.raises(ValueError):
         InputParameterInt("q", "qname", -1, 2, min_value=0, max_value=100)
     with pytest.raises(ValueError):
-        r.value = 4  # read_only
+        r.set_value(4)  # read_only
     with pytest.raises(ValueError):
-        q.value = 1000  # > max
-    with pytest.raises(ValueError):
-        p.value = 'x'  # > type
+        q.set_value(1000)  # > max
+    with pytest.raises(TypeError):
+        p.set_value('x')  # > type
 
 
 def test_parameter_float():
@@ -181,7 +181,7 @@ def test_parameter_float():
     assert p.value == 4.0
     assert p.display_priority == 1
     assert p.read_only == False
-    p.value = 5.0
+    p.set_value(5.0)
     assert p.value == 5.0
     assert p.min_value == -math.inf
     assert p.max_value == +math.inf
@@ -214,11 +214,11 @@ def test_parameter_float():
     with pytest.raises(ValueError):
         InputParameterFloat("q", "qname", -1, 2, min_value=0, max_value=100)
     with pytest.raises(ValueError):
-        r.value = 4  # read_only
+        r.set_value(4)  # read_only
     with pytest.raises(ValueError):
-        q.value = 1000  # > max
-    with pytest.raises(ValueError):
-        p.value = 'x'  # > type
+        q.set_value(1000)  # > max
+    with pytest.raises(TypeError):
+        p.set_value('x')  # > type
 
 
 def test_parameter_str():
@@ -229,7 +229,7 @@ def test_parameter_str():
     assert p.value == 'xyz'
     assert p.display_priority == 1
     assert p.read_only == False
-    p.value = 'abc'
+    p.set_value('abc')
     assert p.value == 'abc'
 
     r = InputParameterStr("r", "rname", 'x', 1, read_only=True)
@@ -238,9 +238,9 @@ def test_parameter_str():
     with pytest.raises(TypeError):
         InputParameterStr("p", "pname", 4, 1)
     with pytest.raises(ValueError):
-        r.value = 4  # read_only
+        r.set_value(4)  # read_only
     with pytest.raises(ValueError):
-        p.value = 10  # type
+        p.set_value(10)  # type
 
 
 def test_parameter_bool():
@@ -251,7 +251,7 @@ def test_parameter_bool():
     assert p.value
     assert p.display_priority == 1
     assert p.read_only == False
-    p.value = False
+    p.set_value(False)
     assert not p.value
 
     r = InputParameterBool("r", "rname", False, 1, read_only=True)
@@ -260,9 +260,9 @@ def test_parameter_bool():
     with pytest.raises(TypeError):
         InputParameterBool("p", "pname", 4, 1)
     with pytest.raises(ValueError):
-        r.value = True  # read_only
-    with pytest.raises(ValueError):
-        p.value = 10  # type
+        r.set_value(True)  # read_only
+    with pytest.raises(TypeError):
+        p.set_value(10)  # type
 
 
 def test_parameter_quantity():
@@ -273,7 +273,7 @@ def test_parameter_quantity():
     assert p.value == Length(4.0, 'km')
     assert p.display_priority == 1
     assert p.read_only == False
-    p.value = Length(5000, 'm')
+    p.set_value(Length(5000, 'm'))
     assert p.value.si == 5000.0
     assert p.min_si == -math.inf
     assert p.max_si == +math.inf
@@ -309,11 +309,11 @@ def test_parameter_quantity():
         InputParameterQuantity("q", "qname", Length(1, 'km'), 2,
             min_si=0, max_si=100)
     with pytest.raises(ValueError):
-        r.value = 4  # read_only
+        r.set_value(4)  # read_only
     with pytest.raises(ValueError):
-        q.value = Speed(1000, 'm/s')  # > max
+        q.set_value(Speed(1000, 'm/s'))  # > max
     with pytest.raises(ValueError):
-        p.value = 'x'  # > type
+        p.set_value('x')  # > type
 
 
 def test_list():
@@ -325,7 +325,7 @@ def test_list():
     assert p.value == "CA"
     assert p.display_priority == 1
     assert not p.read_only
-    p.value = "MD"
+    p.set_value("MD")
     assert p.value == "MD"
     assert p.default_value == "CA"
     assert p.options == states
@@ -345,11 +345,11 @@ def test_list():
     with pytest.raises(TypeError):
         InputParameterSelectionList("p", "p", ["CA", "MD", 4, "VA"], 'CA', 1)
     with pytest.raises(TypeError):
-        p.value = 4
+        p.set_value(4)
     with pytest.raises(ValueError):
-        p.value = 'XX'
+        p.set_value('XX')
     with pytest.raises(ValueError):
-        r.value = 'MD'
+        r.set_value('MD')
 
 
 def test_unit():
@@ -360,7 +360,7 @@ def test_unit():
     assert p.value == "km"
     assert p.display_priority == 1
     assert p.read_only == False
-    p.value = "mi"
+    p.set_value ("mi")
     assert p.value == "mi"
     assert p.default_value == "km"
     assert p.unittype == Length
@@ -377,11 +377,11 @@ def test_unit():
     with pytest.raises(ValueError):
         InputParameterUnit("p", "p", Speed, 'm', 1)
     with pytest.raises(TypeError):
-        p.value = 4
+        p.set_value(4)
     with pytest.raises(ValueError):
-        p.value = 'km/s2'
+        p.set_value('km/s2')
     with pytest.raises(ValueError):
-        r.value = 'm/s'
+        r.set_value('m/s')
     
 
 if __name__ == "__main__":
