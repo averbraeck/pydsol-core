@@ -58,7 +58,7 @@ napoleon_attr_annotations = True
 napoleon_custom_sections = [("Class Attributes", "params_style"),
                             ("Event Types", "params_style"),
                             ("Terminology", "params_style"),
-                            ("Private Attributes", "params_style")]
+                            ("Attributes", "params_style")]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
