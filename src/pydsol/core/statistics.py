@@ -7,7 +7,6 @@ from pydsol.core.pubsub import EventProducer, EventListener, Event, \
     TimedEvent, EventType
 from pydsol.core.utils import get_module_logger
 
-
 __all__ = [
     "Counter",
     "Tally",
@@ -24,23 +23,98 @@ __all__ = [
 
 logger = get_module_logger('statistics')
 
+
 class Counter(StatisticsInterface):
+    """
+    The Counter is a simple statistics object that can count events or
+    occurrences. Note that the number of observations is not necessarily
+    equal to the value of the counter, since the counter allows any 
+    integer as the increment (or decrement) during an observation.
+    
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+    
+    Example
+    -------
+    In simulation, the Counter can be used to count arrivals, the number of
+    processed entities in servers, the number of entities in the system, etc.  
+    
+    Private Attributes
+    ------------------
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _count: int
+        the current value of the counter 
+    """
 
     def __init__(self, name: str):
+        """
+        Construct a new Counter statistics object. The Counter is a simple 
+        statistics object that can count events or occurrences. Note that 
+        the number of observations is not necessarily equal to the value 
+        of the counter, since the counter allows any integer as the 
+        increment (or decrement) during an observation.
+        
+        Parameters
+        ----------
+        name: str
+            The name by which the statistics object can be identified.
+            
+        Raises
+        ------
+        TypeError
+            when name is not a string
+        """
         if not isinstance(name, str):
             raise TypeError("counter name {name} not a str")
         self._name = name
         self.initialize()
         
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         self._count = 0
         self._n = 0
 
     @property
     def name(self):
+        """
+        Return the name of this statistics object.
+        
+        Returns
+        -------
+        str
+            The name of this statistics object.
+        """
         return self._name
 
-    def ingest(self, value:int) -> int:
+    def ingest(self, value: int) -> int:
+        """
+        Process one observation. The value indicates the increment or 
+        decrement of the counter (often 1). 
+        
+        Parameters
+        ----------
+        value: int
+            The increment or decrement of the Counter.
+            
+        Returns
+        -------
+        int
+            the value, to use the `ingest` method inside an expression
+            
+        Raises
+        ------
+        TypeError
+            when value is not an int
+        """
         if not isinstance(value, int):
             raise TypeError("ingested value {value} not an int")
         self._count += value
@@ -48,9 +122,25 @@ class Counter(StatisticsInterface):
         return value
 
     def count(self):
+        """
+        Return the current value of the counter statistic.
+        
+        Returns
+        -------
+        int
+            The current value of the counter statistic.
+        """
         return self._count
 
     def n(self):
+        """
+        Return the number of observations.
+        
+        Returns
+        -------
+        int
+            The number of observations.
+        """
         return self._n
 
     def __str__(self):
@@ -60,18 +150,67 @@ class Counter(StatisticsInterface):
         return str(self)
     
     def report_header(self) -> str:
+        """
+        Return a string representing a header for a textual table with a
+        monospaced font that can contain multiple counters.
+        """
         return '-' * 72 \
              +f"\n| {'Counter name':<48} | {'n':>6} | {'count':>8} |\n" \
              +'-' * 72
     
     def report_line(self) -> str:
+        """
+        Return a string representing a line with important statistics values 
+        for this statistical object, for a textual table with a monospaced
+        font that can contain multiple counters.
+        """
         return f"| {self.name:<48} | {self.n():>6} | {self.count():>8} |"
 
     def report_footer(self) -> str:
+        """
+        Return a string representing a footer for a textual table with a
+        monospaced font that can contain multiple counters.
+        """
         return '-' * 72
     
 
 class Tally(StatisticsInterface):
+    """
+    The Tally is a statistics object that calculates descriptive statistics
+    for a number of observations, such as mean, variance, minimum, maximum, 
+    skewness, etc. 
+    
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+    
+    The mean of the Tally is calculated with the formula:
+    
+    .. math:: \mu = \sum_{i=1}^{n} {x_{i}} / n
+    
+    where n is the number of observations and :math:`x_{i}` are the observations.
+    
+    Example
+    -------
+    In discrete-event simulation, the Tally can be used to calculate 
+    statistical values for waiting times in queues, time in system of entities, 
+    processing times at a server, and throughput times of partial processes. 
+    
+    Private Attributes
+    ------------------
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _sum: float
+        the sum of the observation values 
+    _min: float
+        the lowest value in the current observations 
+    _max: float
+        the highest value in the current observations
+    _m1, _m2, _m3, _m4: float
+        the 1st to 4th moment of the observations
+    """
 
     def __init__(self, name: str):
         if not isinstance(name, str):
@@ -80,6 +219,12 @@ class Tally(StatisticsInterface):
         self.initialize()
         
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         self._n = 0
         self._sum = 0.0
         self._m1 = 0.0
@@ -91,9 +236,41 @@ class Tally(StatisticsInterface):
 
     @property
     def name(self):
+        """
+        Return the name of this statistics object.
+        
+        Returns
+        -------
+        str
+            The name of this statistics object.
+        """
         return self._name
 
-    def ingest(self, value:float) -> float:
+    def ingest(self, value: float) -> float:
+        """
+        Process one observation value, and calculate all statistics up to
+        and including the last value (mean, standard deviation, minimum,
+        maximum, skewness, etc.).
+        
+        Parameters
+        ----------
+        value: float
+            The value of the observation.
+            
+        Returns
+        -------
+        float
+            the value, to use the `ingest` method inside an expression
+
+        Raises
+        ------
+        TypeError
+            when value is not a number
+        ValueError
+            when value is NaN
+        """
+        if not isinstance(value, (int, float)):
+            raise TypeError("tally ingested value must be a number")
         if math.isnan(value):
             raise ValueError("tally ingested value cannot be nan")
         if self._n == 0:
@@ -130,6 +307,14 @@ class Tally(StatisticsInterface):
         return value
 
     def n(self):
+        """
+        Return the number of observations.
+        
+        Returns
+        -------
+        int
+            The number of observations.
+        """
         return self._n
 
     def min(self):
@@ -227,6 +412,10 @@ class Tally(StatisticsInterface):
         return str(self)
 
     def report_header(self) -> str:
+        """
+        Return a string representing a header for a textual table with a
+        monospaced font that can contain multiple tallies.
+        """
         return '-' * 72 \
              +f"\n| {'Tally name':<48} | {'n':>6} | {'p_mean':>8} |\n" \
              +'-' * 72
@@ -247,6 +436,12 @@ class WeightedTally(StatisticsInterface):
         self.initialize()
         
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         self._n = 0
         self._sum_of_weights = 0.0
         self._weighted_mean = 0.0
@@ -257,9 +452,48 @@ class WeightedTally(StatisticsInterface):
 
     @property
     def name(self):
+        """
+        Return the name of this statistics object.
+        
+        Returns
+        -------
+        str
+            The name of this statistics object.
+        """
         return self._name
 
     def ingest(self, weight: float, value:float) -> float:
+        """
+        Process one observation value and a corresponding weight, and 
+        calculate all statistics up to and including the last weight-value 
+        pair (mean, standard deviation, minimum, maximum, skewness, etc.).
+        Weight has to be >= 0.
+        
+        Parameters
+        ----------
+        weight: float
+            The weight of this observation (has to be >= 0).
+        value: float
+            The value of the observation.
+            
+        Returns
+        -------
+        float
+            the value, to use the `ingest` method inside an expression
+            
+        Raises
+        ------
+        TypeError
+            when weight or value is not a number
+        ValueError
+            when weight or value is NaN
+        ValueError
+            when weight < 0
+        """
+        if not isinstance(weight, (int, float)):
+            raise TypeError("weight should be a number")
+        if not isinstance(value, (int, float)):
+            raise TypeError("value should be a number")
         if math.isnan(value):
             raise ValueError("tally ingested value cannot be nan")
         if math.isnan(weight):
@@ -289,6 +523,14 @@ class WeightedTally(StatisticsInterface):
         return value
 
     def n(self):
+        """
+        Return the number of observations.
+        
+        Returns
+        -------
+        int
+            The number of observations.
+        """
         return self._n
 
     def min(self):
@@ -334,6 +576,10 @@ class WeightedTally(StatisticsInterface):
         return str(self)
 
     def report_header(self) -> str:
+        """
+        Return a string representing a header for a textual table with a
+        monospaced font that can contain multiple weighted tallies.
+        """
         return '-' * 72 \
              +f"\n| {'Weighted Tally name':<48} | {'n':>6} | "\
              +f"{'p_mean':>8} |\n" \
@@ -354,6 +600,12 @@ class TimestampWeightedTally(WeightedTally):
         self.initialize()
         
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         super().initialize()
         self._start_time = math.nan
         self._last_timestamp = math.nan
@@ -402,6 +654,12 @@ class EventBasedCounter(EventProducer, EventListener, Counter):
         Counter.__init__(self, name)
  
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         Counter.initialize(self)
         self.fire_initialized()
     
@@ -439,6 +697,12 @@ class EventBasedTally(EventProducer, EventListener, Tally):
         Tally.__init__(self, name)
  
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         Tally.initialize(self)
         self.fire_initialized()
     
@@ -489,6 +753,12 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
         WeightedTally.__init__(self, name)
  
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         WeightedTally.initialize(self)
         self.fire_initialized()
     
@@ -550,6 +820,12 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
         TimestampWeightedTally.__init__(self, name)
  
     def initialize(self):
+        """
+        Initialize the statistics object, resetting all values to the state 
+        where no observations have been made. This method can, for instance, 
+        be called when the warmup period of the simulation experiment has
+        completed. 
+        """
         TimestampWeightedTally.initialize(self)
         self.fire_initialized()
     
