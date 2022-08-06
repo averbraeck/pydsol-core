@@ -1,3 +1,93 @@
+"""
+The statistics objects collect observations and produce summarized information
+about the observations, such as the mean, standard deviation, minimum value,
+and maximum value. The statistics module has four types of statistics objects
+in three different families. 
+
+The statistics objects are:
+
+* The *Counter* that collects integer values, such as the occurrences of an 
+  event, and produces the count as the statistics result. The counter receives
+  its observations through a method ``ingest(int_value)``
+* The *Tally* that collects floating point values such as processing times,
+  and produces statistics results such as the mean, standard deviation, and
+  variance of the submitted values. The Tally receives its observations
+  through a method ``ingest(float_value)``
+* The *WeightedTally* that collects floating point values with an associated
+  weight factor, for example the number of entities in a queue as the 
+  observations and the duration of the particular queue length as the weights,
+  and produces results such as weighted average and weighted variance of the
+  observations. The WeightedTally receives its observations through a method 
+  ``ingest(float_weight, float_value)``
+* The *TimestampWeightedTally* that is a specialization of the WeightedTally
+  where the weights are derived automatically from the intervals between 
+  timestamps. Each observation is provided with the time when the value of a 
+  property changed. The TimestampWeightedTally receives its observations
+  through a method ``ingest(float_timestamp, float_value)``  
+   
+The statistics families are:
+
+1. *Ordinary statistics*. These receive the observations by explicitly calling 
+   the `ingest` method for any of the four statistics. The classes are 
+   `Counter`, `Tally`, `WeightedTally`, and `TimestampWeightedTally`.
+2. *Event-based statistics*. These receive the observations by listening to
+   an EventProducer (see the pubsub.py module) that 'fires' events to one or
+   more listeners, among which the Event-based statistics. This way, the 
+   statistic gathering and processing is decoupled from the process in the 
+   simulation that generates the data: there can be zero, one, or many 
+   statistics listeners for each data producing object in the simulation. The
+   Event-based statistics also fire events with the values of the calculated
+   statistics values, so a GUI-element such as a graph or table can be
+   automatically updated when values of the statistic change. The classes 
+   extend the 'ordinary statistics', and are called `EventBasedCounter`, 
+   `EventBasedTally`, `EventBasedWeightedTally`, and 
+   `EventBasedTimestampWeightedTally`.
+3. *Simulation statistics*. These receive the observations in the same way as
+   the Event-based statistics, but are also aware of the Simulator. This
+   means they can subscribe to the Simulator's WARMUP_EVENT taking care
+   that the statistics are initialized appropriately. Additionally, the 
+   `SimPersistent` class that extends `EventBasedTimestampWeightedTally` can
+   retrieve the timestamps directly from the Simulator. The classes are:
+   
+   * `SimCounter` extending `EventBasedCounter`
+   * `SimTally` extending `EventBasedTally`
+   * `SimWeightedTally`, extending `EventBasedWeightedTally`
+   * `SimPersistent`, extending `EventBasedTimestampWeightedTally`
+   
+Examples
+--------
+    SimCounter is used in discrete-event simulation to count the number of
+    occurrences in a model, such as the number of generated entities, or the
+    number of processed entities by a server.
+    
+    SimTally is used in discrete-event simulation to calculate statistics for
+    the waiting time in a queue, the time-in-system of an entity, or the 
+    processing time at a server.
+    
+    SimPersistent is used in discrete-event simulation to calculate statistics 
+    for the length of a queue or the utilization of a server.
+    
+Notes
+-----
+    The average of the SimTally can be calculated as:
+    
+    .. math::
+       \\mu = \\sum_{i=1}^{n}{\\frac{x_{i}}{n}}
+    
+    where :math:`x_{i}` are the observations and :math:`n` is the number of
+    observations (only observations after the warmup time are included).
+    
+    The average of the SimPersistent can be calculated as:
+    
+    .. math::
+       \\mu = \\int_{0}^{T}{\\frac{x_{t}}{T} dt}
+
+    where :math:`x_{t}` is the stepwise changing x-value (it changes at each 
+    observation) and :math:`T` is the total time of the simulation (after the
+    warmup time). it can be through of as the time-normalized surface 'under'
+    the curve of the observed variable.  
+"""
+
 import math
 from statistics import NormalDist
 
@@ -736,8 +826,65 @@ class Tally(StatisticsInterface):
 
 
 class WeightedTally(StatisticsInterface):
+    """
+    The WeightedTally is a statistics object that calculates descriptive 
+    statistics for weighted observations, such as weighted mean, weighted 
+    variance, minimum observation, maximum observation, etc. 
     
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+
+    In a sense, the weighted tally can be seen as a normal Tally where 
+    the observations are multiplied by their weights. But instead of dividing
+    by the number of observations to calculate the mean, the sum of weights
+    times observations is divided by the sum of the weights. Note that when
+    the weights are all set to 1, the WeghtedTally reduces to the ordinary
+    Tally.
+      
+    Example
+    -------
+    In discrete-event simulation, the WeightedTally is often used with elapsed
+    time as the weights (See the `EventBasedTimestampWeightedTally` class and
+    the 'SimPersistent' class later in this module). This creates a 
+    time-weighted statistic that can for instance be used to calculate 
+    statistics for (average) queue length, or (average) utilization of a server.
+    
+    Attributes
+    ----------
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _sum_of_weights: float
+        the sum of the weights
+    _weighted_sum: float
+        the sum of the observation values times their weights
+    _weight_times_variance: float
+        the weighted variant of the second moment of the statistic 
+    _min: float
+        the lowest value in the current observations 
+    _max: float
+        the highest value in the current observations
+    """
+
     def __init__(self, name: str):
+        """
+        Construct a new WeightedTally statistics object. The WeightedTally 
+        is a statistics object that calculates descriptive statistics for 
+        weighted observations, such as weighted mean, weighted variance, 
+        minimum, and maximum. 
+        
+        Parameters
+        ----------
+        name: str
+            The name by which the statistics object can be identified.
+            
+        Raises
+        ------
+        TypeError
+            when name is not a string
+        """
         if not isinstance(name, str):
             raise TypeError("weighted tally name {name} not a str")
         self._name = name
@@ -759,7 +906,7 @@ class WeightedTally(StatisticsInterface):
         self._max = math.nan
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Return the name of this statistics object.
         
@@ -830,7 +977,7 @@ class WeightedTally(StatisticsInterface):
             self._max = value
         return value
 
-    def n(self):
+    def n(self) -> int:
         """
         Return the number of observations.
         
@@ -841,39 +988,96 @@ class WeightedTally(StatisticsInterface):
         """
         return self._n
 
-    def min(self):
+    def min(self) -> float:
+        """
+        Return the (unweighted) observation with the lowest value. When 
+        no observations were registered, NaN is returned.
+        
+        Returns
+        -------
+        float
+            The observation with the lowest value, or NaN when no observations
+            were registered.
+        """
         return self._min
 
-    def max(self):
+    def max(self) -> float:
+        """
+        Return the (unweighted) observation with the highest value. When 
+        no observations were registered, NaN is returned.
+        
+        Returns
+        -------
+        float
+            The observation with the highest value, or NaN when no observations
+            were registered.
+        """
         return self._max
 
-    def weighted_sample_mean(self):
+    def weighted_sample_mean(self) -> float:
+        r"""
+        Return the weighted sample mean. When no observations were registered, 
+        NaN is returned.
+        
+        The weighted sample mean of the WeightedTally is calculated with the 
+        formula:
+    
+        .. math:: \mu = \frac{\sum_{i=1}^{n} w_{i}.x_{i}}{\sum_{i=1}^{n} w_{i}}
+    
+        where n is the number of observations, :math:`w_{i}` are the weights,
+        and :math:`x_{i}` are the observations.
+
+        Returns
+        -------
+        float
+            The weighted sample mean, or NaN when no observations were 
+            registered.
+        """
         if self._n > 0:
             return self._weighted_mean
         return math.nan
 
-    def weighted_population_mean(self):
+    def weighted_population_mean(self) -> float:
+        r"""
+        Return the weighted population mean, which is for this statistic 
+        the same as the weighted sample mean. When no observations were 
+        registered, NaN is returned.
+        
+        The weighted population mean of the Tally is calculated with the 
+        formula:
+    
+        .. math:: \mu = \frac{\sum_{i=1}^{n} w_{i}.x_{i}}{\sum_{i=1}^{n} w_{i}}
+    
+        where n is the number of observations, :math:`w_{i}` are the weights,
+        and :math:`x_{i}` are the observations.
+        
+        Returns
+        -------
+        float
+            The weighted population mean, or NaN when no observations were 
+            registered.
+        """
         return self.weighted_sample_mean()
     
-    def weighted_sample_stdev(self):
+    def weighted_sample_stdev(self) -> float:
         if self._n > 1:
             return math.sqrt(self.weighted_sample_variance())
         return math.nan
     
-    def weighted_population_stdev(self):
+    def weighted_population_stdev(self) -> float:
         return math.sqrt(self.weighted_population_variance())
     
-    def weighted_sample_variance(self):
+    def weighted_sample_variance(self) -> float:
         if self._n > 1:
             return self.weighted_population_variance() * self._n / (self._n - 1)
         return math.nan
 
-    def weighted_population_variance(self):
+    def weighted_population_variance(self) -> float:
         if self._n > 0:
             return self._weight_times_variance / self._sum_of_weights
         return math.nan
 
-    def weighted_sum(self):
+    def weighted_sum(self) -> float:
         return self._weighted_sum
 
     def __str__(self):
