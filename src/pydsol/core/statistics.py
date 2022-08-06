@@ -108,6 +108,7 @@ __all__ = [
     "EventBasedTimestampWeightedTally",
     "SimCounter",
     "SimTally",
+    "SimWeightedTally",
     "SimPersistent",
     ]
 
@@ -1539,6 +1540,77 @@ class SimTally(EventBasedTally, SimStatisticsInterface):
                         self.sample_kurtosis())
         self.fire_timed(t, StatEvents.SAMPLE_EXCESS_K_EVENT,
                         self.sample_excess_kurtosis())
+
+
+class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
+    
+    def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
+                 producer: EventProducer=None, event_type: EventType=None):
+        if not isinstance(key, str):
+            raise TypeError(f"key {key} is not a str")
+        if not isinstance(simulator, SimulatorInterface):
+            raise TypeError(f"simulator {simulator} is not a simulator")
+        self._simulator = simulator
+        EventBasedWeightedTally.__init__(self, name)
+        simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
+        self._key = key
+        simulator.model.add_output_statistic(key, self)
+        if producer != None or event_type != None:
+            self.listen_to(producer, event_type)
+        else:
+            self._event_type = None
+
+    def listen_to(self, producer: EventProducer, event_type: EventType):
+        """
+        Avoid chicken-and-egg problem and allow for later registration of
+        events to listen to.
+        """
+        if not isinstance(producer, EventProducer):
+            raise TypeError(f"producer {producer} not an EventProducer")
+        if not isinstance(event_type, EventType):
+            raise TypeError(f"event_type {event_type} not an EventType")
+        self._event_type = event_type
+        producer.add_listener(event_type, self)
+
+    @property
+    def key(self) -> str:
+        return self._key
+    
+    @property
+    def simulator(self) -> SimulatorInterface:
+        return self._simulator
+
+    def fire_initialized(self):
+        self.fire_timed(self.simulator.simulator_time,
+                        StatEvents.INITIALIZED_EVENT, self)
+        
+    def notify(self, event: Event):
+        if event.event_type == StatEvents.WEIGHT_DATA_EVENT:
+            super().notify(event)
+        elif event.event_type == self._event_type:
+            super().notify(Event(StatEvents.WEIGHT_DATA_EVENT, event.content))
+        elif event.event_type == ReplicationInterface.WARMUP_EVENT:
+            self.initialize()
+            
+    def fire_events(self, value: float):
+        t = self.simulator.simulator_time
+        self.fire_timed(t, StatEvents.OBSERVATION_ADDED_EVENT, value)
+        self.fire_timed(t, StatEvents.N_EVENT, self.n())
+        self.fire_timed(t, StatEvents.MIN_EVENT, self.min())
+        self.fire_timed(t, StatEvents.MAX_EVENT, self.max())
+        self.fire_timed(t, StatEvents.WEIGHTED_SUM_EVENT, self.weighted_sum())
+        self.fire_timed(t, StatEvents.WEIGHTED_POPULATION_MEAN_EVENT,
+                  self.weighted_population_mean())
+        self.fire_timed(t, StatEvents.WEIGHTED_POPULATION_STDEV_EVENT,
+                  self.weighted_population_stdev())
+        self.fire_timed(t, StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT,
+                  self.weighted_population_variance())
+        self.fire_timed(t, StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT,
+                  self.weighted_sample_mean())
+        self.fire_timed(t, StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT,
+                  self.weighted_sample_stdev())
+        self.fire_timed(t, StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT,
+                  self.weighted_sample_variance())
 
 
 class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
