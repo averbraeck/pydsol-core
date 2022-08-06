@@ -161,8 +161,8 @@ class Counter(StatisticsInterface):
     def report_line(self) -> str:
         """
         Return a string representing a line with important statistics values 
-        for this statistical object, for a textual table with a monospaced
-        font that can contain multiple counters.
+        for this counter, for a textual table with a monospaced font that 
+        can contain multiple counters.
         """
         return f"| {self.name:<48} | {self.n():>6} | {self.count():>8} |"
 
@@ -401,7 +401,7 @@ class Tally(StatisticsInterface):
     def confidence_interval(self, alpha: float) -> tuple[float]:
         r"""
         Return the confidence interval around the sample mean with the
-        provided alpha. When less than two observations were registered, 
+        provided alpha. When fewer than two observations were registered, 
         (NaN, NaN) is returned.
         
         Parameters
@@ -416,7 +416,7 @@ class Tally(StatisticsInterface):
         -------
         (float, float)
             The confidence interval around the sample mean, or (NaN, NaN) 
-            when less than two observations were registered.
+            when fewer than two observations were registered.
             
         Raises
         ------
@@ -442,7 +442,7 @@ class Tally(StatisticsInterface):
         r"""
         Return the (unbiased) sample standard deviation of all observations 
         since the initialization. The sample standard deviation is defined 
-        as the square root of the sample variance. When less than two 
+        as the square root of the sample variance. When fewer than two 
         observations were registered, NaN is returned.
         
         The formula is:
@@ -455,14 +455,14 @@ class Tally(StatisticsInterface):
         -------
         float
             The (unbiased) sample standard deviation of all observations 
-            since the initialization, or NaN  when less than two observations 
+            since the initialization, or NaN when fewer than two observations 
             were registered.
         """
         if self._n > 1:
             return math.sqrt(self.sample_variance())
         return math.nan
     
-    def population_stdev(self):
+    def population_stdev(self) -> float:
         r"""
         Return the current (biased) population standard deviation of all 
         observations since the initialization. The population standard 
@@ -486,7 +486,7 @@ class Tally(StatisticsInterface):
             return math.sqrt(self.population_variance())
         return math.nan
     
-    def sum(self):
+    def sum(self) -> float:
         """
         Return the sum of all observations since the statistic initialization.
         
@@ -497,10 +497,10 @@ class Tally(StatisticsInterface):
         """
         return self._sum
     
-    def sample_variance(self):
+    def sample_variance(self) -> float:
         r"""
         Return the (unbiased) sample variance of all observations since
-        the statistic initialization. When less than two observations were 
+        the statistic initialization. When fewer than two observations were 
         registered, NaN is returned.
         
         The formula is:
@@ -513,16 +513,16 @@ class Tally(StatisticsInterface):
         -------
         float
             The (unbiased) sample variance of all observations since the 
-            initialization, or NaN  when less than two observations were 
+            initialization, or NaN  when fewer than two observations were 
             registered.
         """
         if self._n > 1:
             return self._m2 / (self._n - 1)
         return math.nan
     
-    def population_variance(self):
+    def population_variance(self) -> float:
         r"""
-        Return the (biased) sample variance of all observations since
+        Return the (biased) population variance of all observations since
         the statistic initialization. When no observations were registered, 
         NaN is returned.
         
@@ -535,45 +535,170 @@ class Tally(StatisticsInterface):
         Returns
         -------
         float
-            The (biased) sample variance of all observations since the 
+            The (biased) population variance of all observations since the 
             initialization, or NaN when no observations were registered.
         """
         if self._n > 0:
             return self._m2 / (self._n)
         return math.nan
     
-    def sample_skewness(self):
+    def sample_skewness(self) -> float:
+        r"""
+        Return the (unbiased) sample skewness of all observations since
+        the statistic initialization. When fewer than three observations were 
+        registered, NaN is returned.
+        
+        There are different formulas to calculate the unbiased (sample) 
+        skewness from the biased (population) skewness. Minitab, for 
+        instance calculates unbiased skewness as:
+        
+         .. math::
+            Skew_{unbiased} = Skew_{biased} {\left(  
+            \frac{n - 1}{n} \right)} ^{3/2}
+            
+        whereas SAS, SPSS and Excel calculate it as:
+        
+         .. math::
+            Skew_{unbiased} = Skew_{biased} \sqrt{\frac{n (n - 1)}{n - 2} }
+        
+        Here we follow the last mentioned formula. All formulas converge 
+        to the same value with larger n.
+        
+        Returns
+        -------
+        float
+            The (unbiased) sample skewness of all observations since the 
+            initialization, or NaN  when fewer than three observations were 
+            registered.
+        """
         n = float(self._n)
         if n > 2:
             return (self.population_skewness() 
                     * math.sqrt(n * (n - 1)) / (n - 2))
         return math.nan
     
-    def population_skewness(self):
+    def population_skewness(self) -> float:
+        r"""
+        Return the (biased) population skewness of all observations since
+        the statistic initialization. When fewer than 2 observations were 
+        registered, NaN is returned.
+        
+        The formula is:
+        
+         .. math::
+            Skew_{biased} = \frac{ \sum{(x_{i} - \mu)^3} }{n . S^3} 
+        
+        where :math:`S^2` is the sample variance. So the denominator is equal 
+        to :math:`n . sample\_var^{3/2}`.
+        
+        Returns
+        -------
+        float
+            The (biased) population skewness of all observations since the 
+            initialization, or NaN when fewer than 2 observations were 
+            registered.
+        """
         if self._n > 1:
             return (self._m3 / self._n) / self.population_variance() ** 1.5
         return math.nan
     
-    def sample_kurtosis(self):
+    def sample_kurtosis(self) -> float:
+        r"""
+        Return the (unbiased) sample kurtosis of all observations since
+        the statistic initialization. When fewer than four observations were 
+        registered, NaN is returned.
+        
+        The formula is:
+        
+         .. math::
+            kurt_{unbiased} = \frac{\sum{(x_{i} - \mu)^4}}{(n-1).S^4}
+        
+        where :math:`S^2` is the sample variance. So the denominator is equal 
+        to :math:`(n - 1) . sample\_var^2`.
+        
+        Returns
+        -------
+        float
+            The (unbiased) sample kurtosis of all observations since the 
+            initialization, or NaN  when fewer than four observations were 
+            registered.
+        """
         if self._n > 3:
             svar = self.sample_variance()
             return self._m4 / (self._n - 1) / svar / svar
         return math.nan
     
-    def population_kurtosis(self):
+    def population_kurtosis(self) -> float:
+        r"""
+        Return the (biased) population kurtosis of all observations since
+        the statistic initialization. When fewer than three observations were 
+        registered, NaN is returned.
+        
+        The formula is:
+        
+         .. math::
+            kurt_{biased} = \frac{\sum{(x_{i} - \mu)^4}}{n.\sigma^4}
+        
+        where :math:`\sigma^2` is the population variance. So the denominator 
+        is equal to :math:`n . pop\_var^2`.
+        
+        Returns
+        -------
+        float
+            The (biased) population kurtosis of all observations since the 
+            initialization, or NaN  when fewer than three observations were 
+            registered.
+        """
         if self._n > 2:
             d2 = (self._m2 / self._n)
             return (self._m4 / self._n) / d2 / d2
         return math.nan
     
-    def sample_excess_kurtosis(self):
+    def sample_excess_kurtosis(self) -> float:
+        r"""
+        Return the (unbiased) sample excess kurtosis of the ingested data. 
+        The sample excess kurtosis is the sample-corrected value of the 
+        excess kurtosis. Several formulas exist to calculate the sample 
+        excess kurtosis from the population kurtosis. Here we use:
+        
+         .. math::
+            ExcessKurt_{unbiased} = \frac{n - 1}{(n - 2) (n - 3)}
+            \left( (n + 1) ExcessKurt_{biased} + 6 \right)
+             
+        This is the excess kurtosis that is calculated by, for instance, 
+        SAS, SPSS and Excel.
+        
+        When fewer than four observations were registered, NaN is returned.
+        
+        Returns
+        -------
+        float
+            The (unbiased) sample excess kurtosis of all observations since  
+            the initialization, or NaN  when fewer than four observations were 
+            registered.
+        """
         n = float(self._n)
         if n > 3:
             g2 = self.population_excess_kurtosis()
             return ((n - 1) / (n - 2) / (n - 3)) * ((n + 1) * g2 + 6)
         return math.nan
 
-    def population_excess_kurtosis(self):
+    def population_excess_kurtosis(self) -> float:
+        """
+        Return the (biased) population excess kurtosis of the ingested data. 
+        The kurtosis value of the normal distribution is 3. The excess 
+        kurtosis is the kurtosis value shifted by -3 to be 0 for the 
+        normal distribution. When fewer than three observations were 
+        registered, NaN is returned.
+
+        
+        Returns
+        -------
+        float
+            The (biased) population excess kurtosis of all observations since 
+            the initialization, or NaN  when fewer than three observations 
+            were registered.
+        """
         if self._n > 2:
             # convert kurtosis to excess kurtosis, shift by -3
             return self.population_kurtosis() - 3.0
@@ -595,9 +720,18 @@ class Tally(StatisticsInterface):
              +'-' * 72
     
     def report_line(self) -> str:
+        """
+        Return a string representing a line with important statistics values 
+        for this tally, for a textual table with a monospaced font that can 
+        contain multiple tallies.
+        """
         return f"| {self.name:<48} | {self.n():>6} | {self.population_mean():8.2f} |"
 
     def report_footer(self) -> str:
+        """
+        Return a string representing a footer for a textual table with a
+        monospaced font that can contain multiple tallies.
+        """
         return '-' * 72
 
 
@@ -760,10 +894,19 @@ class WeightedTally(StatisticsInterface):
              +'-' * 72
     
     def report_line(self) -> str:
+        """
+        Return a string representing a line with important statistics values 
+        for this tally, for a textual table with a monospaced font that can 
+        contain multiple tallies.
+        """
         return f"| {self.name:<48} | {self.n():>6} | "\
             +f"{self.weighted_population_mean():8.2f} |"
 
     def report_footer(self) -> str:
+        """
+        Return a string representing a footer for a textual table with a
+        monospaced font that can contain multiple tallies.
+        """
         return '-' * 72
 
 
