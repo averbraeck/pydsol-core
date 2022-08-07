@@ -8,27 +8,27 @@ The statistics objects are:
 
 * The *Counter* that collects integer values, such as the occurrences of an 
   event, and produces the count as the statistics result. The counter receives
-  its observations through a method ``ingest(int_value)``
+  its observations through a method ``register(int_value)``
 * The *Tally* that collects floating point values such as processing times,
   and produces statistics results such as the mean, standard deviation, and
   variance of the submitted values. The Tally receives its observations
-  through a method ``ingest(float_value)``
+  through a method ``register(float_value)``
 * The *WeightedTally* that collects floating point values with an associated
   weight factor, for example the number of entities in a queue as the 
   observations and the duration of the particular queue length as the weights,
   and produces results such as weighted average and weighted variance of the
   observations. The WeightedTally receives its observations through a method 
-  ``ingest(float_weight, float_value)``
+  ``register(float_weight, float_value)``
 * The *TimestampWeightedTally* that is a specialization of the WeightedTally
   where the weights are derived automatically from the intervals between 
   timestamps. Each observation is provided with the time when the value of a 
   property changed. The TimestampWeightedTally receives its observations
-  through a method ``ingest(float_timestamp, float_value)``  
+  through a method ``register(float_timestamp, float_value)``  
    
 The statistics families are:
 
 1. *Ordinary statistics*. These receive the observations by explicitly calling 
-   the `ingest` method for any of the four statistics. The classes are 
+   the `register` method for any of the four statistics. The classes are 
    `Counter`, `Tally`, `WeightedTally`, and `TimestampWeightedTally`.
 2. *Event-based statistics*. These receive the observations by listening to
    an EventProducer (see the pubsub.py module) that 'fires' events to one or
@@ -56,16 +56,16 @@ The statistics families are:
    
 Examples
 --------
-    SimCounter is used in discrete-event simulation to count the number of
+    **SimCounter** is used in discrete-event simulation to count the number of
     occurrences in a model, such as the number of generated entities, or the
     number of processed entities by a server.
     
-    SimTally is used in discrete-event simulation to calculate statistics for
-    the waiting time in a queue, the time-in-system of an entity, or the 
+    **SimTally** is used in discrete-event simulation to calculate statistics 
+    for the waiting time in a queue, the time-in-system of an entity, or the 
     processing time at a server.
     
-    SimPersistent is used in discrete-event simulation to calculate statistics 
-    for the length of a queue or the utilization of a server.
+    **SimPersistent** is used in discrete-event simulation to calculate 
+    statistics for the length of a queue or the utilization of a server.
     
 Notes
 -----
@@ -89,6 +89,7 @@ Notes
 """
 
 import math
+from typing import Union
 from statistics import NormalDist
 
 from pydsol.core.interfaces import StatEvents, SimulatorInterface, \
@@ -97,6 +98,8 @@ from pydsol.core.pubsub import EventProducer, EventListener, Event, \
     TimedEvent, EventType
 from pydsol.core.utils import get_module_logger
 
+
+#from statistics import NormalDist
 __all__ = [
     "Counter",
     "Tally",
@@ -186,7 +189,7 @@ class Counter(StatisticsInterface):
         """
         return self._name
 
-    def ingest(self, value: int) -> int:
+    def register(self, value: int):
         """
         Process one observation. The value indicates the increment or 
         decrement of the counter (often 1). 
@@ -196,21 +199,15 @@ class Counter(StatisticsInterface):
         value: int
             The increment or decrement of the Counter.
             
-        Returns
-        -------
-        int
-            the value, to use the `ingest` method inside an expression
-            
         Raises
         ------
         TypeError
             when value is not an int
         """
         if not isinstance(value, int):
-            raise TypeError("ingested value {value} not an int")
+            raise TypeError("registered value {value} not an int")
         self._count += value
         self._n += 1
-        return value
 
     def count(self):
         """
@@ -352,10 +349,10 @@ class Tally(StatisticsInterface):
         """
         return self._name
 
-    def ingest(self, value: float) -> float:
+    def register(self, value: Union[float, int]):
         """
-        Process one observation value, and calculate all statistics up to
-        and including the last value (mean, standard deviation, minimum,
+        Record one or more observation values, and calculate all statistics 
+        up to and including the last value (mean, standard deviation, minimum,
         maximum, skewness, etc.).
         
         Parameters
@@ -363,11 +360,6 @@ class Tally(StatisticsInterface):
         value: float
             The value of the observation.
             
-        Returns
-        -------
-        float
-            the value, to use the `ingest` method inside an expression
-
         Raises
         ------
         TypeError
@@ -376,9 +368,9 @@ class Tally(StatisticsInterface):
             when value is NaN
         """
         if not isinstance(value, (int, float)):
-            raise TypeError("tally ingested value must be a number")
+            raise TypeError("tally registered value must be a number")
         if math.isnan(value):
-            raise ValueError("tally ingested value cannot be nan")
+            raise ValueError("tally registered value cannot be nan")
         if self._n == 0:
             self._min = +math.inf
             self._max = -math.inf
@@ -410,7 +402,6 @@ class Tally(StatisticsInterface):
             self._min = value
         if value > self._max:
             self._max = value
-        return value
 
     def n(self) -> int:
         """
@@ -448,13 +439,23 @@ class Tally(StatisticsInterface):
             were registered.
         """
         return self._max
-
-    def sample_mean(self) -> float:
-        r"""
-        Return the sample mean. When no observations were registered, 
-        NaN is returned.
         
-        The sample mean of the Tally is calculated with the formula:
+    def sum(self) -> float:
+        """
+        Return the sum of all observations since the statistic initialization.
+        
+        Returns
+        -------
+        float
+            The sum of the observations.
+        """
+        return self._sum
+
+    def mean(self) -> float:
+        r"""
+        Return the mean. When no observations were registered, NaN is returned.
+        
+        The mean of the Tally is calculated with the formula:
     
         .. math:: \mu = \sum_{i=1}^{n} {x_{i}} / n
     
@@ -464,36 +465,17 @@ class Tally(StatisticsInterface):
         Returns
         -------
         float
-            The sample mean, or NaN when no observations were registered.
+            The mean, or NaN when no observations were registered.
         """
         if self._n > 0:
             return self._m1
         return math.nan
 
-    def population_mean(self) -> float:
-        r"""
-        Return the population mean, which is for this statistic the same as
-        the sample mean. When no observations were registered, NaN is returned.
-        
-        The population mean of the Tally is calculated with the formula:
-    
-        .. math:: \mu = \sum_{i=1}^{n} {x_{i}} / n
-    
-        where n is the number of observations and :math:`x_{i}` are the 
-        observations.
-        
-        Returns
-        -------
-        float
-            The population mean, or NaN when no observations were registered.
-        """
-        return self.sample_mean()
-
     def confidence_interval(self, alpha: float) -> tuple[float]:
         r"""
-        Return the confidence interval around the sample mean with the
-        provided alpha. When fewer than two observations were registered, 
-        (NaN, NaN) is returned.
+        Return the confidence interval around the mean with the provided 
+        alpha. When fewer than two observations were registered, (NaN, NaN) 
+        is returned.
         
         Parameters
         ----------
@@ -506,8 +488,8 @@ class Tally(StatisticsInterface):
         Returns
         -------
         (float, float)
-            The confidence interval around the sample mean, or (NaN, NaN) 
-            when fewer than two observations were registered.
+            The confidence interval around the mean, or (NaN, NaN) when 
+            fewer than two observations were registered.
             
         Raises
         ------
@@ -520,125 +502,106 @@ class Tally(StatisticsInterface):
             raise TypeError(f"alpha {alpha} not a float")
         if not 0 <= alpha <= 1:
             raise ValueError(f"alpha {alpha} not between 0 and 1")
-        sample_mean = self.sample_mean()
-        if math.isnan(sample_mean) or math.isnan(self.sample_stdev()):
+        mean = self.mean()
+        if math.isnan(mean) or math.isnan(self.stdev(False)):
             return (math.nan, math.nan)
         level = 1.0 - alpha / 2.0
         z = NormalDist(0.0, 1.0).inv_cdf(level)
-        confidence = z * math.sqrt(self.sample_variance() / self._n)
-        return (max(self._min, sample_mean - confidence),
-                min(self._max, sample_mean + confidence))
+        confidence = z * math.sqrt(self.variance(False) / self._n)
+        return (max(self._min, mean - confidence),
+                min(self._max, mean + confidence))
     
-    def sample_stdev(self) -> float:
+    def variance(self, biased: bool = True) -> float:
         r"""
-        Return the (unbiased) sample standard deviation of all observations 
-        since the initialization. The sample standard deviation is defined 
-        as the square root of the sample variance. When fewer than two 
-        observations were registered, NaN is returned.
+        Return the variance of all observations since the statistic 
+        initialization. By default, the biased (population) variance
+        is returned. The biased variance needs at least 1 observation,
+        the unbiased variance needs at least 2.
         
-        The formula is:
-        
-         .. math::
-            S = \sqrt{ {\frac{1}{n-1}} \left( \sum{x_{i}^2} - 
-            \left( \sum{x_{i}} \right)^2 / n \right) }
-        
-        Returns
-        -------
-        float
-            The (unbiased) sample standard deviation of all observations 
-            since the initialization, or NaN when fewer than two observations 
-            were registered.
-        """
-        if self._n > 1:
-            return math.sqrt(self.sample_variance())
-        return math.nan
-    
-    def population_stdev(self) -> float:
-        r"""
-        Return the current (biased) population standard deviation of all 
-        observations since the initialization. The population standard 
-        deviation is defined as the square root of the population variance. 
-        When no observations were registered, NaN is returned.
-        
-        The formula is:
-        
-         .. math::
-            \sigma = \sqrt{ {\frac{1}{n}} \left( \sum{x_{i}^2} - 
-            \left( \sum{x_{i}} \right)^2 / n \right) }
-        
-        Returns
-        -------
-        float
-            The (unbiased) sample standard deviation of all observations 
-            since the initialization, or NaN when no observations were 
-            registered.
-        """
-        if self._n > 0:
-            return math.sqrt(self.population_variance())
-        return math.nan
-    
-    def sum(self) -> float:
-        """
-        Return the sum of all observations since the statistic initialization.
-        
-        Returns
-        -------
-        float
-            The sum of the observations.
-        """
-        return self._sum
-    
-    def sample_variance(self) -> float:
-        r"""
-        Return the (unbiased) sample variance of all observations since
-        the statistic initialization. When fewer than two observations were 
-        registered, NaN is returned.
-        
-        The formula is:
-        
-         .. math::
-            S^2 = { {\frac{1}{n-1}} \left( \sum{x_{i}^2} - 
-            \left( \sum{x_{i}} \right)^2 / n \right) }
-        
-        Returns
-        -------
-        float
-            The (unbiased) sample variance of all observations since the 
-            initialization, or NaN  when fewer than two observations were 
-            registered.
-        """
-        if self._n > 1:
-            return self._m2 / (self._n - 1)
-        return math.nan
-    
-    def population_variance(self) -> float:
-        r"""
-        Return the (biased) population variance of all observations since
-        the statistic initialization. When no observations were registered, 
-        NaN is returned.
-        
-        The formula is:
+        The formula for the biased (or population) variance is:
         
          .. math::
             \sigma^2 = { {\frac{1}{n}} \left( \sum{x_{i}^2} - 
             \left( \sum{x_{i}} \right)^2 / n \right) }
+
+        The formula for the unbiased (or sample) variance is:
+        
+         .. math::
+            S^2 = { {\frac{1}{n-1}} \left( \sum{x_{i}^2} - 
+            \left( \sum{x_{i}} \right)^2 / n \right) }
+
+        Parameters
+        ----------
+        biased: bool
+            Whether to return the biased (population) variance or the 
+            unbiased (sample) variance. By default, biased is True and the
+            population variance is returned.
         
         Returns
         -------
         float
-            The (biased) population variance of all observations since the 
-            initialization, or NaN when no observations were registered.
+            The biassed or unbiased variance of all observations since the 
+            initialization, or NaN when too few observations were registered.
         """
-        if self._n > 0:
-            return self._m2 / (self._n)
+        if biased:
+            if self._n > 0:
+                return self._m2 / (self._n)
+        elif self._n > 1:
+            return self._m2 / (self._n - 1)
         return math.nan
     
-    def sample_skewness(self) -> float:
+    def stdev(self, biased: bool = True) -> float:
         r"""
-        Return the (unbiased) sample skewness of all observations since
-        the statistic initialization. When fewer than three observations were 
-        registered, NaN is returned.
+        Return the standard deviation of all observations since the 
+        initialization. The sample standard deviation is defined as the 
+        square root of the variance. The biased standard deviation needs at 
+        least 1 observation, the unbiased version needs at least 2.
         
+        The formula for the biased (population) standard deviation is:
+        
+         .. math::
+            \sigma = \sqrt{ {\frac{1}{n}} \left( \sum{x_{i}^2} - 
+            \left( \sum{x_{i}} \right)^2 / n \right) }
+
+        The formula for the unbiased (sample) standard deviation is:
+        
+         .. math::
+            S = \sqrt{ {\frac{1}{n - 1}} \left( \sum{x_{i}^2} - 
+            \left( \sum{x_{i}} \right)^2 / n \right) }
+        
+        Parameters
+        ----------
+        biased: bool
+            Whether to return the biased (population) standard deviation or the 
+            unbiased (sample) standard deviation. By default, biased is True 
+            and the population standard deviation is returned.
+
+        Returns
+        -------
+        float
+            The (unbiased) sample standard deviation of all observations 
+            since the initialization, or NaN when not enough observations 
+            were registered.
+        """
+        return math.sqrt(self.variance(biased))
+    
+    def skewness(self, biased: bool = True) -> float:
+        r"""
+        Return the skewness of all observations since the statistic 
+        initialization. For the biased (population) skewness, at least two 
+        observations are needed; for the unbiased (sample) skewness, at least
+        three observations are needed. If there are too few observations,
+        NaN is returned. The method returns the biased (population) skewness
+        as the default.
+        
+        The formula for the biased (population) skewness is:
+        
+         .. math::
+            Skew_{biased} = \frac{ \sum{(x_{i} - \mu)^3} }{n . \sigma^3} 
+        
+        where :math:`\sigma^2` is the biased (population) variance. So 
+        the denominator is equal to :math:`n . population\_var^{3/2}`.
+
         There are different formulas to calculate the unbiased (sample) 
         skewness from the biased (population) skewness. Minitab, for 
         instance calculates unbiased skewness as:
@@ -655,77 +618,37 @@ class Tally(StatisticsInterface):
         Here we follow the last mentioned formula. All formulas converge 
         to the same value with larger n.
         
+        Parameters
+        ----------
+        biased: bool
+            Whether to return the biased (population) skewness or the 
+            unbiased (sample) skewness. By default, biased is True and the 
+            population skewness is returned.
+        
         Returns
         -------
         float
-            The (unbiased) sample skewness of all observations since the 
-            initialization, or NaN  when fewer than three observations were 
-            registered.
+            The skewness of all observations since the initialization, 
+            or NaN  when too few observations were registered.
         """
         n = float(self._n)
-        if n > 2:
-            return (self.population_skewness() 
-                    * math.sqrt(n * (n - 1)) / (n - 2))
+        if n > 1:
+            skew_biased = (self._m3 / n) / self.variance() ** 1.5 
+            if biased:
+                return skew_biased
+            elif n > 2:
+                return (skew_biased * math.sqrt(n * (n - 1)) / (n - 2))
         return math.nan
     
-    def population_skewness(self) -> float:
+    def kurtosis(self, biased: bool = True) -> float:
         r"""
-        Return the (biased) population skewness of all observations since
-        the statistic initialization. When fewer than 2 observations were 
-        registered, NaN is returned.
+        Return the kurtosis of all observations since the statistic 
+        initialization. The biased (sample) kurtosis calculation needs three 
+        observations, and the unbiased (population) calculation needs four 
+        observations. When too few observations were registered, NaN is 
+        returned.
         
-        The formula is:
-        
-         .. math::
-            Skew_{biased} = \frac{ \sum{(x_{i} - \mu)^3} }{n . S^3} 
-        
-        where :math:`S^2` is the sample variance. So the denominator is equal 
-        to :math:`n . sample\_var^{3/2}`.
-        
-        Returns
-        -------
-        float
-            The (biased) population skewness of all observations since the 
-            initialization, or NaN when fewer than 2 observations were 
-            registered.
-        """
-        if self._n > 1:
-            return (self._m3 / self._n) / self.population_variance() ** 1.5
-        return math.nan
-    
-    def sample_kurtosis(self) -> float:
-        r"""
-        Return the (unbiased) sample kurtosis of all observations since
-        the statistic initialization. When fewer than four observations were 
-        registered, NaN is returned.
-        
-        The formula is:
-        
-         .. math::
-            kurt_{unbiased} = \frac{\sum{(x_{i} - \mu)^4}}{(n-1).S^4}
-        
-        where :math:`S^2` is the sample variance. So the denominator is equal 
-        to :math:`(n - 1) . sample\_var^2`.
-        
-        Returns
-        -------
-        float
-            The (unbiased) sample kurtosis of all observations since the 
-            initialization, or NaN  when fewer than four observations were 
-            registered.
-        """
-        if self._n > 3:
-            svar = self.sample_variance()
-            return self._m4 / (self._n - 1) / svar / svar
-        return math.nan
-    
-    def population_kurtosis(self) -> float:
-        r"""
-        Return the (biased) population kurtosis of all observations since
-        the statistic initialization. When fewer than three observations were 
-        registered, NaN is returned.
-        
-        The formula is:
+        The formula for the biased (population) kurtosis is:
         
          .. math::
             kurt_{biased} = \frac{\sum{(x_{i} - \mu)^4}}{n.\sigma^4}
@@ -733,24 +656,55 @@ class Tally(StatisticsInterface):
         where :math:`\sigma^2` is the population variance. So the denominator 
         is equal to :math:`n . pop\_var^2`.
         
+        The formula for the unbiased (sample) kurtosis is:
+        
+         .. math::
+            kurt_{unbiased} = \frac{\sum{(x_{i} - \mu)^4}}{(n-1).S^4}
+        
+        where :math:`S^2` is the sample variance. So the denominator is equal 
+        to :math:`(n - 1) . sample\_var^2`.
+        
+        Parameters
+        ----------
+        biased: bool
+            Whether to return the biased (population) kurtosis or the 
+            unbiased (sample) kurtosis. By default, biased is True and the 
+            population kurtosis is returned.
+        
         Returns
         -------
         float
-            The (biased) population kurtosis of all observations since the 
-            initialization, or NaN  when fewer than three observations were 
-            registered.
+            The kurtosis of all observations since the initialization, or 
+            NaN  when too few observations were registered.
         """
-        if self._n > 2:
-            d2 = (self._m2 / self._n)
-            return (self._m4 / self._n) / d2 / d2
+        n = self._n
+        if biased:
+            if n > 2:
+                d2 = (self._m2 / n)
+                return (self._m4 / n) / d2 / d2
+        elif n > 3:
+            svar = self.variance(False)
+            return self._m4 / (n - 1) / svar / svar
         return math.nan
     
-    def sample_excess_kurtosis(self) -> float:
+    def excess_kurtosis(self, biased: bool = True) -> float:
         r"""
-        Return the (unbiased) sample excess kurtosis of the ingested data. 
-        The sample excess kurtosis is the sample-corrected value of the 
-        excess kurtosis. Several formulas exist to calculate the sample 
-        excess kurtosis from the population kurtosis. Here we use:
+        Return the excess kurtosis of the registered data. The kurtosis value 
+        of the normal distribution is 3. The (biased) excess kurtosis is the 
+        kurtosis value shifted by -3 to be 0 for the normal distribution. The  
+        biased excess kurtosis needs three observations; if fewer observations
+        were registered, NaN is returned.
+ 
+        The formula for the biased (population) excess kurtosis is:
+        
+         .. math::
+            ExcessKurt_{biased} = Kurt_{biased} - 3
+        
+        The unbiased (sample) excess kurtosis is the sample-corrected value 
+        of the biased excess kurtosis. When fewer than four observations were 
+        registered, NaN is returned for the unbiased excess kurtosis. Several 
+        formulas exist to calculate the sample excess kurtosis from the 
+        biased excess kurtosis. Here we use:
         
          .. math::
             ExcessKurt_{unbiased} = \frac{n - 1}{(n - 2) (n - 3)}
@@ -759,44 +713,31 @@ class Tally(StatisticsInterface):
         This is the excess kurtosis that is calculated by, for instance, 
         SAS, SPSS and Excel.
         
-        When fewer than four observations were registered, NaN is returned.
+        Parameters
+        ----------
+        biased: bool
+            Whether to return the biased (population) excess kurtosis or the 
+            unbiased (sample) excess kurtosis. By default, biased is True and 
+            the population excess kurtosis is returned.
         
         Returns
         -------
         float
-            The (unbiased) sample excess kurtosis of all observations since  
-            the initialization, or NaN  when fewer than four observations were 
-            registered.
+            The excess kurtosis of all observations since the initialization, 
+            or NaN  when too few observations were registered.
         """
         n = float(self._n)
-        if n > 3:
-            g2 = self.population_excess_kurtosis()
+        if biased:
+            if n > 2:
+                # convert kurtosis to excess kurtosis, shift by -3
+                return self.kurtosis() - 3.0
+        elif n > 3:
+            g2 = self.excess_kurtosis()
             return ((n - 1) / (n - 2) / (n - 3)) * ((n + 1) * g2 + 6)
         return math.nan
 
-    def population_excess_kurtosis(self) -> float:
-        """
-        Return the (biased) population excess kurtosis of the ingested data. 
-        The kurtosis value of the normal distribution is 3. The excess 
-        kurtosis is the kurtosis value shifted by -3 to be 0 for the 
-        normal distribution. When fewer than three observations were 
-        registered, NaN is returned.
-
-        
-        Returns
-        -------
-        float
-            The (biased) population excess kurtosis of all observations since 
-            the initialization, or NaN  when fewer than three observations 
-            were registered.
-        """
-        if self._n > 2:
-            # convert kurtosis to excess kurtosis, shift by -3
-            return self.population_kurtosis() - 3.0
-        return math.nan
-     
     def __str__(self):
-        return f"Tally[name={self._name}, n={self._n}, mean={self.sample_mean()}]"
+        return f"Tally[name={self._name}, n={self._n}, mean={self.mean()}]"
     
     def __repr__(self):
         return str(self)
@@ -816,7 +757,7 @@ class Tally(StatisticsInterface):
         for this tally, for a textual table with a monospaced font that can 
         contain multiple tallies.
         """
-        return f"| {self.name:<48} | {self.n():>6} | {self.population_mean():8.2f} |"
+        return f"| {self.name:<48} | {self.n():>6} | {self.mean():8.2f} |"
 
     def report_footer(self) -> str:
         """
@@ -857,6 +798,8 @@ class WeightedTally(StatisticsInterface):
         the name by which the statistics object can be identified
     _n: int
         the number of observations
+    _n_nonzero: int
+        the number of non-zero weights
     _sum_of_weights: float
         the sum of the weights
     _weighted_sum: float
@@ -899,6 +842,7 @@ class WeightedTally(StatisticsInterface):
         completed. 
         """
         self._n = 0
+        self._n_nonzero = 0
         self._sum_of_weights = 0.0
         self._weighted_mean = 0.0
         self._weight_times_variance = 0.0
@@ -918,12 +862,18 @@ class WeightedTally(StatisticsInterface):
         """
         return self._name
 
-    def ingest(self, weight: float, value:float) -> float:
+    def register(self, weight: float, value: float):
         """
         Process one observation value and a corresponding weight, and 
         calculate all statistics up to and including the last weight-value 
-        pair (mean, standard deviation, minimum, maximum, skewness, etc.).
+        pair (mean, standard deviation, minimum, maximum, sum, etc.).
         Weight has to be >= 0.
+        
+        Note
+        ----
+        When weight equals zero, the value **is** counted towards the number
+        of observations, and for the minimum and maximum observation value,
+        but it does not contribute to the other statistics. 
         
         Parameters
         ----------
@@ -931,11 +881,6 @@ class WeightedTally(StatisticsInterface):
             The weight of this observation (has to be >= 0).
         value: float
             The value of the observation.
-            
-        Returns
-        -------
-        float
-            the value, to use the `ingest` method inside an expression
             
         Raises
         ------
@@ -951,17 +896,22 @@ class WeightedTally(StatisticsInterface):
         if not isinstance(value, (int, float)):
             raise TypeError("value should be a number")
         if math.isnan(value):
-            raise ValueError("tally ingested value cannot be nan")
+            raise ValueError("tally registered value cannot be nan")
         if math.isnan(weight):
             raise ValueError("tally weight cannot be nan")
         if weight < 0:
             raise ValueError("tally weight cannot be < 0")
-        if weight == 0.0:
-            return value
         if self._n == 0:
             self._min = +math.inf
             self._max = -math.inf
+        if value < self._min:
+            self._min = value
+        if value > self._max:
+            self._max = value
         self._n += 1
+        if weight == 0.0:
+            return
+        self._n_nonzero += 1
         # Eq 47 in https://fanf2.user.srcf.net/hermes/doc/antiforgery/stats.pdf
         self._sum_of_weights += weight;
         prev_weighted_mean = self._weighted_mean;
@@ -972,11 +922,6 @@ class WeightedTally(StatisticsInterface):
         self._weight_times_variance += (weight * (value - prev_weighted_mean) 
                 * (value - self._weighted_mean))
         self._weighted_sum += weight * value;
-        if value < self._min:
-            self._min = value
-        if value > self._max:
-            self._max = value
-        return value
 
     def n(self) -> int:
         """
@@ -1015,15 +960,26 @@ class WeightedTally(StatisticsInterface):
         """
         return self._max
 
-    def weighted_sample_mean(self) -> float:
+    def weighted_sum(self) -> float:
+        """
+        Return the sum of all observations times their weights since the 
+        statistic initialization.
+        
+        Returns
+        -------
+        float
+            The sum of the observations times their weights.
+        """
+        return self._weighted_sum
+
+    def weighted_mean(self) -> float:
         r"""
-        Return the weighted sample mean. When no observations were registered, 
+        Return the weighted mean. When no observations were registered, 
         NaN is returned.
         
-        The weighted sample mean of the WeightedTally is calculated with the 
-        formula:
+        The weighted mean of the WeightedTally is calculated with the formula:
     
-        .. math:: \mu = \frac{\sum_{i=1}^{n} w_{i}.x_{i}}{\sum_{i=1}^{n} w_{i}}
+        .. math:: \mu_{W} = \frac{\sum_{i=1}^{n} w_{i}.x_{i}}{\sum_{i=1}^{n} w_{i}}
     
         where n is the number of observations, :math:`w_{i}` are the weights,
         and :math:`x_{i}` are the observations.
@@ -1031,59 +987,153 @@ class WeightedTally(StatisticsInterface):
         Returns
         -------
         float
-            The weighted sample mean, or NaN when no observations were 
-            registered.
+            The weighted mean, or NaN when no observations were registered.
         """
         if self._n > 0:
             return self._weighted_mean
         return math.nan
 
-    def weighted_population_mean(self) -> float:
+    def weighted_variance(self, biased: bool = True) -> float:
         r"""
-        Return the weighted population mean, which is for this statistic 
-        the same as the weighted sample mean. When no observations were 
-        registered, NaN is returned.
+        Return the weighted population variance of all observations since 
+        the statistic initialization. The biased version needs at least one
+        observation. For the unbiased version, two observations with non-zero 
+        weights are needed. When too few observations were registered, NaN 
+        is returned. 
         
-        The weighted population mean of the Tally is calculated with the 
-        formula:
-    
-        .. math:: \mu = \frac{\sum_{i=1}^{n} w_{i}.x_{i}}{\sum_{i=1}^{n} w_{i}}
-    
-        where n is the number of observations, :math:`w_{i}` are the weights,
-        and :math:`x_{i}` are the observations.
+        The formula for the biased (population) weighted variance is:
+        
+         .. math::
+            \sigma^{2}_{W} = \frac{\sum_{i=1}^{n}{w_i (x_i - \mu_{W})^2}}
+                                  {\sum_{i=1}^{n}{w_i}}
+        
+        where :math:`w_i` are the weights, :math:`x_i` are the observations,
+        :math:`n` is the number of observations, and :math:`\mu_W` is the
+        weighted mean of the observations.
+        
+        For the unbiased (sample) weighted variance, different algorithms are 
+        suggested by the literature. As an example, R and MATLAB calculate 
+        weighted sample variance differently.  SPSS rounds the sum of weights 
+        to the nearest integer and counts that as the 'sample size' in the 
+        unbiased formula. When weights are used as so-called reliability 
+        weights (non-integer) rather than as frequency weights (integer), 
+        rounding to the nearest integer and using that to calculate a 
+        'sample size' is obviously incorrect. See the discussion at
+        https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Weighted_sample_variance
+        and at
+        https://stats.stackexchange.com/questions/51442/weighted-variance-one-more-time.
+        Here we have chosen to implement the version that uses reliability
+        weights. The reason is that the weights in simulation study are most 
+        usually time intervals that can be on any (non-integer) scale.
+        
+        The formula used for the unbiased (sample) weighted variance is:
+
+         .. math::
+            S^{2}_{W} = \frac{M}{M - 1} . \sigma^2_{W}
+            
+        or as a complete formula:
+        
+         .. math::
+            S^{2}_{W} = \frac{M}{M - 1} . 
+                        \frac{\sum_{i=1}^{n}{w_i (x_i-\mu_{W})^2}}
+                             {\sum_{i=1}^{n}{w_i}}
+        
+        where :math:`w_i` are the weights, :math:`x_i` are the observations,
+        :math:`n` is the number of observations, :math:`M` is the number of
+        non-zero observations, and :math:`\mu_W` is the weighted mean of 
+        the observations.
+
+        Parameters
+        ----------
+        biased: bool
+            Whether to return the biased (population) variance or the 
+            unbiased (sample) variance. By default, biased is True and the
+            population variance is returned.
         
         Returns
         -------
         float
-            The weighted population mean, or NaN when no observations were 
-            registered.
+            The weighted variance of all observations since the initialization, 
+            or NaN when too few (non-zero) observations were registered.
         """
-        return self.weighted_sample_mean()
-    
-    def weighted_sample_stdev(self) -> float:
-        if self._n > 1:
-            return math.sqrt(self.weighted_sample_variance())
-        return math.nan
-    
-    def weighted_population_stdev(self) -> float:
-        return math.sqrt(self.weighted_population_variance())
-    
-    def weighted_sample_variance(self) -> float:
-        if self._n > 1:
-            return self.weighted_population_variance() * self._n / (self._n - 1)
-        return math.nan
-
-    def weighted_population_variance(self) -> float:
         if self._n > 0:
-            return self._weight_times_variance / self._sum_of_weights
+            w_pop_var = self._weight_times_variance / self._sum_of_weights
+            if biased:
+                return w_pop_var
+            elif self._n_nonzero > 1:
+                return w_pop_var * self._n_nonzero / (self._n_nonzero - 1)
         return math.nan
+    
+    def weighted_stdev(self, biased: bool = True) -> float:
+        r"""
+        Return the (biased) weighted population standard deviation of all 
+        observations since the statistic initialization. The biased version 
+        needs at least one observation. For the unbiased version, two 
+        observations are needed. When too few observations were registered, 
+        NaN is returned.
+        
+        The formula for the biased (population) weighted standard deviation is:
+        
+         .. math::
+            \sigma_{W} = \sqrt{ \frac{\sum_{i=1}^{n}{w_i (x_i - \mu_{W})^2}}
+                                     {\sum_{i=1}^{n}{w_i}} }
+        
+        where :math:`w_i` are the weights, :math:`x_i` are the observations,
+        :math:`n` is the number of observations, and :math:`\mu_W` is the
+        weighted mean of the observations.
+            
+        For the unbiased (sample) weighted variance (and, hence, for the 
+        standard deviation), different algorithms are suggested by the 
+        literature. As an example, R and MATLAB calculate weighted sample 
+        variance differently.  SPSS rounds the sum of weights to the nearest 
+        integer and counts that as the 'sample size' in the unbiased formula. 
+        When weights are used as so-called reliability weights (non-integer) 
+        rather than as frequency weights (integer), rounding to the nearest 
+        integer and using that to calculate a 'sample size' is obviously 
+        incorrect. See the discussion at
+        https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Weighted_sample_variance
+        and at
+        https://stats.stackexchange.com/questions/51442/weighted-variance-one-more-time.
+        Here we have chosen to implement the version that uses reliability
+        weights. The reason is that the weights in simulation study are most 
+        usually time intervals that can be on any (non-integer) scale.
+        
+        The formula used for the unbiased (sample) weighted standard deviation is:
 
-    def weighted_sum(self) -> float:
-        return self._weighted_sum
+         .. math::
+            S_{W} = \sqrt{ \frac{M}{M - 1} . \sigma^2_{W} }
+            
+        or as a complete formula:
+        
+         .. math::
+            S_{W} = \sqrt{ \frac{M}{M - 1} .
+                           \frac{\sum_{i=1}^{n}{w_i (x_i - \mu_{W})^2}}
+                                {\sum_{i=1}^{n}{w_i}} }
+        
+        where :math:`w_i` are the weights, :math:`x_i` are the observations,
+        :math:`n` is the number of observations, :math:`M` is the number of
+        non-zero observations, and :math:`\mu_W` is the weighted mean of 
+        the observations.
 
+        Parameters
+        ----------
+        biased: bool
+            Whether to return the biased (population) standard deviation or the 
+            unbiased (sample) standard deviation. By default, biased is True 
+            and the population standard deviation is returned.
+        
+        Returns
+        -------
+        float
+            The weighted standard deviation of all observations since the 
+            initialization, or NaN when too few (non-zero) observations 
+            were registered.
+        """
+        return math.sqrt(self.weighted_variance(biased))
+    
     def __str__(self):
         return f"WeightedTally[name={self._name}, n={self._n}, "\
-            +f"weighted mean={self.weighted_population_mean()}]"
+            +f"weighted mean={self.weighted_mean()}]"
             
     def __repr__(self):
         return str(self)
@@ -1105,7 +1155,7 @@ class WeightedTally(StatisticsInterface):
         contain multiple tallies.
         """
         return f"| {self.name:<48} | {self.n():>6} | "\
-            +f"{self.weighted_population_mean():8.2f} |"
+            +f"{self.weighted_mean():8.2f} |"
 
     def report_footer(self) -> str:
         """
@@ -1138,15 +1188,15 @@ class TimestampWeightedTally(WeightedTally):
         return self._active
 
     def end_observations(self, timestamp: float):
-        self.ingest(timestamp, self._last_value)
+        self.register(timestamp, self._last_value)
         self._active = False
         
     def last_value(self) -> float:
         return self._last_value
         
-    def ingest(self, timestamp: float, value:float) -> float:
+    def register(self, timestamp: float, value:float):
         if math.isnan(value):
-            raise ValueError("tally ingested value cannot be nan")
+            raise ValueError("tally registered value cannot be nan")
         if math.isnan(timestamp):
             raise ValueError("tally timestamp cannot be nan")
         if timestamp < self._last_timestamp:
@@ -1159,10 +1209,9 @@ class TimestampWeightedTally(WeightedTally):
                 self._start_time = timestamp
             else:
                 deltatime = max(0.0, timestamp - self._last_timestamp)
-                super().ingest(deltatime, self._last_value)
+                super().register(deltatime, self._last_value)
             self._last_timestamp = timestamp
         self._last_value = value
-        return value
 
 #----------------------------------------------------------------------------
 # EVENT-BASED STATISTICS
@@ -1197,10 +1246,10 @@ class EventBasedCounter(EventProducer, EventListener, Counter):
         if not isinstance(event.content, int):
             raise TypeError(f"notification {event.content} for counter " + \
                             "is not an int")
-        self.ingest(event.content)
+        self.register(event.content)
             
-    def ingest(self, value: int):
-        super().ingest(value)
+    def register(self, value: int):
+        super().register(value)
         if self.has_listeners():
             self.fire_events(value)
 
@@ -1241,10 +1290,10 @@ class EventBasedTally(EventProducer, EventListener, Tally):
                 isinstance(event.content, int)):
             raise TypeError(f"notification {event.content} for tally " + \
                             "is not a float or int")
-        self.ingest(float(event.content))
+        self.register(float(event.content))
 
-    def ingest(self, value: float):
-        super().ingest(value)
+    def register(self, value: float):
+        super().register(value)
         if self.has_listeners():
             self.fire_events(value)
 
@@ -1254,18 +1303,17 @@ class EventBasedTally(EventProducer, EventListener, Tally):
         self.fire(StatEvents.MIN_EVENT, self.min())
         self.fire(StatEvents.MAX_EVENT, self.max())
         self.fire(StatEvents.SUM_EVENT, self.sum())
-        self.fire(StatEvents.POPULATION_MEAN_EVENT, self.population_mean())
-        self.fire(StatEvents.POPULATION_STDEV_EVENT, self.population_stdev())
-        self.fire(StatEvents.POPULATION_VARIANCE_EVENT, self.population_variance())
-        self.fire(StatEvents.POPULATION_SKEWNESS_EVENT, self.population_skewness())
-        self.fire(StatEvents.POPULATION_KURTOSIS_EVENT, self.population_kurtosis())
-        self.fire(StatEvents.POPULATION_EXCESS_K_EVENT, self.population_excess_kurtosis())
-        self.fire(StatEvents.SAMPLE_MEAN_EVENT, self.sample_mean())
-        self.fire(StatEvents.SAMPLE_STDEV_EVENT, self.sample_stdev())
-        self.fire(StatEvents.SAMPLE_VARIANCE_EVENT, self.sample_variance())
-        self.fire(StatEvents.SAMPLE_SKEWNESS_EVENT, self.sample_skewness())
-        self.fire(StatEvents.SAMPLE_KURTOSIS_EVENT, self.sample_kurtosis())
-        self.fire(StatEvents.SAMPLE_EXCESS_K_EVENT, self.sample_excess_kurtosis())
+        self.fire(StatEvents.MEAN_EVENT, self.mean())
+        self.fire(StatEvents.POPULATION_STDEV_EVENT, self.stdev())
+        self.fire(StatEvents.POPULATION_VARIANCE_EVENT, self.variance())
+        self.fire(StatEvents.POPULATION_SKEWNESS_EVENT, self.skewness())
+        self.fire(StatEvents.POPULATION_KURTOSIS_EVENT, self.kurtosis())
+        self.fire(StatEvents.POPULATION_EXCESS_K_EVENT, self.excess_kurtosis())
+        self.fire(StatEvents.SAMPLE_STDEV_EVENT, self.stdev(False))
+        self.fire(StatEvents.SAMPLE_VARIANCE_EVENT, self.variance(False))
+        self.fire(StatEvents.SAMPLE_SKEWNESS_EVENT, self.skewness(False))
+        self.fire(StatEvents.SAMPLE_KURTOSIS_EVENT, self.kurtosis(False))
+        self.fire(StatEvents.SAMPLE_EXCESS_K_EVENT, self.excess_kurtosis(False))
 
 
 class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
@@ -1307,10 +1355,10 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
                 isinstance(event.content[1], int)):
             raise TypeError(f"notification {event.content} for weighted " + \
                             "tally: value is not a float or int")
-        self.ingest(float(event.content[0]), float(event.content[1]))
+        self.register(float(event.content[0]), float(event.content[1]))
 
-    def ingest(self, weight: float, value: float):
-        super().ingest(weight, value)
+    def register(self, weight: float, value: float):
+        super().register(weight, value)
         if self.has_listeners():
             self.fire_events(value)  
 
@@ -1320,18 +1368,16 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
         self.fire(StatEvents.MIN_EVENT, self.min())
         self.fire(StatEvents.MAX_EVENT, self.max())
         self.fire(StatEvents.WEIGHTED_SUM_EVENT, self.weighted_sum())
-        self.fire(StatEvents.WEIGHTED_POPULATION_MEAN_EVENT,
-                  self.weighted_population_mean())
+        self.fire(StatEvents.WEIGHTED_MEAN_EVENT,
+                  self.weighted_mean())
         self.fire(StatEvents.WEIGHTED_POPULATION_STDEV_EVENT,
-                  self.weighted_population_stdev())
+                  self.weighted_stdev())
         self.fire(StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT,
-                  self.weighted_population_variance())
-        self.fire(StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT,
-                  self.weighted_sample_mean())
+                  self.weighted_variance())
         self.fire(StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT,
-                  self.weighted_sample_stdev())
+                  self.weighted_stdev(False))
         self.fire(StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT,
-                  self.weighted_sample_variance())
+                  self.weighted_variance(False))
 
 
 class EventBasedTimestampWeightedTally(EventProducer, EventListener,
@@ -1368,10 +1414,10 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
             raise TypeError(f"notification {event.content} for " + \
                             "timestamped tally: value is not a float or int")
         # float(...) will turn a Duration timestamp into its si-value
-        self.ingest(float(event.timestamp), float(event.content))
+        self.register(float(event.timestamp), float(event.content))
 
-    def ingest(self, timestamp: float, value: float):
-        super().ingest(timestamp, value)
+    def register(self, timestamp: float, value: float):
+        super().register(timestamp, value)
         if self.has_listeners():
             self.fire_events(timestamp, value)  
 
@@ -1382,18 +1428,16 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
         self.fire_timed(timestamp, StatEvents.MAX_EVENT, self.max())
         self.fire_timed(timestamp, StatEvents.WEIGHTED_SUM_EVENT,
                   self.weighted_sum())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_MEAN_EVENT,
-                  self.weighted_population_mean())
+        self.fire_timed(timestamp, StatEvents.WEIGHTED_MEAN_EVENT,
+                  self.weighted_mean())
         self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_STDEV_EVENT,
-                  self.weighted_population_stdev())
+                  self.weighted_stdev())
         self.fire_timed(timestamp, StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT,
-                  self.weighted_population_variance())
-        self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT,
-                  self.weighted_sample_mean())
+                  self.weighted_variance())
         self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT,
-                  self.weighted_sample_stdev())
+                  self.weighted_stdev(False))
         self.fire_timed(timestamp, StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT,
-                  self.weighted_sample_variance())
+                  self.weighted_variance(False))
 
 #----------------------------------------------------------------------------
 # SIMULATION SPECIFIC STATISTICS
@@ -1516,30 +1560,28 @@ class SimTally(EventBasedTally, SimStatisticsInterface):
         self.fire_timed(t, StatEvents.MIN_EVENT, self.min())
         self.fire_timed(t, StatEvents.MAX_EVENT, self.max())
         self.fire_timed(t, StatEvents.SUM_EVENT, self.sum())
-        self.fire_timed(t, StatEvents.POPULATION_MEAN_EVENT,
-                        self.population_mean())
+        self.fire_timed(t, StatEvents.MEAN_EVENT,
+                        self.mean())
         self.fire_timed(t, StatEvents.POPULATION_STDEV_EVENT,
-                        self.population_stdev())
+                        self.stdev())
         self.fire_timed(t, StatEvents.POPULATION_VARIANCE_EVENT,
-                        self.population_variance())
+                        self.variance())
         self.fire_timed(t, StatEvents.POPULATION_SKEWNESS_EVENT,
-                        self.population_skewness())
+                        self.skewness())
         self.fire_timed(t, StatEvents.POPULATION_KURTOSIS_EVENT,
-                        self.population_kurtosis())
+                        self.kurtosis())
         self.fire_timed(t, StatEvents.POPULATION_EXCESS_K_EVENT,
-                        self.population_excess_kurtosis())
-        self.fire_timed(t, StatEvents.SAMPLE_MEAN_EVENT,
-                        self.sample_mean())
+                        self.excess_kurtosis())
         self.fire_timed(t, StatEvents.SAMPLE_STDEV_EVENT,
-                        self.sample_stdev())
+                        self.stdev(False))
         self.fire_timed(t, StatEvents.SAMPLE_VARIANCE_EVENT,
-                        self.sample_variance())
+                        self.variance(False))
         self.fire_timed(t, StatEvents.SAMPLE_SKEWNESS_EVENT,
-                        self.sample_skewness())
+                        self.skewness(False))
         self.fire_timed(t, StatEvents.SAMPLE_KURTOSIS_EVENT,
-                        self.sample_kurtosis())
+                        self.kurtosis(False))
         self.fire_timed(t, StatEvents.SAMPLE_EXCESS_K_EVENT,
-                        self.sample_excess_kurtosis())
+                        self.excess_kurtosis(False))
 
 
 class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
@@ -1599,18 +1641,16 @@ class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
         self.fire_timed(t, StatEvents.MIN_EVENT, self.min())
         self.fire_timed(t, StatEvents.MAX_EVENT, self.max())
         self.fire_timed(t, StatEvents.WEIGHTED_SUM_EVENT, self.weighted_sum())
-        self.fire_timed(t, StatEvents.WEIGHTED_POPULATION_MEAN_EVENT,
-                  self.weighted_population_mean())
+        self.fire_timed(t, StatEvents.WEIGHTED_MEAN_EVENT,
+                  self.weighted_mean())
         self.fire_timed(t, StatEvents.WEIGHTED_POPULATION_STDEV_EVENT,
-                  self.weighted_population_stdev())
+                  self.weighted_stdev())
         self.fire_timed(t, StatEvents.WEIGHTED_POPULATION_VARIANCE_EVENT,
-                  self.weighted_population_variance())
-        self.fire_timed(t, StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT,
-                  self.weighted_sample_mean())
+                  self.weighted_variance())
         self.fire_timed(t, StatEvents.WEIGHTED_SAMPLE_STDEV_EVENT,
-                  self.weighted_sample_stdev())
+                  self.weighted_stdev(False))
         self.fire_timed(t, StatEvents.WEIGHTED_SAMPLE_VARIANCE_EVENT,
-                  self.weighted_sample_variance())
+                  self.weighted_variance(False))
 
 
 class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
