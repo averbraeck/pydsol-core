@@ -24,10 +24,10 @@ def d_dist(name: str, dist: Distribution, expected_mean: float,
             assert d >= expected_min
         if not math.isnan(expected_max):
             assert d <= expected_max
-        tally.ingest(d)
-    assert math.isclose(expected_mean, tally.population_mean(),
+        tally.register(d)
+    assert math.isclose(expected_mean, tally.mean(),
                 abs_tol=precision)
-    assert math.isclose(math.sqrt(expected_variance), tally.population_stdev(),
+    assert math.isclose(math.sqrt(expected_variance), tally.stdev(),
                 abs_tol=precision)
 
 
