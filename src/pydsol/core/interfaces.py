@@ -536,11 +536,10 @@ class StatEvents:
     and contains the new sum as the payload. This event is fired by the 
     EventBasedTally and its subclasses to the listeners."""
 
-    POPULATION_MEAN_EVENT: EventType = EventType("POPULATION_MEAN_EVENT")
-    """POPULATION_MEAN_EVENT indicates that the population mean of the 
-    observations has changed, and contains the new mean as the payload. 
-    This event is fired by the EventBasedTally and its subclasses to the 
-    listeners."""
+    MEAN_EVENT: EventType = EventType("MEAN_EVENT")
+    """MEAN_EVENT indicates that the mean of the observations has changed, 
+    and contains the new mean as the payload. This event is fired by the 
+    EventBasedTally and its subclasses to the listeners."""
 
     POPULATION_STDEV_EVENT: EventType = EventType("POPULATION_STDEV_EVENT")
     """POPULATION_STDEV_EVENT indicates that the population standard
@@ -571,12 +570,6 @@ class StatEvents:
     of the observations has changed, and contains the new excess kurtosis as 
     the payload. This event is fired by the EventBasedTally and its subclasses 
     to the listeners."""
-
-    SAMPLE_MEAN_EVENT: EventType = EventType("SAMPLE_MEAN_EVENT")
-    """SAMPLE_MEAN_EVENT indicates that the sample mean of the 
-    observations has changed, and contains the new mean as the payload. 
-    This event is fired by the EventBasedTally and its subclasses to the 
-    listeners."""
 
     SAMPLE_STDEV_EVENT: EventType = EventType("SAMPLE_STDEV_EVENT")
     """SAMPLE_STDEV_EVENT indicates that the sample standard deviation of 
@@ -614,10 +607,9 @@ class StatEvents:
     is fired by the EventBasedWeightedTally and its subclasses to the 
     listeners."""
 
-    WEIGHTED_POPULATION_MEAN_EVENT: EventType = \
-            EventType("WEIGHTED_POPULATION_MEAN_EVENT")
-    """WEIGHTED_POPULATION_MEAN_EVENT indicates that the weighted population 
-    mean of the observations has changed, and contains the new weighted mean 
+    WEIGHTED_MEAN_EVENT: EventType = EventType("WEIGHTED_MEAN_EVENT")
+    """WEIGHTED_MEAN_EVENT indicates that the weighted mean of the 
+    observations has changed, and contains the new weighted mean 
     as the payload. This event is fired by the EventBasedWeightedTally and 
     its subclasses to the listeners."""
 
@@ -634,13 +626,6 @@ class StatEvents:
     population variance of the observations has changed, and contains the 
     new weighted variance as the payload. This event is fired by the 
     EventBasedWeightedTally and its subclasses to the listeners."""
-
-    WEIGHTED_SAMPLE_MEAN_EVENT: EventType = \
-            EventType("WEIGHTED_SAMPLE_MEAN_EVENT")
-    """WEIGHTED_SAMPLE_MEAN_EVENT indicates that the weighted sample mean 
-    of the observations has changed, and contains the new weighted mean 
-    as the payload. This event is fired by the EventBasedWeightedTally and 
-    its subclasses to the listeners."""
 
     WEIGHTED_SAMPLE_STDEV_EVENT: EventType = \
             EventType("WEIGHTED_SAMPLE_STDEV_EVENT")
