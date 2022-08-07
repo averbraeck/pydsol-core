@@ -26,7 +26,7 @@ def test_counter():
     assert name in repr(c)
     assert c.n() == 0
     assert c.count() == 0
-    c.ingest(2)
+    c.register(2)
     assert c.n() == 1
     assert c.count() == 2
     c.initialize()
@@ -35,16 +35,16 @@ def test_counter():
     assert c.count() == 0
     v = 0
     for i in range(100):
-        c.ingest(2 * i)
+        c.register(2 * i)
         v += 2 * i
     assert c.n() == 100
     assert c.count() == v
     with pytest.raises(TypeError):
         Counter(4)
     with pytest.raises(TypeError):
-        c.ingest('x')
+        c.register('x')
     with pytest.raises(TypeError):
-        c.ingest('2.0')
+        c.register('2.0')
 
 
 def test_tally_0():
@@ -56,18 +56,17 @@ def test_tally_0():
     assert t.n() == 0
     assert math.isnan(t.min())
     assert math.isnan(t.max())
-    assert math.isnan(t.sample_mean())
-    assert math.isnan(t.population_mean())
-    assert math.isnan(t.sample_variance())
-    assert math.isnan(t.population_variance())
-    assert math.isnan(t.sample_stdev())
-    assert math.isnan(t.population_stdev())
-    assert math.isnan(t.sample_skewness())
-    assert math.isnan(t.population_skewness())
-    assert math.isnan(t.sample_kurtosis())
-    assert math.isnan(t.population_kurtosis())
-    assert math.isnan(t.sample_excess_kurtosis())
-    assert math.isnan(t.population_excess_kurtosis())
+    assert math.isnan(t.mean())
+    assert math.isnan(t.variance(False))
+    assert math.isnan(t.variance())
+    assert math.isnan(t.stdev(False))
+    assert math.isnan(t.stdev())
+    assert math.isnan(t.skewness(False))
+    assert math.isnan(t.skewness())
+    assert math.isnan(t.kurtosis(False))
+    assert math.isnan(t.kurtosis())
+    assert math.isnan(t.excess_kurtosis(False))
+    assert math.isnan(t.excess_kurtosis())
     assert t.sum() == 0.0
     assert math.isnan(t.confidence_interval(0.95)[0])
     assert math.isnan(t.confidence_interval(0.95)[1])
@@ -76,25 +75,24 @@ def test_tally_0():
 def test_tally_1():
     name = "tally description"
     t: Tally = Tally(name)
-    t.ingest(1.1)
+    t.register(1.1)
     assert t.name == name
     assert name in str(t)
     assert name in repr(t)
     assert t.n() == 1
     assert t.min() == 1.1
     assert t.max() == 1.1
-    assert t.sample_mean() == 1.1
-    assert t.population_mean() == 1.1
-    assert math.isnan(t.sample_variance())
-    assert t.population_variance() == 0.0
-    assert math.isnan(t.sample_stdev())
-    assert t.population_stdev() == 0.0
-    assert math.isnan(t.sample_skewness())
-    assert math.isnan(t.population_skewness())
-    assert math.isnan(t.sample_kurtosis())
-    assert math.isnan(t.population_kurtosis())
-    assert math.isnan(t.sample_excess_kurtosis())
-    assert math.isnan(t.population_excess_kurtosis())
+    assert t.mean() == 1.1
+    assert math.isnan(t.variance(False))
+    assert t.variance() == 0.0
+    assert math.isnan(t.stdev(False))
+    assert t.stdev() == 0.0
+    assert math.isnan(t.skewness(False))
+    assert math.isnan(t.skewness())
+    assert math.isnan(t.kurtosis(False))
+    assert math.isnan(t.kurtosis())
+    assert math.isnan(t.excess_kurtosis(False))
+    assert math.isnan(t.excess_kurtosis())
     assert t.sum() == 1.1
     assert math.isnan(t.confidence_interval(0.95)[0])
     assert math.isnan(t.confidence_interval(0.95)[1])
@@ -104,7 +102,7 @@ def test_tally_11():
     name = "tally description"
     t: Tally = Tally(name)
     for i in range(11):
-        t.ingest(1.0 + 0.1 * i)
+        t.register(1.0 + 0.1 * i)
     assert t.name == name
     assert name in str(t)
     assert name in repr(t)
@@ -114,18 +112,17 @@ def test_tally_11():
     assert math.isclose(t.sum(), 16.5)
     
     # some test values from: https://atozmath.com/StatsUG.aspx
-    assert math.isclose(t.sample_mean(), 1.5)
-    assert math.isclose(t.population_mean(), 1.5)
-    assert math.isclose(t.sample_variance(), 0.11, abs_tol=1E-6)
-    assert math.isclose(t.population_variance(), 0.1, abs_tol=1E-6)
-    assert math.isclose(t.sample_stdev(), 0.331662, abs_tol=1E-6)
-    assert math.isclose(t.population_stdev(), math.sqrt(0.1), abs_tol=1E-6)
-    assert math.isclose(t.sample_skewness(), 0.0, abs_tol=1E-6)
-    assert math.isclose(t.population_skewness(), 0.0, abs_tol=1E-6)
-    assert math.isclose(t.sample_kurtosis(), 1.618182, abs_tol=1E-6)
-    assert math.isclose(t.population_kurtosis(), 1.78, abs_tol=1E-6)
-    assert math.isclose(t.sample_excess_kurtosis(), -1.2, abs_tol=1E-6)
-    assert math.isclose(t.population_excess_kurtosis(), -1.22, abs_tol=1E-6)
+    assert math.isclose(t.mean(), 1.5)
+    assert math.isclose(t.variance(False), 0.11, abs_tol=1E-6)
+    assert math.isclose(t.variance(), 0.1, abs_tol=1E-6)
+    assert math.isclose(t.stdev(False), 0.331662, abs_tol=1E-6)
+    assert math.isclose(t.stdev(), math.sqrt(0.1), abs_tol=1E-6)
+    assert math.isclose(t.skewness(False), 0.0, abs_tol=1E-6)
+    assert math.isclose(t.skewness(), 0.0, abs_tol=1E-6)
+    assert math.isclose(t.kurtosis(False), 1.618182, abs_tol=1E-6)
+    assert math.isclose(t.kurtosis(), 1.78, abs_tol=1E-6)
+    assert math.isclose(t.excess_kurtosis(False), -1.2, abs_tol=1E-6)
+    assert math.isclose(t.excess_kurtosis(), -1.22, abs_tol=1E-6)
 
     assert math.isclose(t.confidence_interval(0.05)[0], 1.304003602, abs_tol=1E-5)
     assert math.isclose(t.confidence_interval(0.05)[1], 1.695996398, abs_tol=1E-5)
@@ -146,13 +143,13 @@ def test_tally_errors():
     with pytest.raises(TypeError):
         Tally(4)
     with pytest.raises(TypeError):
-        t.ingest('x')
+        t.register('x')
     with pytest.raises(TypeError):
-        t.ingest('2.0')
+        t.register('2.0')
     with pytest.raises(ValueError):
-        t.ingest(math.nan)
+        t.register(math.nan)
     for i in range(10):
-        t.ingest(i)
+        t.register(i)
     with pytest.raises(TypeError):
         t.confidence_interval('x')
     with pytest.raises(ValueError):
@@ -170,31 +167,29 @@ def test_w_tally_0():
     assert t.n() == 0
     assert math.isnan(t.min())
     assert math.isnan(t.max())
-    assert math.isnan(t.weighted_sample_mean())
-    assert math.isnan(t.weighted_population_mean())
-    assert math.isnan(t.weighted_sample_variance())
-    assert math.isnan(t.weighted_population_variance())
-    assert math.isnan(t.weighted_sample_stdev())
-    assert math.isnan(t.weighted_population_stdev())
+    assert math.isnan(t.weighted_mean())
+    assert math.isnan(t.weighted_variance(False))
+    assert math.isnan(t.weighted_variance())
+    assert math.isnan(t.weighted_stdev(False))
+    assert math.isnan(t.weighted_stdev())
     assert t.weighted_sum() == 0.0
     
 
 def test_w_tally_1():
     name = "weighted tally description"
     t: WeightedTally = WeightedTally(name)
-    t.ingest(0.1, 1.1)
+    t.register(0.1, 1.1)
     assert t.name == name
     assert name in str(t)
     assert name in repr(t)
     assert t.n() == 1
     assert t.min() == 1.1
     assert t.max() == 1.1
-    assert math.isclose(t.weighted_sample_mean(), 1.1)
-    assert math.isclose(t.weighted_population_mean(), 1.1)
-    assert math.isnan(t.weighted_sample_variance())
-    assert t.weighted_population_variance() == 0.0
-    assert math.isnan(t.weighted_sample_stdev())
-    assert t.weighted_population_stdev() == 0.0
+    assert math.isclose(t.weighted_mean(), 1.1)
+    assert math.isnan(t.weighted_variance(False))
+    assert t.weighted_variance() == 0.0
+    assert math.isnan(t.weighted_stdev(False))
+    assert t.weighted_stdev() == 0.0
     assert math.isclose(t.weighted_sum(), 0.11)
 
 
@@ -202,7 +197,7 @@ def test_w_tally_11():
     name = "weighted tally description"
     t: WeightedTally = WeightedTally(name)
     for i in range(11):
-        t.ingest(0.1, 1.0 + 0.1 * i)
+        t.register(0.1, 1.0 + 0.1 * i)
     assert t.name == name
     assert name in str(t)
     assert name in repr(t)
@@ -210,9 +205,7 @@ def test_w_tally_11():
     assert math.isclose(t.min(), 1.0)
     assert math.isclose(t.max(), 2.0)
     assert math.isclose(t.weighted_sum(), 1.5 * 0.1 * 11)
-    
-    assert math.isclose(t.weighted_sample_mean(), 1.5)
-    assert math.isclose(t.weighted_population_mean(), 1.5)
+    assert math.isclose(t.weighted_mean(), 1.5)
     
     # Let's compute the standard deviation
     variance = 0;
@@ -221,16 +214,18 @@ def test_w_tally_11():
     variance = variance / 10.0;
     stdev = math.sqrt(variance)
 
-    assert math.isclose(t.weighted_sample_variance(), variance, abs_tol=1E-6)
-    assert math.isclose(t.weighted_population_variance(), 0.1, abs_tol=1E-6)
-    assert math.isclose(t.weighted_sample_stdev(), stdev, abs_tol=1E-6)
-    assert math.isclose(t.weighted_population_stdev(), math.sqrt(0.1), abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(False), variance, abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(), 0.1, abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(False), stdev, abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(), math.sqrt(0.1), abs_tol=1E-6)
     
-    t.ingest(0.0, 10.0)
-    assert t.n() == 11
+    # note that an observation with a zero weight is STILL an observation
+    t.register(0.0, 10.0)
+    assert t.n() == 12 
     assert math.isclose(t.min(), 1.0)
-    assert math.isclose(t.max(), 2.0)
+    assert math.isclose(t.max(), 10.0)
     assert math.isclose(t.weighted_sum(), 1.5 * 0.1 * 11)
+    assert math.isclose(t.weighted_mean(), 1.5 * 0.1 * 11 / 1.1)
 
 
 def test_w_tally_errors():
@@ -238,15 +233,15 @@ def test_w_tally_errors():
     with pytest.raises(TypeError):
         WeightedTally(4)
     with pytest.raises(TypeError):
-        t.ingest('x', 1.0)
+        t.register('x', 1.0)
     with pytest.raises(TypeError):
-        t.ingest(1.0, 'x')
+        t.register(1.0, 'x')
     with pytest.raises(ValueError):
-        t.ingest(-0.5, 2.0)
+        t.register(-0.5, 2.0)
     with pytest.raises(ValueError):
-        t.ingest(math.nan, 1.0)
+        t.register(math.nan, 1.0)
     with pytest.raises(ValueError):
-        t.ingest(1.0, math.nan)
+        t.register(1.0, math.nan)
 
 
 def test_t_tally_0():
@@ -260,34 +255,32 @@ def test_t_tally_0():
     assert t.last_value() == 0.0
     assert math.isnan(t.min())
     assert math.isnan(t.max())
-    assert math.isnan(t.weighted_sample_mean())
-    assert math.isnan(t.weighted_population_mean())
-    assert math.isnan(t.weighted_sample_variance())
-    assert math.isnan(t.weighted_population_variance())
-    assert math.isnan(t.weighted_sample_stdev())
-    assert math.isnan(t.weighted_population_stdev())
+    assert math.isnan(t.weighted_mean())
+    assert math.isnan(t.weighted_variance(False))
+    assert math.isnan(t.weighted_variance())
+    assert math.isnan(t.weighted_stdev(False))
+    assert math.isnan(t.weighted_stdev())
     assert t.weighted_sum() == 0.0
     
 
 def test_t_tally_1():
     name = "timestamped tally description"
     t: TimestampWeightedTally = TimestampWeightedTally(name)
-    t.ingest(0.1, 1.1)
+    t.register(0.1, 1.1)
     assert t.name == name
     assert name in str(t)
     assert name in repr(t)
     assert t.n() == 0
     assert t.isactive()
     assert t.last_value() == 1.1
-    t.ingest(0.2, 1.1)
+    t.register(0.2, 1.1)
     assert t.min() == 1.1
     assert t.max() == 1.1
-    assert math.isclose(t.weighted_sample_mean(), 1.1)
-    assert math.isclose(t.weighted_population_mean(), 1.1)
-    assert math.isnan(t.weighted_sample_variance())
-    assert t.weighted_population_variance() == 0.0
-    assert math.isnan(t.weighted_sample_stdev())
-    assert t.weighted_population_stdev() == 0.0
+    assert math.isclose(t.weighted_mean(), 1.1)
+    assert math.isnan(t.weighted_variance(False))
+    assert t.weighted_variance() == 0.0
+    assert math.isnan(t.weighted_stdev(False))
+    assert t.weighted_stdev() == 0.0
     assert math.isclose(t.weighted_sum(), 0.11)
 
 
@@ -295,7 +288,7 @@ def test_t_tally_11():
     name = "timestamped tally description"
     t: TimestampWeightedTally = TimestampWeightedTally(name)
     for i in range(11):
-        t.ingest(i * 0.1, 1.0 + 0.1 * i)
+        t.register(i * 0.1, 1.0 + 0.1 * i)
     assert t.name == name
     assert name in str(t)
     assert name in repr(t)
@@ -307,9 +300,7 @@ def test_t_tally_11():
     assert t.n() == 11
     assert math.isclose(t.max(), 2.0)
     assert math.isclose(t.weighted_sum(), 1.5 * 0.1 * 11)
-    
-    assert math.isclose(t.weighted_sample_mean(), 1.5)
-    assert math.isclose(t.weighted_population_mean(), 1.5)
+    assert math.isclose(t.weighted_mean(), 1.5)
     
     # Let's compute the standard deviation
     variance = 0;
@@ -318,10 +309,10 @@ def test_t_tally_11():
     variance = variance / 10.0;
     stdev = math.sqrt(variance)
 
-    assert math.isclose(t.weighted_sample_variance(), variance, abs_tol=1E-6)
-    assert math.isclose(t.weighted_population_variance(), 0.1, abs_tol=1E-6)
-    assert math.isclose(t.weighted_sample_stdev(), stdev, abs_tol=1E-6)
-    assert math.isclose(t.weighted_population_stdev(), math.sqrt(0.1), abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(False), variance, abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(), 0.1, abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(False), stdev, abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(), math.sqrt(0.1), abs_tol=1E-6)
     
 
 def test_t_tally_errors():
@@ -329,16 +320,16 @@ def test_t_tally_errors():
     with pytest.raises(TypeError):
         TimestampWeightedTally(4)
     with pytest.raises(TypeError):
-        t.ingest('x', 1.0)
+        t.register('x', 1.0)
     with pytest.raises(TypeError):
-        t.ingest(1.0, 'x')
+        t.register(1.0, 'x')
     with pytest.raises(ValueError):
-        t.ingest(math.nan, 1.0)
+        t.register(math.nan, 1.0)
     with pytest.raises(ValueError):
-        t.ingest(1.0, math.nan)
-    t.ingest(2.0, 4)
+        t.register(1.0, math.nan)
+    t.register(2.0, 4)
     with pytest.raises(ValueError):
-        t.ingest(1.0, 5)  # back in time
+        t.register(1.0, 5)  # back in time
 
 #----------------------------------------------------------------------------
 # Tests for EventBased statistics
@@ -439,9 +430,7 @@ def test_e_tally_11():
     log_n: LoggingEventListener = LoggingEventListener()
     t.add_listener(StatEvents.N_EVENT, log_n)
     log_pm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(StatEvents.POPULATION_MEAN_EVENT, log_pm)
-    log_sm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(StatEvents.SAMPLE_MEAN_EVENT, log_sm)
+    t.add_listener(StatEvents.MEAN_EVENT, log_pm)
     log_min: LoggingEventListener = LoggingEventListener()
     t.add_listener(StatEvents.MIN_EVENT, log_min)
     log_max: LoggingEventListener = LoggingEventListener()
@@ -465,9 +454,7 @@ def test_e_tally_11():
     assert math.isclose(t.sum(), 16.5)
     assert log_sum.nr_events == 11
     assert log_sum.last_event.content == 16.5
-    assert math.isclose(t.sample_mean(), 1.5)
-    assert math.isclose(log_sm.last_event.content, 1.5)
-    assert math.isclose(t.population_mean(), 1.5)
+    assert math.isclose(t.mean(), 1.5)
     assert math.isclose(log_pm.last_event.content, 1.5)
 
     with pytest.raises(TypeError):
@@ -494,9 +481,7 @@ def test_e_w_tally_11():
     log_n: LoggingEventListener = LoggingEventListener()
     t.add_listener(StatEvents.N_EVENT, log_n)
     log_pm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(StatEvents.WEIGHTED_POPULATION_MEAN_EVENT, log_pm)
-    log_sm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT, log_sm)
+    t.add_listener(StatEvents.WEIGHTED_MEAN_EVENT, log_pm)
     log_min: LoggingEventListener = LoggingEventListener()
     t.add_listener(StatEvents.MIN_EVENT, log_min)
     log_max: LoggingEventListener = LoggingEventListener()
@@ -528,17 +513,15 @@ def test_e_w_tally_11():
     assert math.isclose(t.weighted_sum(), 1.5 * 0.1 * 11)
     assert log_sum.nr_events == 11
     assert math.isclose(log_sum.last_event.content, 1.5 * 0.1 * 11)
-    assert math.isclose(t.weighted_sample_mean(), 1.5)
-    assert math.isclose(log_sm.last_event.content, 1.5)
-    assert math.isclose(t.weighted_population_mean(), 1.5)
+    assert math.isclose(t.weighted_mean(), 1.5)
     assert math.isclose(log_pm.last_event.content, 1.5)
-    assert math.isclose(t.weighted_population_stdev(), 0.316228, abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(), 0.316228, abs_tol=1E-6)
     assert math.isclose(log_pstd.last_event.content, 0.316228, abs_tol=1E-6)
-    assert math.isclose(t.weighted_sample_stdev(), 0.331662, abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(False), 0.331662, abs_tol=1E-6)
     assert math.isclose(log_sstd.last_event.content, 0.331662, abs_tol=1E-6)
-    assert math.isclose(t.weighted_population_variance(), 0.1, abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(), 0.1, abs_tol=1E-6)
     assert math.isclose(log_pvar.last_event.content, 0.1, abs_tol=1E-6)
-    assert math.isclose(t.weighted_sample_variance(), 0.11, abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(False), 0.11, abs_tol=1E-6)
     assert math.isclose(log_svar.last_event.content, 0.11, abs_tol=1E-6)
 
     with pytest.raises(TypeError):
@@ -573,9 +556,7 @@ def test_e_t_tally_11():
     log_n: LoggingEventListener = LoggingEventListener()
     t.add_listener(StatEvents.N_EVENT, log_n)
     log_pm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(StatEvents.WEIGHTED_POPULATION_MEAN_EVENT, log_pm)
-    log_sm: LoggingEventListener = LoggingEventListener()
-    t.add_listener(StatEvents.WEIGHTED_SAMPLE_MEAN_EVENT, log_sm)
+    t.add_listener(StatEvents.WEIGHTED_MEAN_EVENT, log_pm)
     log_min: LoggingEventListener = LoggingEventListener()
     t.add_listener(StatEvents.MIN_EVENT, log_min)
     log_max: LoggingEventListener = LoggingEventListener()
@@ -623,17 +604,15 @@ def test_e_t_tally_11():
     stdev = math.sqrt(variance)
 
     assert math.isclose(log_sum.last_event.content, 1.5 * 0.1 * 11)
-    assert math.isclose(t.weighted_sample_mean(), 1.5)
-    assert math.isclose(log_sm.last_event.content, 1.5)
-    assert math.isclose(t.weighted_population_mean(), 1.5)
+    assert math.isclose(t.weighted_mean(), 1.5)
     assert math.isclose(log_pm.last_event.content, 1.5)
-    assert math.isclose(t.weighted_population_stdev(), math.sqrt(0.1), abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(), math.sqrt(0.1), abs_tol=1E-6)
     assert math.isclose(log_pstd.last_event.content, math.sqrt(0.1), abs_tol=1E-6)
-    assert math.isclose(t.weighted_sample_stdev(), stdev, abs_tol=1E-6)
+    assert math.isclose(t.weighted_stdev(False), stdev, abs_tol=1E-6)
     assert math.isclose(log_sstd.last_event.content, stdev, abs_tol=1E-6)
-    assert math.isclose(t.weighted_population_variance(), 0.1, abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(), 0.1, abs_tol=1E-6)
     assert math.isclose(log_pvar.last_event.content, 0.1, abs_tol=1E-6)
-    assert math.isclose(t.weighted_sample_variance(), variance, abs_tol=1E-6)
+    assert math.isclose(t.weighted_variance(False), variance, abs_tol=1E-6)
     assert math.isclose(log_svar.last_event.content, variance, abs_tol=1E-6)
     
     t.notify(TimedEvent(Duration(3.0, 's'), StatEvents.TIMESTAMP_DATA_EVENT, 2))
@@ -749,13 +728,10 @@ def test_sim_stats():
         
         # SimTally
         gt: SimTally = m.gen_tally
-        gt2: SimTally = m.gen_tally2
         assert gt.key == "generator.tally"
         # average of 1, 2, 3, 4, 5, 6 = 3.5
         assert gt.n() == 6
-        assert math.isclose(gt.population_mean(), 3.5) 
-        assert gt2.n() == 6
-        assert math.isclose(gt2.sample_mean(), 3.5) 
+        assert math.isclose(gt.mean(), 3.5) 
         assert len(gt.report_footer()) == 72
         assert "mean" in gt.report_header()
         assert " 3.5" in gt.report_line()
@@ -767,15 +743,13 @@ def test_sim_stats():
     
         # SimTally
         gp: SimPersistent = m.gen_pers
-        gp2: SimPersistent = m.gen_pers2
         assert gp.key == "generator.pers"
         # times are   0,  1,  3,  6, 10, 15, 20
         # delta-t is  1,  2,  3,  4,  5,  5
         # average of  0,  1,  2,  3,  4,  5
         # weighed av (1 + 4 + 9 +16 +25 +30) / 20 = 85/20 = 4.25
         assert gp.n() == 6
-        assert math.isclose(gp.weighted_population_mean(), 85.0 / 20.0) 
-        assert math.isclose(gp2.weighted_sample_mean(), 85.0 / 20.0) 
+        assert math.isclose(gp.weighted_mean(), 85.0 / 20.0) 
         assert len(gp.report_footer()) == 72
         assert "mean" in gp.report_header()
         assert "4.25" in gp.report_line()
@@ -817,7 +791,7 @@ def test_sim_warmup():
         assert gt.key == "generator.tally"
         # average of x1, x2, x3, x4, 5, 6 = 5.5
         assert gt.n() == 2
-        assert math.isclose(gt.population_mean(), 5.5) 
+        assert math.isclose(gt.mean(), 5.5) 
     
         # SimTally
         gp: SimPersistent = m.gen_pers
@@ -827,7 +801,7 @@ def test_sim_warmup():
         # average of  x0,  x1,  x2,  x3,  4,  5
         # weighed av (x1 + x4 + x9 +16 +25 +30) / 10 = 55/10 = 5.5
         assert gp.n() == 2
-        assert math.isclose(gp.weighted_population_mean(), 5.5)
+        assert math.isclose(gp.weighted_mean(), 5.5)
     except Exception as e:
         raise e
     finally:
@@ -916,13 +890,13 @@ def test_data_events():
         tally: SimTally = SimTally("tally", "name", simulator)
         tally.notify(TimedEvent(0.0, StatEvents.DATA_EVENT, 10))
         assert tally.n() == 1
-        assert tally.population_mean() == 10.0
+        assert tally.mean() == 10.0
 
         pers: SimPersistent = SimPersistent("persistent", "name", simulator)
         pers.notify(TimedEvent(0.0, StatEvents.TIMESTAMP_DATA_EVENT, 2))
         pers.notify(TimedEvent(1.0, StatEvents.TIMESTAMP_DATA_EVENT, 4))
         assert pers.n() == 1
-        assert pers.weighted_population_mean() == 2.0
+        assert pers.weighted_mean() == 2.0
 
     except Exception as e:
         raise e
