@@ -2224,7 +2224,65 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
 
 
 class SimCounter(EventBasedCounter, SimStatisticsInterface):
+    """
+    The SimCounter receive the observations in the same way as the 
+    EventBasedCounter statistics class, but this class is also aware of the 
+    Simulator. This means they can (a) subscribe to the Simulator's 
+    WARMUP_EVENT taking care that the statistics are initialized appropriately,
+    and (b) register themselves as output statistics in the model. The 
+    SimCounter can immediately register itself with an `EventProducer` 
+    for a certain EventType in the model, that will generate the data for 
+    the statistics object. The `EventProducer` and EventTypes to listen to 
+    can also be added later with the `listen_to` method.
     
+    Sending the events with observations is done by the EventProducer's 
+    `fire(...)` method. This way, the statistic gathering and processing is 
+    decoupled from the process in the simulation that generates the data: 
+    there can be zero, one, or many statistics listeners for each data 
+    producing object in the simulation.
+    
+    This event-based statistic object also fires timestamped events with 
+    the values of the calculated statistics values, so a GUI-element such 
+    as a graph or table can subscribe to this event-based statistics object and 
+    be  automatically updated when values of the statistic change. Again, this
+    provides decoupling and flexibility where on beforehand it is not known
+    whether zero, one, or many (graphics or simulation) objects are interested
+    in the values that this statistics object calculates.  
+    
+    The SimCounter is a simple statistics object that can count events 
+    or occurrences. Note that the number of observations is not necessarily
+    equal to the value of the counter, since the counter allows any 
+    integer as the increment (or decrement) during an observation.
+    
+    Given the fact that the SimCounter is linked to the Simulator, it is
+    subscribed to the WARMUP_EVENT of the Simulator to initialize the 
+    statistics.
+    
+    Note
+    ----
+    Since the statistics need to be registered in the Model to ensure that
+    they are captured and saved for the Experiment results, the instantiation
+    of the SimCounter needs to be done in the `construct_model` method of the
+    DSOLModel, and *not* in the constructor of the DSOLModel. 
+    
+    Example
+    -------
+    In simulation, the SimCounter can be used to count arrivals, the number of
+    processed entities in servers, the number of entities in the system, etc.  
+    
+    Attributes
+    ----------
+    _key: str
+        the key by which the statistics object can be easily found
+    _name: str
+        a descriptive name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _count: int
+        the current value of the counter
+    _simulator: SimulatorInterface
+        the simulator
+    """
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
         if not isinstance(key, str):
@@ -2283,7 +2341,20 @@ class SimCounter(EventBasedCounter, SimStatisticsInterface):
 
 
 class SimTally(EventBasedTally, SimStatisticsInterface):
+    """
+    The SimTally receive the observations in the same way as the 
+    EventBasedTally statistics class, but this class is also aware of the 
+    Simulator. This means they can (a) subscribe to the Simulator's 
+    WARMUP_EVENT taking care that the statistics are initialized appropriately,
+    and (b) register themselves as output statistics in the model. The 
+    SimTally can immediately register itself with an `EventProducer` 
+    for a certain EventType in the model, that will generate the data for 
+    the statistics object. The `EventProducer` and EventTypes to listen to 
+    can also be added later with the `listen_to` method.
     
+     
+    """
+   
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
         if not isinstance(key, str):
@@ -2364,6 +2435,19 @@ class SimTally(EventBasedTally, SimStatisticsInterface):
 
 
 class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
+    """
+    The SimWeightedTally receive the observations in the same way as the 
+    EventBasedWeigtedTally statistics class, but this class is also aware of  
+    the Simulator. This means they can (a) subscribe to the Simulator's 
+    WARMUP_EVENT taking care that the statistics are initialized appropriately,
+    and (b) register themselves as output statistics in the model. The 
+    SimWeightedTally can immediately register itself with an `EventProducer` 
+    for a certain EventType in the model, that will generate the data for 
+    the statistics object. The `EventProducer` and EventTypes to listen to 
+    can also be added later with the `listen_to` method.
+    
+     
+    """
     
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
@@ -2433,6 +2517,19 @@ class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
 
 
 class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
+    """
+    The SimPersistent receive the observations in the same way as the 
+    EventBasedWeigtedTally statistics class, but this class is also aware of  
+    the Simulator. This means they can (a) subscribe to the Simulator's 
+    WARMUP_EVENT taking care that the statistics are initialized appropriately,
+    and (b) register themselves as output statistics in the model. The 
+    SimPersistent can immediately register itself with an `EventProducer` 
+    for a certain EventType in the model, that will generate the data for 
+    the statistics object. The `EventProducer` and EventTypes to listen to 
+    can also be added later with the `listen_to` method.
+    
+    
+    """
     
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
