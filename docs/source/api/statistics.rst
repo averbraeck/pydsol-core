@@ -3,9 +3,22 @@
 *****************
 
 .. automodule:: pydsol.core.statistics
-   :members:
-   :inherited-members:
-   :undoc-members:
-   :exclude-members: fire, fire_event, fire_timed, fire_timed_event
-   :show-inheritance:
-   :member-order: bysource
+
+   .. toctree::
+      :maxdepth: 3
+      
+      statistics/Counter.rst
+      statistics/Tally.rst
+      statistics/WeightedTally.rst
+      statistics/TimestampWeightedTally.rst
+
+      statistics/EventBasedCounter.rst
+      statistics/EventBasedTally.rst
+      statistics/EventBasedWeightedTally.rst
+      statistics/EventBasedTimestampWeightedTally.rst
+
+      statistics/SimCounter.rst
+      statistics/SimTally.rst
+      statistics/SimWeightedTally.rst
+      statistics/SimPersistent.rst
+      

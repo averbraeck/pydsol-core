@@ -2,7 +2,7 @@ pydsol.core modules
 ===================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    
     ../../api/distributions.rst
     ../../api/eventlist.rst
