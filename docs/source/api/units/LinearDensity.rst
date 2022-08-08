@@ -1,0 +1,16 @@
+***************
+`LinearDensity`
+***************
+
+.. autoclass:: pydsol.core.units.LinearDensity
+   :members:
+   :inherited-members:
+   :exclude-members: as_integer_ratio, conjugate, fromhex, hex, imag, real, is_integer
+   :show-inheritance:
+   :member-order: bysource
+
+
+.. autoclass:: pydsol.core.units.LinearDensityDist
+   :members:
+   :inherited-members:
+   :show-inheritance:
