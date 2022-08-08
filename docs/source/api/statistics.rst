@@ -4,6 +4,10 @@
 
 .. automodule:: pydsol.core.statistics
 
+   Click below for the API of a specific output statistic type.
+   
+   **Classes**
+
    .. toctree::
       :maxdepth: 3
       
