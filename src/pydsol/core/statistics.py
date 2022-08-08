@@ -1485,7 +1485,8 @@ class EventBasedCounter(EventProducer, EventListener, Counter):
         ----------
         event: Event
             The event fired by the `EventProducer` to provide data to the 
-            statistic.
+            statistic. The event's content should be a single int with the
+            value.
         
         Raises
         ------
@@ -1563,7 +1564,7 @@ class EventBasedTally(EventProducer, EventListener, Tally):
     whether zero, one, or many (graphics or simulation) objects are interested
     in the values that this statistics object calculates.  
     
-    The EventBasedCounter is a statistics object that calculates descriptive 
+    The EventBasedTally is a statistics object that calculates descriptive 
     statistics for a number of observations, such as mean, variance, minimum, 
     maximum, skewness, etc. 
     
@@ -1667,7 +1668,8 @@ class EventBasedTally(EventProducer, EventListener, Tally):
         ----------
         event: Event
             The event fired by the `EventProducer` to provide data to the 
-            statistic.
+            statistic. The event's content should be a single float with the
+            value.
         
         Raises
         ------
@@ -1675,7 +1677,7 @@ class EventBasedTally(EventProducer, EventListener, Tally):
             when event is not of the type Event
         ValueError
             when the event's event_type is not a DATA_EVENT
-        ValueError
+        TypeError
             when the event's payload is not a float
         """
         if not isinstance(event, Event):
@@ -1745,8 +1747,99 @@ class EventBasedTally(EventProducer, EventListener, Tally):
 
 
 class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
+    """
+    The EventBasedWeightedTally can receive its observations by subscribing 
+    (listening) to one or more EventProducers that provides the values for 
+    the statistic using the EventProducer's `fire(...)` method. This way, the 
+    statistic gathering and processing is decoupled from the process in the 
+    simulation that generates the data: there can be zero, one, or many 
+    statistics listeners for each data producing object in the simulation.
+    
+    This event-based statistic object also fire events with the values of 
+    the calculated statistics values, so a GUI-element such as a graph or 
+    table can subscribe to this event-based statistics object and be 
+    automatically updated when values of the statistic change. Again, this
+    provides decoupling and flexibility where on beforehand it is not known
+    whether zero, one, or many (graphics or simulation) objects are interested
+    in the values that this statistics object calculates.  
+
+    The EventBasedWeightedTally is a statistics object that calculates 
+    descriptive statistics for weighted observations, such as weighted mean, 
+    weighted variance, minimum observation, maximum observation, etc. 
+    
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+
+    In a sense, the weighted tally can be seen as a normal Tally where 
+    the observations are multiplied by their weights. But instead of dividing
+    by the number of observations to calculate the mean, the sum of weights
+    times observations is divided by the sum of the weights. Note that when
+    the weights are all set to 1, the WeghtedTally reduces to the ordinary
+    Tally.
+      
+    Example
+    -------
+    In discrete-event simulation, the (event based) WeightedTally is often 
+    used with elapsed time as the weights (See the 
+    `EventBasedTimestampWeightedTally` class and the 'SimPersistent' class 
+    later in this module). This creates a time-weighted statistic that can 
+    for instance be used to calculate statistics for (average) queue length, 
+    or (average) utilization of a server.
+    
+    Attributes
+    ----------
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _n_nonzero: int
+        the number of non-zero weights
+    _sum_of_weights: float
+        the sum of the weights
+    _weighted_sum: float
+        the sum of the observation values times their weights
+    _weight_times_variance: float
+        the weighted variant of the second moment of the statistic 
+    _min: float
+        the lowest value in the current observations 
+    _max: float
+        the highest value in the current observations
+    """
     
     def __init__(self, name: str):
+        """
+        Construct a new EventBasedWeightedTally statistics object. The 
+        EventBasedWeightedTally can receive its observations by subscribing 
+        (listening) to one or more EventProducers that provides the values 
+        for the statistic using the EventProducer's `fire(...)` method. 
+        This way, the statistic gathering and processing is decoupled from 
+        the process in the simulation that generates the data: there can be 
+        zero, one, or many statistics listeners for each data producing 
+        object in the simulation.
+    
+        This event-based statistic object also fire events with the values of 
+        the calculated statistics values, so a GUI-element such as a graph or 
+        table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The EventBasedWeightedTally is a statistics object that calculates 
+        descriptive statistics for weighted observations, such as weighted 
+        mean, weighted variance, minimum observation, maximum observation, etc. 
+        
+        Parameters
+        ----------
+        name: str
+            The name by which the statistics object can be identified.
+            
+        Raises
+        ------
+        TypeError
+            when name is not a string
+        """
         EventProducer.__init__(self)
         WeightedTally.__init__(self, name)
  
@@ -1769,6 +1862,33 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
         self.fire(StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: Event):
+        """
+        The `notify` method is the method that is called by the `EventProducer`
+        to register an observation. The `EventType` for the observation 
+        should be the `StatEvents.WEIGHT_DATA_EVENT` and the payload should 
+        a tuple with two values (weight, value), both floats. This value will 
+        be registered by the weighted tally.
+        
+        Parameters
+        ----------
+        event: Event
+            The event fired by the `EventProducer` to provide data to the 
+            statistic. The content of the event has to be a tuple with two
+            values (weight, value), both floats. 
+        
+        Raises
+        ------
+        TypeError
+            when event is not of the type Event
+        ValueError
+            when the event's event_type is not a WEIGHT_DATA_EVENT
+        TypeError
+            when the event's payload is not a tuple
+        ValueError
+            when the tuple in the content does not have a length of 2
+        TypeError
+            when one of the tuple's elements is not a number
+        """
         if not event.event_type == StatEvents.WEIGHT_DATA_EVENT:
             raise ValueError(f"notification {event.event_type} for " + \
                              "weighted tally is not a WEIGHT_DATA_EVENT")
@@ -1776,24 +1896,65 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
             raise TypeError(f"notification {event.content} for weighted " + \
                             "tally is not a tuple")
         if not len(event.content) == 2:
-            raise TypeError(f"notification {event.content} for weighted " + \
+            raise ValueError(f"notification {event.content} for weighted " + \
                             "tally is not a tuple of length 2")
-        if not (isinstance(event.content[0], float) or 
-                isinstance(event.content[0], int)):
+        if not isinstance(event.content[0], (float, int)):
             raise TypeError(f"notification {event.content} for weighted " + \
                             "tally: weight is not a float or int")
-        if not (isinstance(event.content[1], float) or 
-                isinstance(event.content[1], int)):
+        if not isinstance(event.content[1], (float, int)):
             raise TypeError(f"notification {event.content} for weighted " + \
                             "tally: value is not a float or int")
         self.register(float(event.content[0]), float(event.content[1]))
 
     def register(self, weight: float, value: float):
+        """
+        The event-based classes still have a `register` method. This method 
+        is called by the `notify` method, but can also be called separately. 
+        The method processes one observation. 
+
+        The method processes one observation value and a corresponding weight, 
+        and calculate all statistics up to and including the last weight-value 
+        pair (mean, standard deviation, minimum, maximum, sum, etc.).
+        Weight has to be >= 0.
+        
+        Note
+        ----
+        When weight equals zero, the value **is** counted towards the number
+        of observations, and for the minimum and maximum observation value,
+        but it does not contribute to the other statistics. 
+        
+        Parameters
+        ----------
+        weight: float
+            The weight of this observation (has to be >= 0).
+        value: float
+            The value of the observation.
+            
+        Raises
+        ------
+        TypeError
+            when weight or value is not a number
+        ValueError
+            when weight or value is NaN
+        ValueError
+            when weight < 0
+        """
         super().register(weight, value)
         if self.has_listeners():
             self.fire_events(value)  
 
     def fire_events(self, value: float):
+        """
+        Separate method to allow easy overriding of firing the statistics
+        events. This is, for instance, necessary in later classes when 
+        TimedEvents are fired rather than ordinary events.
+        
+        Parameters
+        ----------
+        value: float
+            The registered value. It is provided in the method to be symmetric 
+            with the.other event-based classes.
+        """
         self.fire(StatEvents.OBSERVATION_ADDED_EVENT, value)
         self.fire(StatEvents.N_EVENT, self.n())
         self.fire(StatEvents.MIN_EVENT, self.min())
@@ -1813,8 +1974,122 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
 
 class EventBasedTimestampWeightedTally(EventProducer, EventListener,
                                        TimestampWeightedTally):
+    """
+    The EventBasedTimestampWeightedTally can receive its observations by 
+    subscribing (listening) to one or more EventProducers that provides the 
+    values for the statistic using the EventProducer's `fire(...)` method. 
+    This way, the statistic gathering and processing is decoupled from the 
+    process in the simulation that generates the data: there can be zero, one, 
+    or many statistics listeners for each data producing object in the 
+    simulation.
+    
+    This event-based statistic object also fire events with the values of 
+    the calculated statistics values, so a GUI-element such as a graph or 
+    table can subscribe to this event-based statistics object and be 
+    automatically updated when values of the statistic change. Again, this
+    provides decoupling and flexibility where on beforehand it is not known
+    whether zero, one, or many (graphics or simulation) objects are interested
+    in the values that this statistics object calculates.  
+
+    The EventBasedTimestampWeightedTally is a statistics object that calculates 
+    descriptive statistics for piecewise constant observations, such as 
+    weighted mean, weighted variance, minimum observation, maximum 
+    observation, etc. Contrary to the WeightedTally, the weights are 
+    implicitly calculated based on **timestamps** that are provided with 
+    each observation.
+    
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+    
+    In order to properly 'close' the series of observations, a virtual 
+    observation has to be provided at the end of the observation period, to 
+    count the value and duration of the last interval into the statistics. The 
+    `end_observations` method takes care of ending the observation period. 
+    After calling `end_observations(timestamp)`, further calls to the 
+    `register` method will be silently ignored.
+
+    In a sense, the EventBasedTimestampWeightedTally can be seen as a normal 
+    Tally where the observations are multiplied by the duration (interval 
+    between two successive timestamps) when the observation had that particular 
+    value. But instead of dividing by the number of observations to calculate 
+    the mean of the ordinary Tally, the sum of durations times observation 
+    values is divided by the total duration of the observation period till 
+    the last registered timestamp.
+      
+    Example
+    -------
+    In discrete-event simulation, the EventBasedTimestampWeightedTally is often 
+    used to calculate statistics for (average) queue length, or (average) 
+    utilization of a server. Every time the actual queue length or utilization 
+    changes, the new value is registered with the timestamp, and the 
+    **previous** observation value is counted towards the statistic with the 
+    time interval between the previous timestamp and the new timestamp as the
+    weight. 
+    
+    Attributes
+    ----------
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _n_nonzero: int
+        the number of non-zero weights
+    _sum_of_weights: float
+        the sum of the weights
+    _weighted_sum: float
+        the sum of the observation values times their weights
+    _weight_times_variance: float
+        the weighted variant of the second moment of the statistic 
+    _min: float
+        the lowest value in the current observations 
+    _max: float
+        the highest value in the current observations
+    _start_time: float
+        timestamp of the first registered observation
+    _last_timestamp: float
+        timestamp when the currently valid observation value was set
+    _last_value
+        currently valid observation value
+    _active
+        true after initializations until end_observations has been called
+    """
     
     def __init__(self, name: str):
+        """
+        Construct a new EventBasedTimestampWeightedTally statistics object. The 
+        EventBasedTimestampWeightedTally can receive its observations by subscribing 
+        (listening) to one or more EventProducers that provides the values 
+        for the statistic using the EventProducer's `fire(...)` method. 
+        This way, the statistic gathering and processing is decoupled from 
+        the process in the simulation that generates the data: there can be 
+        zero, one, or many statistics listeners for each data producing 
+        object in the simulation.
+    
+        This event-based statistic object also fire events with the values of 
+        the calculated statistics values, so a GUI-element such as a graph or 
+        table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The EventBasedTimestampWeightedTally is a statistics object that 
+        calculates descriptive statistics for weighted observations, such as 
+        weighted mean, weighted variance, minimum, and maximum, where the 
+        weights are implicitly calculated based on successive timestamps. The
+        intervals between the timestamp are used as the weights.
+        
+        Parameters
+        ----------
+        name: str
+            The name by which the statistics object can be identified.
+            
+        Raises
+        ------
+        TypeError
+            when name is not a string
+        """
         EventProducer.__init__(self)
         TimestampWeightedTally.__init__(self, name)
  
@@ -1837,25 +2112,95 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
         self.fire(StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: TimedEvent):
+        """
+        The `notify` method is the method that is called by the `EventProducer`
+        to register an observation. The event should be a TimedEvent that has
+        a timestamp as one of its attributes. The `EventType` for the 
+        observation should be the `StatEvents.TIMESTAMP_DATA_EVENT` and 
+        the payload should be a float with the observation value.
+        
+        Parameters
+        ----------
+        event: TimedEvent
+            The timed event fired by the `EventProducer` to provide data to the 
+            statistic. The content of the event has to be a float with the
+            observation value.
+        
+        Raises
+        ------
+        TypeError
+            when event is not of the type TimedEvent
+        ValueError
+            when the event's event_type is not a TIMESTAMP_DATA_EVENT
+        TypeError
+            when the event's payload is not a float
+        ValueError
+            when timestamp or value is NaN
+        ValueError
+            when the provided timestamp is before the last registered timestamp
+        """
         if not isinstance(event, TimedEvent):
             raise TypeError(f"event notification {event} for " + \
                             "timestamped tally is not timestamped")
         if not event.event_type == StatEvents.TIMESTAMP_DATA_EVENT:
             raise ValueError(f"notification {event.event_type} for " + \
                              "timestamped tally is not a TIMESTAMP_DATA_EVENT")
-        if not (isinstance(event.content, float) or 
-                isinstance(event.content, int)):
+        if not isinstance(event.content, (float, int)):
             raise TypeError(f"notification {event.content} for " + \
                             "timestamped tally: value is not a float or int")
         # float(...) will turn a Duration timestamp into its si-value
         self.register(float(event.timestamp), float(event.content))
 
     def register(self, timestamp: float, value: float):
+        """
+        The event-based classes still have a `register` method. This method 
+        is called by the `notify` method, but can also be called separately. 
+        The method processes one timestamped observation. 
+        
+        The method processes one observation value and a timestamp that 
+        indicates from which time the observation is valid, and calculate 
+        all statistics up to and including the previous registered value for 
+        the duration between the last timestamp and the timestamp provided in 
+        this method. Successive timestamps can be the same, but a later 
+        timestamp cannot be before an earlier one.
+        
+        Note
+        ----
+        When two successive timestamps are the same, the observation value 
+        **is** counted towards the number of observations, and for the 
+        minimum and maximum observation value, but it does not contribute 
+        to the other statistics. 
+        
+        Parameters
+        ----------
+        timestamp: float
+            The timestamp from which the observation value is valid.
+        value: float
+            The observation value.
+            
+        Raises
+        ------
+        TypeError
+            when timestamp or value is not a number
+        ValueError
+            when weight or value is NaN
+        ValueError
+            when the provided timestamp is before the last registered timestamp
+        """
         super().register(timestamp, value)
         if self.has_listeners():
             self.fire_events(timestamp, value)  
 
     def fire_events(self, timestamp: float, value: float):
+        """
+        Separate method to allow easy overriding of firing the (timestamped)
+        statistics events. 
+        
+        Parameters
+        ----------
+        value: float
+            The registered value.
+        """
         self.fire_timed(timestamp, StatEvents.OBSERVATION_ADDED_EVENT, value)
         self.fire_timed(timestamp, StatEvents.N_EVENT, self.n())
         self.fire_timed(timestamp, StatEvents.MIN_EVENT, self.min())
