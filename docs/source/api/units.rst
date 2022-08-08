@@ -4,6 +4,17 @@
 
 .. automodule:: pydsol.core.units
 
+   Click below for the API of a specific unit. Each file has the class 
+   description of the unit, and the class description of a distribution
+   wrapper, so elements with a unit can be drawn from a stochastic 
+   distribution.
+   
+   The Quantity class is the generic parent class for the unit classes. The SI
+   class is a generic class where a new unit with any combination of the 
+   SI units (rad, sr, kg, m, s, A, K, mol, cd) can be constructed.  
+   
+   **Classes**
+
    .. toctree::
       :maxdepth: 3
 
