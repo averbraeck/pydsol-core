@@ -98,8 +98,7 @@ from pydsol.core.pubsub import EventProducer, EventListener, Event, \
     TimedEvent, EventType
 from pydsol.core.utils import get_module_logger
 
-
-#from statistics import NormalDist
+# from statistics import NormalDist
 __all__ = [
     "Counter",
     "Tally",
@@ -511,7 +510,7 @@ class Tally(StatisticsInterface):
         return (max(self._min, mean - confidence),
                 min(self._max, mean + confidence))
     
-    def variance(self, biased: bool = True) -> float:
+    def variance(self, biased: bool=True) -> float:
         r"""
         Return the variance of all observations since the statistic 
         initialization. By default, the biased (population) variance
@@ -550,7 +549,7 @@ class Tally(StatisticsInterface):
             return self._m2 / (self._n - 1)
         return math.nan
     
-    def stdev(self, biased: bool = True) -> float:
+    def stdev(self, biased: bool=True) -> float:
         r"""
         Return the standard deviation of all observations since the 
         initialization. The sample standard deviation is defined as the 
@@ -585,7 +584,7 @@ class Tally(StatisticsInterface):
         """
         return math.sqrt(self.variance(biased))
     
-    def skewness(self, biased: bool = True) -> float:
+    def skewness(self, biased: bool=True) -> float:
         r"""
         Return the skewness of all observations since the statistic 
         initialization. For the biased (population) skewness, at least two 
@@ -640,7 +639,7 @@ class Tally(StatisticsInterface):
                 return (skew_biased * math.sqrt(n * (n - 1)) / (n - 2))
         return math.nan
     
-    def kurtosis(self, biased: bool = True) -> float:
+    def kurtosis(self, biased: bool=True) -> float:
         r"""
         Return the kurtosis of all observations since the statistic 
         initialization. The biased (sample) kurtosis calculation needs three 
@@ -687,7 +686,7 @@ class Tally(StatisticsInterface):
             return self._m4 / (n - 1) / svar / svar
         return math.nan
     
-    def excess_kurtosis(self, biased: bool = True) -> float:
+    def excess_kurtosis(self, biased: bool=True) -> float:
         r"""
         Return the excess kurtosis of the registered data. The kurtosis value 
         of the normal distribution is 3. The (biased) excess kurtosis is the 
@@ -993,7 +992,7 @@ class WeightedTally(StatisticsInterface):
             return self._weighted_mean
         return math.nan
 
-    def weighted_variance(self, biased: bool = True) -> float:
+    def weighted_variance(self, biased: bool=True) -> float:
         r"""
         Return the weighted population variance of all observations since 
         the statistic initialization. The biased version needs at least one
@@ -1064,7 +1063,7 @@ class WeightedTally(StatisticsInterface):
                 return w_pop_var * self._n_nonzero / (self._n_nonzero - 1)
         return math.nan
     
-    def weighted_stdev(self, biased: bool = True) -> float:
+    def weighted_stdev(self, biased: bool=True) -> float:
         r"""
         Return the (biased) weighted population standard deviation of all 
         observations since the statistic initialization. The biased version 
@@ -1464,9 +1463,9 @@ class EventBasedCounter(EventProducer, EventListener, Counter):
         completed. 
         """
         Counter.initialize(self)
-        self.fire_initialized()
+        self._fire_initialized()
     
-    def fire_initialized(self):
+    def _fire_initialized(self):
         """
         Separate method to allow easy overriding of firing the 
         `INITIALIZED_EVENT`, for instance as a TimedEvent in the simulation 
@@ -1528,13 +1527,15 @@ class EventBasedCounter(EventProducer, EventListener, Counter):
         """
         super().register(value)
         if self.has_listeners():
-            self.fire_events(value)
+            self._fire_events(value)
 
-    def fire_events(self, value: int):
+    def _fire_events(self, value: int):
         """
         Separate method to allow easy overriding of firing the statistics
         events. This is, for instance, necessary in later classes when 
         TimedEvents are fired rather than ordinary events.
+        
+        This method should not be called externally.
         
         Parameters
         ----------
@@ -1647,9 +1648,9 @@ class EventBasedTally(EventProducer, EventListener, Tally):
         completed. 
         """
         Tally.initialize(self)
-        self.fire_initialized()
+        self._fire_initialized()
     
-    def fire_initialized(self):
+    def _fire_initialized(self):
         """
         Separate method to allow easy overriding of firing the 
         `INITIALIZED_EVENT`, for instance as a TimedEvent in the simulation 
@@ -1714,13 +1715,15 @@ class EventBasedTally(EventProducer, EventListener, Tally):
         """
         super().register(value)
         if self.has_listeners():
-            self.fire_events(value)
+            self._fire_events(value)
 
-    def fire_events(self, value: float):
+    def _fire_events(self, value: float):
         """
         Separate method to allow easy overriding of firing the statistics
         events. This is, for instance, necessary in later classes when 
         TimedEvents are fired rather than ordinary events.
+        
+        This method should not be called externally.
         
         Parameters
         ----------
@@ -1851,9 +1854,9 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
         completed. 
         """
         WeightedTally.initialize(self)
-        self.fire_initialized()
+        self._fire_initialized()
     
-    def fire_initialized(self):
+    def _fire_initialized(self):
         """
         Separate method to allow easy overriding of firing the 
         `INITIALIZED_EVENT`, for instance as a TimedEvent in the simulation 
@@ -1941,13 +1944,15 @@ class EventBasedWeightedTally(EventProducer, EventListener, WeightedTally):
         """
         super().register(weight, value)
         if self.has_listeners():
-            self.fire_events(value)  
+            self._fire_events(value)  
 
-    def fire_events(self, value: float):
+    def _fire_events(self, value: float):
         """
         Separate method to allow easy overriding of firing the statistics
         events. This is, for instance, necessary in later classes when 
         TimedEvents are fired rather than ordinary events.
+        
+        This method should not be called externally.
         
         Parameters
         ----------
@@ -2101,9 +2106,9 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
         completed. 
         """
         TimestampWeightedTally.initialize(self)
-        self.fire_initialized()
+        self._fire_initialized()
     
-    def fire_initialized(self):
+    def _fire_initialized(self):
         """
         Separate method to allow easy overriding of firing the 
         `INITIALIZED_EVENT`, for instance as a TimedEvent in the simulation 
@@ -2189,12 +2194,14 @@ class EventBasedTimestampWeightedTally(EventProducer, EventListener,
         """
         super().register(timestamp, value)
         if self.has_listeners():
-            self.fire_events(timestamp, value)  
+            self._fire_events(timestamp, value)  
 
-    def fire_events(self, timestamp: float, value: float):
+    def _fire_events(self, timestamp: float, value: float):
         """
         Separate method to allow easy overriding of firing the (timestamped)
         statistics events. 
+        
+        This method should not be called externally.
         
         Parameters
         ----------
@@ -2282,9 +2289,75 @@ class SimCounter(EventBasedCounter, SimStatisticsInterface):
         the current value of the counter
     _simulator: SimulatorInterface
         the simulator
+    _event_types: set[EventType]
+        the event types from EventProducers to listen to
     """
+    
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
+        """
+        Construct a new SimCounter statistics object. The 
+        SimCounter can receive its observations by subscribing 
+        (listening) to one or more EventProducers that provides the values 
+        for the statistic using the EventProducer's `fire(...)` method. 
+        This way, the statistic gathering and processing is decoupled from 
+        the process in the simulation that generates the data: there can be 
+        zero, one, or many statistics listeners for each data producing 
+        object in the simulation.
+    
+        This event-based statistic object also fire events with the values of 
+        the calculated statistics values, so a GUI-element such as a graph or 
+        table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The SimCounter is a simple statistics object that can count 
+        events or occurrences. Note that the number of observations is not 
+        necessarily equal to the value of the counter, since the counter 
+        allows any integer as the increment (or decrement) during an 
+        observation.
+    
+        Given the fact that the SimCounter is linked to the Simulator, it is
+        subscribed to the WARMUP_EVENT of the Simulator to initialize the 
+        statistics.
+        
+        Parameters
+        ----------
+        key: str
+            The key by which the statistics object can be easily found.
+        name: str
+            A descriptive name by which the statistics object can be identified.
+        simulator: SimulatorInterface
+            The simulator for subscribing to the WARMUP_EVENT and accessing
+            the Model to register this output statistic.
+        producer: EventProducer (optional)
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `DATA_EVENT` to its listeners. This statistics object 
+            registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType (optional)
+            The EventType that indicates the type of event we are interested 
+            in. By default use the `DATA_EVENT`, but when the notify-method is 
+            changed to also receive other types of events, the listen_to
+            method can of course also register for these event-types,
+            possibly with a different payload, as well.
+
+        Raises
+        ------
+        TypeError
+            when key is not a string
+        TypeError
+            when name is not a string
+        TypeError
+            when simulator is not of type SimulatorInterface
+        TypeError
+            if producer is not None, but it is not an EventProducer
+        TypeError
+            if event_type is not None, but it is not an EventType
+        """
         if not isinstance(key, str):
             raise TypeError(f"key {key} is not a str")
         if not isinstance(simulator, SimulatorInterface):
@@ -2294,44 +2367,132 @@ class SimCounter(EventBasedCounter, SimStatisticsInterface):
         simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
         simulator.model.add_output_statistic(key, self)
+        self._event_types: set[EventType] = {StatEvents.DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
-        else:
-            self._event_type = None
 
-    def listen_to(self, producer: EventProducer, event_type: EventType):
+    def listen_to(self, producer: EventProducer,
+                  event_type: EventType=StatEvents.DATA_EVENT):
         """
-        Avoid chicken-and-egg problem and allow for later registration of
-        events to listen to.
+        The statistics objects can register themselves with an `EventProducer` 
+        for a certain EventType in the model, that will generate the data for 
+        the statistics object. it is possible to call listen_to multiple
+        time. In that case, the events from all EventProducers where this
+        statistics object is registered, will be processed.
+    
+        Sending the events with observations is done by the EventProducer's 
+        `fire(...)` method. This way, the statistic gathering and processing 
+        is decoupled from the process in the simulation that generates the  
+        data: there can be zero, one, or many statistics listeners for each 
+        data producing object in the simulation.
+        
+        Parameters
+        ----------
+        producer: EventProducer
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `DATA_EVENT` to its listeners. This statistics object 
+            registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType
+            The EventType that indicates the type of event we are interested 
+            in. By default it is the `DATA_EVENT`, but when the notify-method is 
+            changed to also receive other types of events, the listen_to
+            method can of course also register for these event-types as well.
+           
+        Raises
+        ------
+        TypeError
+            if producer is not an EventProducer
+        TypeError
+            if event_type is not an EventType
         """
         if not isinstance(producer, EventProducer):
             raise TypeError(f"producer {producer} not an EventProducer")
         if not isinstance(event_type, EventType):
             raise TypeError(f"event_type {event_type} not an EventType")
-        self._event_type = event_type
+        self._event_types.add(event_type)
         producer.add_listener(event_type, self)
 
     @property
     def key(self) -> str:
+        """
+        Return the key by which the statistics object can be easily found.
+        
+        Returns
+        -------
+        str
+            The key by which the statistics object can be easily found.
+        """
         return self._key
     
     @property
     def simulator(self) -> SimulatorInterface:
+        """
+        Return the simulator. The statistic listens to the Simulator for the 
+        WARMUP-event. 
+        
+        Returns
+        -------
+        SimulatorInterface
+            An instance to the simulator to which this statistic is linked.
+        """
         return self._simulator
 
-    def fire_initialized(self):
+    def _fire_initialized(self):
+        """
+        Override method of firing the `INITIALIZED_EVENT` as a TimedEvent.
+        This method should not be called externally.
+        """
         self.fire_timed(self.simulator.simulator_time,
                         StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: Event):
-        if event.event_type == StatEvents.DATA_EVENT:
-            super().notify(event)
-        elif event.event_type == self._event_type:
+        """
+        The `notify` method is the method that is called by `EventProducer`
+        where this object was added as a listener to register an observation. 
+        The `EventType` for the observation should typically be the 
+        `StatEvents.DATA_EVENT` and the payload should be a single integer. 
+        This value will be registered by the counter.
+        
+        A second event to which the SimCounter listens automatically is the
+        WARMUP_EVENT as fired by the Simulator. When that event is received, 
+        the statistics are initialized.
+        
+        Other events are silently skipped. 
+        
+        Parameters
+        ----------
+        event: Event
+            (1) The event fired by the `EventProducer` to provide data to the 
+            statistic. The event's content should be a single int with the
+            value. (2) The WARMUP_EVENT as fired by the Simulator. This event
+            has no payload.
+        
+        Raises
+        ------
+        TypeError
+            when event is not of the type Event
+        ValueError
+            when the DATA_EVENT's payload is not an int
+        """
+        if event.event_type in self._event_types:
             super().notify(Event(StatEvents.DATA_EVENT, event.content))
         elif event.event_type == ReplicationInterface.WARMUP_EVENT:
             self.initialize()
             
-    def fire_events(self, value: float):
+    def _fire_events(self, value: float):
+        """
+        Separate method to allow easy overriding of firing the (timestamped)
+        statistics events. 
+        
+        This method should not be called externally.
+        
+        Parameters
+        ----------
+        value: int
+            The registered value.
+        """
         self.fire_timed(self.simulator.simulator_time,
                         StatEvents.OBSERVATION_ADDED_EVENT, value)
         self.fire_timed(self.simulator.simulator_time,
@@ -2352,11 +2513,128 @@ class SimTally(EventBasedTally, SimStatisticsInterface):
     the statistics object. The `EventProducer` and EventTypes to listen to 
     can also be added later with the `listen_to` method.
     
-     
+    The SimTally can receive its observations by subscribing 
+    (listening) to one or more EventProducers that provides the values for 
+    the statistic using the EventProducer's `fire(...)` method. This way, the 
+    statistic gathering and processing is decoupled from the process in the 
+    simulation that generates the data: there can be zero, one, or many 
+    statistics listeners for each data producing object in the simulation.
+    
+    This event-based statistic object also fire events with the values of 
+    the calculated statistics values, so a GUI-element such as a graph or 
+    table can subscribe to this event-based statistics object and be 
+    automatically updated when values of the statistic change. Again, this
+    provides decoupling and flexibility where on beforehand it is not known
+    whether zero, one, or many (graphics or simulation) objects are interested
+    in the values that this statistics object calculates.  
+    
+    The SimTally is a statistics object that calculates descriptive 
+    statistics for a number of observations, such as mean, variance, minimum, 
+    maximum, skewness, etc. 
+    
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+    
+    The mean of the SimTally is calculated with the formula:
+    
+    .. math:: \mu = \sum_{i=1}^{n} {x_{i}} / n
+    
+    where n is the number of observations and :math:`x_{i}` are the 
+    observations.
+    
+    Example
+    -------
+    In discrete-event simulation, the SimTally can be used to calculate 
+    statistical values for waiting times in queues, time in system of entities, 
+    processing times at a server, and throughput times of partial processes.
+    When objects such as Servers or Entities are EventProducers, they can
+    easily feed the EventBasedTally when their internal state changes. 
+    
+    Attributes
+    ----------
+    _key: str
+        the key by which the statistics object can be easily found
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _sum: float
+        the sum of the observation values 
+    _min: float
+        the lowest value in the current observations 
+    _max: float
+        the highest value in the current observations
+    _m1, _m2, _m3, _m4: float
+        the 1st to 4th moment of the observations
+    _simulator: SimulatorInterface
+        the simulator
+    _event_types: set[EventType]
+        the event types from EventProducers to listen to
     """
    
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
+        """
+        This event-based statistic object also fire events with the values of 
+        the calculated statistics values, so a GUI-element such as a graph or 
+        table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The SimTally statistic object also fire events with the values of 
+        the calculated statistics values, so a GUI-element such as a graph or 
+        table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The SimTally is a a statistics object that calculates descriptive 
+        statistics for a number of observations, such as mean, variance, 
+        minimum, maximum, skewness, etc. 
+
+        Given the fact that the SimTally is linked to the Simulator, it is
+        subscribed to the WARMUP_EVENT of the Simulator to initialize the 
+        statistics.
+        
+        Parameters
+        ----------
+        key: str
+            The key by which the statistics object can be easily found.
+        name: str
+            A descriptive name by which the statistics object can be identified.
+        simulator: SimulatorInterface
+            The simulator for subscribing to the WARMUP_EVENT and accessing
+            the Model to register this output statistic.
+        producer: EventProducer (optional)
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `DATA_EVENT` to its listeners. This statistics object 
+            registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType (optional)
+            The EventType that indicates the type of event we are interested 
+            in. By default use the `DATA_EVENT`, but when the notify-method is 
+            changed to also receive other types of events, the listen_to
+            method can of course also register for these event-types,
+            possibly with a different payload, as well.
+
+        Raises
+        ------
+        TypeError
+            when key is not a string
+        TypeError
+            when name is not a string
+        TypeError
+            when simulator is not of type SimulatorInterface
+        TypeError
+            if producer is not None, but it is not an EventProducer
+        TypeError
+            if event_type is not None, but it is not an EventType
+        """
         if not isinstance(key, str):
             raise TypeError(f"key {key} is not a str")
         if not isinstance(simulator, SimulatorInterface):
@@ -2366,44 +2644,132 @@ class SimTally(EventBasedTally, SimStatisticsInterface):
         simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
         simulator.model.add_output_statistic(key, self)
+        self._event_types: set[EventType] = {StatEvents.DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
-        else:
-            self._event_type = None
 
-    def listen_to(self, producer: EventProducer, event_type: EventType):
+    def listen_to(self, producer: EventProducer,
+                  event_type: EventType=StatEvents.DATA_EVENT):
         """
-        Avoid chicken-and-egg problem and allow for later registration of
-        events to listen to.
+        The statistics objects can register themselves with an `EventProducer` 
+        for a certain EventType in the model, that will generate the data for 
+        the statistics object. it is possible to call listen_to multiple
+        time. In that case, the events from all EventProducers where this
+        statistics object is registered, will be processed.
+    
+        Sending the events with observations is done by the EventProducer's 
+        `fire(...)` method. This way, the statistic gathering and processing 
+        is decoupled from the process in the simulation that generates the  
+        data: there can be zero, one, or many statistics listeners for each 
+        data producing object in the simulation.
+        
+        Parameters
+        ----------
+        producer: EventProducer
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `DATA_EVENT` to its listeners. This statistics object 
+            registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType
+            The EventType that indicates the type of event we are interested 
+            in. By default it is the `DATA_EVENT`, but when the notify-method is 
+            changed to also receive other types of events, the listen_to
+            method can of course also register for these event-types as well.
+           
+        Raises
+        ------
+        TypeError
+            if producer is not an EventProducer
+        TypeError
+            if event_type is not an EventType
         """
         if not isinstance(producer, EventProducer):
             raise TypeError(f"producer {producer} not an EventProducer")
         if not isinstance(event_type, EventType):
             raise TypeError(f"event_type {event_type} not an EventType")
-        self._event_type = event_type
+        self._event_types.add(event_type)
         producer.add_listener(event_type, self)
 
     @property
     def key(self) -> str:
+        """
+        Return the key by which the statistics object can be easily found.
+        
+        Returns
+        -------
+        str
+            The key by which the statistics object can be easily found.
+        """
         return self._key
     
     @property
     def simulator(self) -> SimulatorInterface:
+        """
+        Return the simulator. The statistic listens to the Simulator for the 
+        WARMUP-event. 
+        
+        Returns
+        -------
+        SimulatorInterface
+            An instance to the simulator to which this statistic is linked.
+        """
         return self._simulator
 
-    def fire_initialized(self):
+    def _fire_initialized(self):
+        """
+        Override method of firing the `INITIALIZED_EVENT` as a TimedEvent.
+        This method should not be called externally.
+        """
         self.fire_timed(self.simulator.simulator_time,
                         StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: Event):
-        if event.event_type == StatEvents.DATA_EVENT:
-            super().notify(event)
-        elif event.event_type == self._event_type:
+        """
+        The `notify` method is the method that is called by `EventProducer`
+        where this object was added as a listener to register an observation. 
+        The `EventType` for the observation should typically be the 
+        `StatEvents.DATA_EVENT` and the payload should be a single float. 
+        This value will be registered by the tally.
+        
+        A second event to which the SimTally listens automatically is the
+        WARMUP_EVENT as fired by the Simulator. When that event is received, 
+        the statistics are initialized.
+        
+        Other events are silently skipped. 
+        
+        Parameters
+        ----------
+        event: Event
+            (1) The event fired by the `EventProducer` to provide data to the 
+            statistic. The event's content should be a single float with the
+            value. (2) The WARMUP_EVENT as fired by the Simulator. This event
+            has no payload.
+        
+        Raises
+        ------
+        TypeError
+            when event is not of the type Event
+        ValueError
+            when the DATA_EVENT's payload is not a float
+        """
+        if event.event_type in self._event_types:
             super().notify(Event(StatEvents.DATA_EVENT, event.content))
         elif event.event_type == ReplicationInterface.WARMUP_EVENT:
             self.initialize()
             
-    def fire_events(self, value: float):
+    def _fire_events(self, value: float):
+        """
+        Separate method to allow easy overriding of firing the (timestamped)
+        statistics events. 
+        
+        This method should not be called externally.
+        
+        Parameters
+        ----------
+        value: float
+            The registered value.
+        """
         t = self.simulator.simulator_time
         self.fire_timed(t, StatEvents.OBSERVATION_ADDED_EVENT, value)
         self.fire_timed(t, StatEvents.N_EVENT, self.n())
@@ -2446,11 +2812,132 @@ class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
     the statistics object. The `EventProducer` and EventTypes to listen to 
     can also be added later with the `listen_to` method.
     
-     
+    The SimWeightedTally can receive its observations by subscribing 
+    (listening) to one or more EventProducers that provides the values for 
+    the statistic using the EventProducer's `fire(...)` method. This way, the 
+    statistic gathering and processing is decoupled from the process in the 
+    simulation that generates the data: there can be zero, one, or many 
+    statistics listeners for each data producing object in the simulation.
+    
+    This event-based statistic object also fire events with the values of 
+    the calculated statistics values, so a GUI-element such as a graph or 
+    table can subscribe to this event-based statistics object and be 
+    automatically updated when values of the statistic change. Again, this
+    provides decoupling and flexibility where on beforehand it is not known
+    whether zero, one, or many (graphics or simulation) objects are interested
+    in the values that this statistics object calculates.  
+
+    The SimWeightedTally is a statistics object that calculates 
+    descriptive statistics for weighted observations, such as weighted mean, 
+    weighted variance, minimum observation, maximum observation, etc. 
+    
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+
+    In a sense, the weighted tally can be seen as a normal Tally where 
+    the observations are multiplied by their weights. But instead of dividing
+    by the number of observations to calculate the mean, the sum of weights
+    times observations is divided by the sum of the weights. Note that when
+    the weights are all set to 1, the WeghtedTally reduces to the ordinary
+    Tally.
+      
+    Example
+    -------
+    In discrete-event simulation, the (event based) WeightedTally is often 
+    used with elapsed time as the weights (See the 'SimPersistent' class 
+    later in this module). This creates a time-weighted statistic that can 
+    for instance be used to calculate statistics for (average) queue length, 
+    or (average) utilization of a server.
+    
+    Attributes
+    ----------
+    _key: str
+        the key by which the statistics object can be easily found
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _n_nonzero: int
+        the number of non-zero weights
+    _sum_of_weights: float
+        the sum of the weights
+    _weighted_sum: float
+        the sum of the observation values times their weights
+    _weight_times_variance: float
+        the weighted variant of the second moment of the statistic 
+    _min: float
+        the lowest value in the current observations 
+    _max: float
+        the highest value in the current observations
+    _simulator: SimulatorInterface
+        the simulator
+    _event_types: set[EventType]
+        the event types from EventProducers to listen to     
     """
     
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
+        """
+        This event-based statistic object also fire events with the values of 
+        the calculated statistics values, so a GUI-element such as a graph or 
+        table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The SimWeightedTally statistic object also fire events with the values 
+        of the calculated statistics values, so a GUI-element such as a graph 
+        or table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The SimWeightedTally is a a statistics object that calculates 
+        descriptive statistics for a number of observations, such as mean, 
+        variance, minimum, maximum, sum, etc. 
+
+        Given the fact that the SimWeightedTally is linked to the Simulator, 
+        it is subscribed to the WARMUP_EVENT of the Simulator to initialize 
+        the statistics.
+        
+        Parameters
+        ----------
+        key: str
+            The key by which the statistics object can be easily found.
+        name: str
+            A descriptive name by which the statistics object can be identified.
+        simulator: SimulatorInterface
+            The simulator for subscribing to the WARMUP_EVENT and accessing
+            the Model to register this output statistic.
+        producer: EventProducer (optional)
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `WEIGHT_DATA_EVENT` to its listeners. This statistics object 
+            registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType (optional)
+            The EventType that indicates the type of event we are interested 
+            in. By default use the `WEIGHT_DATA_EVENT`, but when the 
+            notify-method is changed to also receive other types of events, 
+            the listen_to method can of course also register for these 
+            event-types, possibly with a different payload, as well.
+
+        Raises
+        ------
+        TypeError
+            when key is not a string
+        TypeError
+            when name is not a string
+        TypeError
+            when simulator is not of type SimulatorInterface
+        TypeError
+            if producer is not None, but it is not an EventProducer
+        TypeError
+            if event_type is not None, but it is not an EventType
+        """
         if not isinstance(key, str):
             raise TypeError(f"key {key} is not a str")
         if not isinstance(simulator, SimulatorInterface):
@@ -2460,44 +2947,140 @@ class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
         simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
         simulator.model.add_output_statistic(key, self)
+        self._event_types: set[EventType] = {StatEvents.WEIGHT_DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
-        else:
-            self._event_type = None
 
-    def listen_to(self, producer: EventProducer, event_type: EventType):
+    def listen_to(self, producer: EventProducer,
+                  event_type: EventType=StatEvents.WEIGHT_DATA_EVENT):
         """
-        Avoid chicken-and-egg problem and allow for later registration of
-        events to listen to.
+        The statistics objects can register themselves with an `EventProducer` 
+        for a certain EventType in the model, that will generate the data for 
+        the statistics object. it is possible to call listen_to multiple
+        time. In that case, the events from all EventProducers where this
+        statistics object is registered, will be processed.
+    
+        Sending the events with observations is done by the EventProducer's 
+        `fire(...)` method. This way, the statistic gathering and processing 
+        is decoupled from the process in the simulation that generates the  
+        data: there can be zero, one, or many statistics listeners for each 
+        data producing object in the simulation.
+        
+        Parameters
+        ----------
+        producer: EventProducer
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `WEIGHT_DATA_EVENT` to its listeners. This statistics object 
+            registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType
+            The EventType that indicates the type of event we are interested 
+            in. By default it is the `WEIGHT_DATA_EVENT`, but when the 
+            notify-method is changed to also receive other types of events, 
+            the listen_to method can of course also register for these 
+            event-types as well.
+           
+        Raises
+        ------
+        TypeError
+            if producer is not an EventProducer
+        TypeError
+            if event_type is not an EventType
         """
         if not isinstance(producer, EventProducer):
             raise TypeError(f"producer {producer} not an EventProducer")
         if not isinstance(event_type, EventType):
             raise TypeError(f"event_type {event_type} not an EventType")
-        self._event_type = event_type
+        self._event_types.add(event_type)
         producer.add_listener(event_type, self)
 
     @property
     def key(self) -> str:
+        """
+        Return the key by which the statistics object can be easily found.
+        
+        Returns
+        -------
+        str
+            The key by which the statistics object can be easily found.
+        """
         return self._key
     
     @property
     def simulator(self) -> SimulatorInterface:
+        """
+        Return the simulator. The statistic listens to the Simulator for the 
+        WARMUP-event. 
+        
+        Returns
+        -------
+        SimulatorInterface
+            An instance to the simulator to which this statistic is linked.
+        """
         return self._simulator
 
-    def fire_initialized(self):
+    def _fire_initialized(self):
+        """
+        Override method of firing the `INITIALIZED_EVENT` as a TimedEvent.
+        This method should not be called externally.
+        """
         self.fire_timed(self.simulator.simulator_time,
                         StatEvents.INITIALIZED_EVENT, self)
         
     def notify(self, event: Event):
-        if event.event_type == StatEvents.WEIGHT_DATA_EVENT:
-            super().notify(event)
-        elif event.event_type == self._event_type:
+        """
+        The `notify` method is the method that is called by `EventProducer`
+        where this object was added as a listener to register an observation. 
+        The `EventType` for the observation should typically be the 
+        `StatEvents.WEIGHT_DATA_EVENT` and the payload should be a tuple with
+        a float for the weight and a float for the value. The weight-value
+        combination will be registered by the statistic.
+        
+        A second event to which the SimWeightedTally listens automatically is 
+        the WARMUP_EVENT as fired by the Simulator. When that event is 
+        received, the statistics are initialized.
+        
+        Other events are silently skipped. 
+        
+        Parameters
+        ----------
+        event: Event
+            (1) The event fired by the `EventProducer` to provide data to the 
+            statistic. The event's content should be a single int with the
+            value. (2) The WARMUP_EVENT as fired by the Simulator. This event
+            has no payload.
+        
+        Raises
+        ------
+        TypeError
+            when event is not of the type Event
+        ValueError
+            when the WEIGHT_DATA_EVENT's payload is not a tuple
+        ValueError
+            when the WEIGHT_DATA_EVENT's tuple in the content does not have 
+            a length of 2
+        TypeError
+            when one of the WEIGHT_DATA_EVENT's elements in the tuple 
+            is not a number
+        """
+        if event.event_type in self._event_types:
             super().notify(Event(StatEvents.WEIGHT_DATA_EVENT, event.content))
         elif event.event_type == ReplicationInterface.WARMUP_EVENT:
             self.initialize()
             
-    def fire_events(self, value: float):
+    def _fire_events(self, value: float):
+        """
+        Separate method to allow easy overriding of firing the (timestamped)
+        statistics events. 
+        
+        This method should not be called externally.
+        
+        Parameters
+        ----------
+        value: float
+            The registered value.
+        """
         t = self.simulator.simulator_time
         self.fire_timed(t, StatEvents.OBSERVATION_ADDED_EVENT, value)
         self.fire_timed(t, StatEvents.N_EVENT, self.n())
@@ -2528,11 +3111,155 @@ class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
     the statistics object. The `EventProducer` and EventTypes to listen to 
     can also be added later with the `listen_to` method.
     
+    The SimPersistent can receive its observations by 
+    subscribing (listening) to one or more EventProducers that provides the 
+    values for the statistic using the EventProducer's `fire(...)` method. 
+    This way, the statistic gathering and processing is decoupled from the 
+    process in the simulation that generates the data: there can be zero, one, 
+    or many statistics listeners for each data producing object in the 
+    simulation.
     
+    This event-based statistic object also fire events with the values of 
+    the calculated statistics values, so a GUI-element such as a graph or 
+    table can subscribe to this event-based statistics object and be 
+    automatically updated when values of the statistic change. Again, this
+    provides decoupling and flexibility where on beforehand it is not known
+    whether zero, one, or many (graphics or simulation) objects are interested
+    in the values that this statistics object calculates.  
+
+    The SimPersistent is a statistics object that calculates 
+    descriptive statistics for piecewise constant observations, such as 
+    weighted mean, weighted variance, minimum observation, maximum 
+    observation, etc. Contrary to the WeightedTally, the weights are 
+    implicitly calculated based on **timestamps** that are provided with 
+    each observation.
+    
+    The initialize() method resets the statistics object. The initialize 
+    method can, for instance, be called when the warmup period of the 
+    simulation experiment has completed. 
+    
+    In order to properly 'close' the series of observations, a virtual 
+    observation has to be provided at the end of the observation period, to 
+    count the value and duration of the last interval into the statistics. The 
+    `end_observations` method is automatically called at the end of the 
+    replication. After the replication has ended, further calls to the 
+    `register` method will be silently ignored.
+
+    In a sense, the SimPersistent can be seen as a normal Tally where the 
+    observations are multiplied by the duration (interval between two 
+    successive timestamps) when the observation had that particular value. 
+    But instead of dividing by the number of observations to calculate 
+    the mean of the ordinary Tally, the sum of durations times observation 
+    values is divided by the total duration of the observation period till 
+    the last registered timestamp.
+
+    Example
+    -------
+    In discrete-event simulation, the SimPersistent is often used to 
+    calculate statistics for (average) queue length, or (average) utilization 
+    of a server. Every time the actual queue length or utilization changes, 
+    the new value is registered with the timestamp, and the **previous** 
+    observation value is counted towards the statistic with the time interval 
+    between the previous timestamp and the new timestamp as the weight. 
+    
+    Attributes
+    ----------
+    _key: str
+        the key by which the statistics object can be easily found
+    _name: str
+        the name by which the statistics object can be identified
+    _n: int
+        the number of observations
+    _n_nonzero: int
+        the number of non-zero weights
+    _sum_of_weights: float
+        the sum of the weights
+    _weighted_sum: float
+        the sum of the observation values times their weights
+    _weight_times_variance: float
+        the weighted variant of the second moment of the statistic 
+    _min: float
+        the lowest value in the current observations 
+    _max: float
+        the highest value in the current observations
+    _start_time: float
+        timestamp of the first registered observation
+    _last_timestamp: float
+        timestamp when the currently valid observation value was set
+    _last_value
+        currently valid observation value
+    _active
+        true after initializations until end_observations has been called
+    _simulator: SimulatorInterface
+        the simulator
+    _event_types: set[EventType]
+        the event types from EventProducers to listen to
     """
     
     def __init__(self, key: str, name: str, simulator: SimulatorInterface, *,
                  producer: EventProducer=None, event_type: EventType=None):
+        """
+        This event-based statistic object also fire events with the values of 
+        the calculated statistics values, so a GUI-element such as a graph or 
+        table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The SimPersistent statistic object also fire events with the values 
+        of the calculated statistics values, so a GUI-element such as a graph 
+        or table can subscribe to this event-based statistics object and be 
+        automatically updated when values of the statistic change. Again, this
+        provides decoupling and flexibility where on beforehand it is not known
+        whether zero, one, or many (graphics or simulation) objects are 
+        interested in the values that this statistics object calculates.  
+    
+        The SimPersistent is a a statistics object that calculates 
+        descriptive statistics for a number of observations, such as mean, 
+        variance, minimum, maximum, sum, etc. 
+
+        Given the fact that the SimPersistent is linked to the Simulator, 
+        it is subscribed to the WARMUP_EVENT of the Simulator to initialize 
+        the statistics, and to the END_REPLICATION event of the Simulator
+        to properly terminate the series of observations.
+        
+        Parameters
+        ----------
+        key: str
+            The key by which the statistics object can be easily found.
+        name: str
+            A descriptive name by which the statistics object can be identified.
+        simulator: SimulatorInterface
+            The simulator for subscribing to the WARMUP_EVENT and
+            END_REPLICATION_EVENT, and for accessing the Model to register 
+            this output statistic.
+        producer: EventProducer (optional)
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `TIMESTAMP_DATA_EVENT` to its listeners. This statistics 
+            object registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType (optional)
+            The EventType that indicates the type of event we are interested 
+            in. By default use the `TIMESTAMP_DATA_EVENT`, but when the 
+            notify-method is changed to also receive other types of events, 
+            the listen_to method can of course also register for these 
+            event-types, possibly with a different payload, as well.
+
+        Raises
+        ------
+        TypeError
+            when key is not a string
+        TypeError
+            when name is not a string
+        TypeError
+            when simulator is not of type SimulatorInterface
+        TypeError
+            if producer is not None, but it is not an EventProducer
+        TypeError
+            if event_type is not None, but it is not an EventType
+        """
         if not isinstance(key, str):
             raise TypeError(f"key {key} is not a str")
         if not isinstance(simulator, SimulatorInterface):
@@ -2543,39 +3270,130 @@ class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
         simulator.add_listener(ReplicationInterface.END_REPLICATION_EVENT, self)
         self._key = key
         simulator.model.add_output_statistic(key, self)
+        self._event_types: set[EventType] = {StatEvents.TIMESTAMP_DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
-        else:
-            self._event_type = None
 
-    def listen_to(self, producer: EventProducer, event_type: EventType):
+    def listen_to(self, producer: EventProducer,
+                  event_type: EventType=StatEvents.TIMESTAMP_DATA_EVENT):
         """
-        Avoid chicken-and-egg problem and allow for later registration of
-        events to listen to.
+        The statistics objects can register themselves with an `EventProducer` 
+        for a certain EventType in the model, that will generate the data for 
+        the statistics object. it is possible to call listen_to multiple
+        time. In that case, the events from all EventProducers where this
+        statistics object is registered, will be processed.
+    
+        Sending the events with observations is done by the EventProducer's 
+        `fire(...)` method. This way, the statistic gathering and processing 
+        is decoupled from the process in the simulation that generates the  
+        data: there can be zero, one, or many statistics listeners for each 
+        data producing object in the simulation.
+        
+        Parameters
+        ----------
+        producer: EventProducer
+            A class (often a simulation object such as a Server-type object, a 
+            Queue, or an Entity) that extends EventProducer, and is able to 
+            fire `TIMESTAMP_DATA_EVENT` to its listeners. This statistics 
+            object registers itself with the event producer for the specified 
+            event_type.
+        event_type: EventType
+            The EventType that indicates the type of event we are interested 
+            in. By default it is the `TIMESTAMP_DATA_EVENT`, but when the 
+            notify-method is changed to also receive other types of events, 
+            the listen_to method can of course also register for these 
+            event-types as well.
+           
+        Raises
+        ------
+        TypeError
+            if producer is not an EventProducer
+        TypeError
+            if event_type is not an EventType
         """
         if not isinstance(producer, EventProducer):
             raise TypeError(f"producer {producer} not an EventProducer")
         if not isinstance(event_type, EventType):
             raise TypeError(f"event_type {event_type} not an EventType")
-        self._event_type = event_type
+        self._event_types.add(event_type)
         producer.add_listener(event_type, self)
 
     @property
     def key(self) -> str:
+        """
+        Return the key by which the statistics object can be easily found.
+        
+        Returns
+        -------
+        str
+            The key by which the statistics object can be easily found.
+        """
         return self._key
     
     @property
     def simulator(self) -> SimulatorInterface:
+        """
+        Return the simulator. The statistic listens to the Simulator for the 
+        WARMUP-event. 
+        
+        Returns
+        -------
+        SimulatorInterface
+            An instance to the simulator to which this statistic is linked.
+        """
         return self._simulator
 
-    def fire_initialized(self):
+    def _fire_initialized(self):
+        """
+        Override method of firing the `INITIALIZED_EVENT` as a TimedEvent.
+        This method should not be called externally.
+        """
         self.fire_timed(self.simulator.simulator_time,
                         StatEvents.INITIALIZED_EVENT, self)
         
-    def notify(self, event: Event):
+    def notify(self, event: TimedEvent):
+        """
+        The `notify` method is the method that is called by `EventProducer`
+        where this object was added as a listener to register an observation. 
+        The `EventType` for the observation should typically be a TimedEvent
+        with `StatEvents.TIMESTAMP_DATA_EVENT` as the EventType and the 
+        payload should be a float for the value. The timestamp-value 
+        combination will be registered by the statistic.
+        
+        A second event to which the SimPersistent listens automatically is 
+        the WARMUP_EVENT as fired by the Simulator. When that event is 
+        received, the statistics are initialized.
+        
+        A third event to which the SimPersistent listens is the END_REPLICATION
+        event from the Simulator. This event takes care that the last 
+        observation value is taken into account by calling the end_observations
+        method when the END_REPLICATION event is received.  
+        
+        Other events are silently skipped. 
+        
+        Parameters
+        ----------
+        event: TimedEvent
+            (1) The event fired by the `EventProducer` to provide data to the 
+            statistic. The event's content should be a single float with the
+            value. (2) The WARMUP_EVENT as fired by the Simulator. This event
+            has no payload. (3) The END_REPLICATION_EVENT as fired by the
+            Simulator.
+        
+        Raises
+        ------
+        TypeError
+            when event is not of the type TimedEvent
+        TypeError
+            when the TIMESTAMP_DATA_EVENT's payload is not a float
+        ValueError
+            when timestamp or value is NaN
+        ValueError
+            when the provided timestamp is before the last registered timestamp
+        """
         if event.event_type == StatEvents.TIMESTAMP_DATA_EVENT:
             super().notify(event)
-        elif event.event_type == self._event_type:
+        elif event.event_type in self._event_types:
             super().notify(TimedEvent(self.simulator.simulator_time,
                     StatEvents.TIMESTAMP_DATA_EVENT, event.content))
         elif event.event_type == ReplicationInterface.WARMUP_EVENT:
