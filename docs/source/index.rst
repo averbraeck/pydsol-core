@@ -23,7 +23,7 @@ to construct and run a basic discrete simulation model:
 * parameters.py: the input parameters for the simulation model.
 * statistics.py: calculation of the output results of the simulation model.
 * distributions.py: stochastic distributions to use in stochastic models.
-* streams.py: random number streams that the experiment and sitributions use.
+* streams.py: random number streams that the experiment and distributions use.
 * units.py: strongly types quantities such as Length and Speed for modeling.
 * supporting modules include interfaces.py and utils.py with generic functions.
 
