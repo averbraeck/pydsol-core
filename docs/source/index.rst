@@ -5,7 +5,7 @@
 pydsol-core documentation
 =========================
 
-pydsol-core is the core library for disscrete simulation bsed on the Java 
+pydsol-core is the core library for discrete simulation bsed on the Java 
 DSOL (Distributed Simulation Object Library) framework. pydsol is a library
 to quickly build simulation models, ranging from extremely simple queueing
 models to extended discrete-event or agent-based models. The pydsol

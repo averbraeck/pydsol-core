@@ -1,9 +1,41 @@
+"""
+The experiment module contains the classes to set-up and carry out simulation
+experiments. The structure of a simulation experiment is as follows:
+
+* An `Experiment` contains multiple `Replication` instances. The `Experiment`
+  is responsible for executing the replications and for collecting 
+  summarizing statistical data from the replications. The `Experiment` 
+  runs a model according to a `RunControl` object with fixed values for
+  the `InputParameters` of the model. When the `InputParameters` change, 
+  one runs a new `Experiment`. Because the `Experiment` involves multiple
+  runs (multiple replications), seed management for the stochastic 
+  distributions in the model is important. The streams module contains
+  several classes for ensuring proper seed management.    
+* The `Replication` is a single run of a model. It initializes the model with 
+  the values of the InputParameters, and runs the model to calculate the 
+  values of the output statistics. Different replications of a model that
+  are part of the same experiment only differ in their seeds for the random
+  number generator(s) used by the model. Input parameters, model structure,
+  run length, and warmup period should all be the same for multiple 
+  replications of an experiment.
+* The `RunControl` object contains the start time, end time, and warmup 
+  period for a model run. Multiple replications of the same experiment use the
+  same RunControl.  
+* The `Simulator` executes a `Model` on the basis of an `Replication`. The 
+  `simulator.initialize(...)` method ensures that the model is built, and
+  that the execution of the model using the replication information starts.
+
+The experiment module also contains a `SingleReplication` class, which is 
+an easy class to carry out an experiment with a single replication (for 
+demonstrations, testing, or for models where stochasticity does not play a 
+major role).  
+"""
+
 from typing import TypeVar, Generic
 
 from pydsol.core.interfaces import SimulatorInterface, ModelInterface, \
     ReplicationInterface, ExperimentInterface
 from pydsol.core.utils import DSOLError, get_module_logger
-
 
 __all__ = [
     "RunControl",
@@ -20,10 +52,77 @@ logger = get_module_logger('pubsub')
 TIME = TypeVar("TIME", float, int)
 
 
-class RunControl(Generic[TIME]):
+class RunControl():
+    """
+    The RunControl object contains the start time, end time, and warmup 
+    period for a model run. Multiple replications of the same experiment 
+    use the same RunControl. 
 
+    Note
+    ----
+    The TIME type mentioned below is float or int, or a class extending 
+    float or int. An example of such a class is the Duration unit from the
+    units module, which can be used to work with meaningful clock times 
+    (e.g., a process duration of 10.5 minutes; a run time of 5 days, etc.).
+    
+    Attributes
+    ----------
+    _name: str
+        A brief identifying name of the RunControl.
+    _start_sim_time: TIME
+        The start simulation time (float or int), often zero
+    _end_sim_time: TIME
+        The end simulation time (float or int). Note that when the start 
+        simulation time is not zero, _end_sim_time does **not** indicate the
+        run length, but rather the absolute time when the simulation run stops.
+    _warmup_sim_time: TIME
+        The absolute time when the warmup period of the model has passed,
+        resulting in the reset of all simulation statistics objects such as
+        the SimCounter, SimTally and SimPersistent used in the model. 
+        Ordinary statistics objects (e.g., the Tally) will not be reset.  
+    """
+    
     def __init__(self, name: str, start_time: TIME, warmup_period: TIME,
                  run_length: TIME):
+        """
+        Create an instance of the RunControl object that contains the 
+        start time, end time, and warmup period for a model run. Multiple 
+        replications of the same experiment use the same RunControl.
+
+        **Note**
+
+        The TIME type mentioned below is float or int, or a class extending 
+        float or int. An example of such a class is the Duration unit from the
+        units module, which can be used to work with meaningful clock times 
+        (e.g., a process duration of 10.5 minutes; a run time of 5 days, etc.).
+        
+        Parameters
+        ----------
+        name: str
+            A brief identifying name of the RunControl.
+        start_time: TIME
+            The start simulation time (float or int), often zero
+        warmup_period: TIME
+            The time (float or int) relative to start_time when the warmup 
+            period of the model has passed, resulting in the reset of all 
+            simulation statistics objects such as the SimCounter, SimTally 
+            and SimPersistent used in the model. Ordinary statistics objects 
+            (e.g., the Tally) will not be reset.
+        run_length: TIME
+            The run length (float or int), relative to the start_time. Note
+            that the end simulation time is therefore start_time + run_length.
+        
+        Raises
+        ------
+        TypeError
+            when name is not a str
+        TypeError
+            when start_time is not a number
+        TypeError
+            when warmup_period is not a number
+        TypeError
+            when run_length is not a number
+        """
         if not isinstance(name, str):
             raise TypeError("name {name} should be a str")
         if not isinstance(start_time, (float, int)):
@@ -32,35 +131,120 @@ class RunControl(Generic[TIME]):
             raise TypeError("warmup_period {warmup_period} should be numeric")
         if not isinstance(run_length, (float, int)):
             raise TypeError("run_length {run_length} should be numeric")
-        self._name = name
-        self._start_sim_time = start_time
-        self._end_sim_time = start_time + run_length
-        self._warmup_sim_time = start_time + warmup_period
-        
+        self._name: str = name
+        self._start_sim_time: TIME = start_time
+        self._end_sim_time: TIME = start_time + run_length
+        self._warmup_sim_time: TIME = start_time + warmup_period
+    
     @property
     def name(self) -> str:
+        """
+        Return the brief identifying name of the RunControl.
+        
+        Returns
+        -------
+        str
+            The brief identifying name of the RunControl.
+        """
         return self._name
 
     @property
     def start_sim_time(self) -> TIME:
+        """
+        Return (absolute) start simulation time.
+        
+        Returns
+        -------
+        TIME (float, int, Duration)
+            The (absolute) start simulation time.
+        """ 
         return self._start_sim_time
 
     @property
     def warmup_sim_time(self) -> TIME:
+        """
+        Return absolute time when the warmup period of the model has passed,
+        resulting in the reset of all simulation statistics objects such as
+        the SimCounter, SimTally and SimPersistent used in the model. 
+        Ordinary statistics objects (e.g., the Tally) will not be reset.
+        
+        Returns
+        -------
+        TIME (float, int, Duration)
+            The (absolute) time when the warmup period of the model has passed.
+        """
         return self._warmup_sim_time
 
     @property
     def end_sim_time(self) -> TIME:
+        """
+        Return the end simulation time (float or int). Note that when the start 
+        simulation time is not zero, _end_sim_time does **not** indicate the
+        run length, but rather the absolute time when the simulation run stops.
+        
+        Returns
+        -------
+        TIME (float, int, Duration)
+            The (absolute) end simulation time.
+        """
         return self._end_sim_time
 
+    @property
+    def warmup_period(self) -> TIME:
+        """
+        Return the time, relative to start_time, when the warmup period of the 
+        model has passed, resulting in the reset of all simulation statistics 
+        objects such as the SimCounter, SimTally and SimPersistent used in 
+        the model. Ordinary statistics objects (e.g., the Tally) will not 
+        be reset..
+        
+        Returns
+        -------
+        TIME (float, int, Duration)
+            The time, relative to start_time, when the warmup period of the 
+            model has passed.
+        """
+        return self._warmup_sim_time - self._start_sim_time
 
-class Replication(ReplicationInterface, Generic[TIME]):
+    @property
+    def run_length(self) -> TIME:
+        """
+        Return the run length, relative to the start_time.
+        
+        Returns
+        -------
+        TIME (float, int, Duration)
+            The run length (float or int), relative to the start_time.
+        """
+        return self._end_sim_time - self._start_sim_time
 
-    def __init__(self, name: str, start_time: TIME, warmup_period: TIME,
-                 run_length: TIME):
+
+class Replication(ReplicationInterface):
+    """
+    The Replication is a single run of a model. It initializes the model with 
+    the values of the InputParameters, and runs the model to calculate the 
+    values of the output statistics. Different replications of a model that
+    are part of the same experiment only differ in their seeds for the random
+    number generator(s) used by the model. Input parameters, model structure,
+    run length, and warmup period should all be the same for multiple 
+    replications of an experiment.
+    
+    **Note**
+
+    The TIME type mentioned below is float or int, or a class extending 
+    float or int. An example of such a class is the Duration unit from the
+    units module, which can be used to work with meaningful clock times 
+    (e.g., a process duration of 10.5 minutes; a run time of 5 days, etc.).
+        
+    
+    """
+    
+    def __init__(self, name: str, nr: int, start_time: TIME, 
+                 warmup_period: TIME, run_length: TIME):
         self._run_control = RunControl(name, start_time, warmup_period,
                                       run_length)
-        
+        self._nr = nr
+    
     @property
     def run_control(self):
         return self._run_control
