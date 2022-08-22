@@ -266,7 +266,7 @@ class SingleReplication(Replication, Generic[TIME]):
 
     def __init__(self, name: str, start_time: TIME, warmup_period: TIME,
                  run_length: TIME):
-        super().__init__(name, start_time, warmup_period, run_length)
+        super().__init__(name, 0, start_time, warmup_period, run_length)
 
 
 class Experiment(ExperimentInterface):
@@ -308,9 +308,10 @@ class Experiment(ExperimentInterface):
     
 class ExperimentReplication(Replication, Generic[TIME]):
 
-    def __init__(self, name: str, start_time: TIME, warmup_period: TIME,
-                 run_length: TIME, experiment: Experiment):
-        super.__init__(name, start_time, warmup_period, run_length)
+    def __init__(self, name: str, nr: int, start_time: TIME, 
+                 warmup_period: TIME, run_length: TIME, 
+                 experiment: Experiment):
+        super.__init__(name, nr, start_time, warmup_period, run_length)
         if not isinstance(experiment, Experiment):
             raise DSOLError(f"experiment {experiment} not valid")
         self._experiment = experiment
