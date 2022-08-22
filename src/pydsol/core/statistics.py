@@ -236,7 +236,8 @@ class Counter(StatisticsInterface):
     def __repr__(self):
         return str(self)
     
-    def report_header(self) -> str:
+    @classmethod
+    def report_header(cls) -> str:
         """
         Return a string representing a header for a textual table with a
         monospaced font that can contain multiple counters.
@@ -253,7 +254,8 @@ class Counter(StatisticsInterface):
         """
         return f"| {self.name:<48} | {self.n():>6} | {self.count():>8} |"
 
-    def report_footer(self) -> str:
+    @classmethod
+    def report_footer(cls) -> str:
         """
         Return a string representing a footer for a textual table with a
         monospaced font that can contain multiple counters.
@@ -741,7 +743,8 @@ class Tally(StatisticsInterface):
     def __repr__(self):
         return str(self)
 
-    def report_header(self) -> str:
+    @classmethod
+    def report_header(cls) -> str:
         """
         Return a string representing a header for a textual table with a
         monospaced font that can contain multiple tallies.
@@ -758,7 +761,8 @@ class Tally(StatisticsInterface):
         """
         return f"| {self.name:<48} | {self.n():>6} | {self.mean():8.2f} |"
 
-    def report_footer(self) -> str:
+    @classmethod
+    def report_footer(cls) -> str:
         """
         Return a string representing a footer for a textual table with a
         monospaced font that can contain multiple tallies.
@@ -1137,7 +1141,8 @@ class WeightedTally(StatisticsInterface):
     def __repr__(self):
         return str(self)
 
-    def report_header(self) -> str:
+    @classmethod
+    def report_header(cls) -> str:
         """
         Return a string representing a header for a textual table with a
         monospaced font that can contain multiple weighted tallies.
@@ -1156,7 +1161,8 @@ class WeightedTally(StatisticsInterface):
         return f"| {self.name:<48} | {self.n():>6} | "\
             +f"{self.weighted_mean():8.2f} |"
 
-    def report_footer(self) -> str:
+    @classmethod
+    def report_footer(cls) -> str:
         """
         Return a string representing a footer for a textual table with a
         monospaced font that can contain multiple tallies.

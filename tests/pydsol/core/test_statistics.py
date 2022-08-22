@@ -530,13 +530,13 @@ def test_e_w_tally_11():
         t.notify(Event(StatEvents.DATA_EVENT, 1))
     with pytest.raises(TypeError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, 'abc'))
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0,)))
     with pytest.raises(TypeError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, 'abc')))
     with pytest.raises(TypeError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, ('abc', 1.0)))
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         t.notify(Event(StatEvents.WEIGHT_DATA_EVENT, (1.0, 2.0, 3.0)))
 
 
