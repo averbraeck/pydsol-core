@@ -2372,10 +2372,11 @@ class SimCounter(EventBasedCounter, SimStatisticsInterface):
         EventBasedCounter.__init__(self, name)
         simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
-        simulator.model.add_output_statistic(key, self)
         self._event_types: set[EventType] = {StatEvents.DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
+        if simulator.model != None:
+            simulator.model.add_output_statistic(key, self)
 
     def listen_to(self, producer: EventProducer,
                   event_type: EventType=StatEvents.DATA_EVENT):
@@ -2649,10 +2650,11 @@ class SimTally(EventBasedTally, SimStatisticsInterface):
         EventBasedTally.__init__(self, name)
         simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
-        simulator.model.add_output_statistic(key, self)
         self._event_types: set[EventType] = {StatEvents.DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
+        if simulator.model != None:
+            simulator.model.add_output_statistic(key, self)
 
     def listen_to(self, producer: EventProducer,
                   event_type: EventType=StatEvents.DATA_EVENT):
@@ -2952,10 +2954,11 @@ class SimWeightedTally(EventBasedWeightedTally, SimStatisticsInterface):
         EventBasedWeightedTally.__init__(self, name)
         simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         self._key = key
-        simulator.model.add_output_statistic(key, self)
         self._event_types: set[EventType] = {StatEvents.WEIGHT_DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
+        if simulator.model != None:
+            simulator.model.add_output_statistic(key, self)
 
     def listen_to(self, producer: EventProducer,
                   event_type: EventType=StatEvents.WEIGHT_DATA_EVENT):
@@ -3275,10 +3278,11 @@ class SimPersistent(EventBasedTimestampWeightedTally, SimStatisticsInterface):
         simulator.add_listener(ReplicationInterface.WARMUP_EVENT, self)
         simulator.add_listener(ReplicationInterface.END_REPLICATION_EVENT, self)
         self._key = key
-        simulator.model.add_output_statistic(key, self)
         self._event_types: set[EventType] = {StatEvents.TIMESTAMP_DATA_EVENT}
         if producer != None or event_type != None:
             self.listen_to(producer, event_type)
+        if simulator.model != None:
+            simulator.model.add_output_statistic(key, self)
 
     def listen_to(self, producer: EventProducer,
                   event_type: EventType=StatEvents.TIMESTAMP_DATA_EVENT):

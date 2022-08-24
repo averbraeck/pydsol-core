@@ -61,6 +61,7 @@ class DSOLModel(ModelInterface):
     
     def add_output_statistic(self, key: str, statistic: StatisticsInterface):
         """add an output statistic to the output statistics map."""
+        print(repr(self._output_statistics))
         if key in self._output_statistics:
             raise DSOLError(f"output statistic key {key} already registered")
         if not isinstance(statistic, StatisticsInterface):
