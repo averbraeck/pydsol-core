@@ -47,7 +47,12 @@ The statistics families are:
    means they can subscribe to the Simulator's WARMUP_EVENT taking care
    that the statistics are initialized appropriately. Additionally, the 
    `SimPersistent` class that extends `EventBasedTimestampWeightedTally` can
-   retrieve the timestamps directly from the Simulator. The classes are:
+   retrieve the timestamps directly from the Simulator. Additionally, the
+   Simulation Statistics register themselves in the model as output statistics
+   when the model has been defined when they are created. Note that this is
+   the case when the statistics are defined in the construct_model method
+   of the Model, but not when they are defined in the constructor of the
+   Model. The Simulation Statistics classes are:
    
    * `SimCounter` extending `EventBasedCounter`
    * `SimTally` extending `EventBasedTally`
