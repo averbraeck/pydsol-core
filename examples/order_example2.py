@@ -8,12 +8,12 @@ implementing the simulation, with notification of the application object on
 the completion of the simuation.
 """
 
-from pydsol.core import pubsub
-from pydsol.core.experiment import SingleReplication, Replication
-from pydsol.core.interfaces import ReplicationInterface
-from pydsol.core.model import DSOLModel
-from pydsol.core.pubsub import EventListener, Event
-from pydsol.core.simulator import DEVSSimulatorFloat, DEVSSimulator
+from pydsol import pubsub
+from pydsol.experiment import SingleReplication, Replication
+from pydsol.interfaces import ReplicationInterface
+from pydsol.model import DSOLModel
+from pydsol.pubsub import EventListener, Event
+from pydsol.simulator import DEVSSimulatorFloat, DEVSSimulator
 import logging
 
 

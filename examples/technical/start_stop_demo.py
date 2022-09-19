@@ -1,6 +1,6 @@
-from pydsol.core.simulator import Simulator, DEVSSimulatorFloat
-from pydsol.core.model import DSOLModel
-from pydsol.core.experiment import SingleReplication
+from pydsol.simulator import Simulator, DEVSSimulatorFloat
+from pydsol.model import DSOLModel
+from pydsol.experiment import SingleReplication
 
 """
 This example shows that start and stop can be called quickly after
