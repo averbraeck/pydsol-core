@@ -1,11 +1,11 @@
 from abc import ABC
 
-from pydsol.core.experiment import Replication, SingleReplication
-from pydsol.core.interfaces import ReplicationInterface
-from pydsol.core.model import DSOLModel
-from pydsol.core.pubsub import EventProducer, EventType, EventListener, Event
-from pydsol.core.simulator import DEVSSimulator, DEVSSimulatorFloat
-from pydsol.core.statistics import SimCounter, SimTally, SimPersistent
+from pydsol.experiment import Replication, SingleReplication
+from pydsol.interfaces import ReplicationInterface
+from pydsol.model import DSOLModel
+from pydsol.pubsub import EventProducer, EventType, EventListener, Event
+from pydsol.simulator import DEVSSimulator, DEVSSimulatorFloat
+from pydsol.statistics import SimCounter, SimTally, SimPersistent
 
 
 class Entity():
