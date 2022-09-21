@@ -236,36 +236,137 @@ class Replication(ReplicationInterface):
     units module, which can be used to work with meaningful clock times 
     (e.g., a process duration of 10.5 minutes; a run time of 5 days, etc.).
         
-    
+    Attributes
+    ----------
+    _nr: int
+        The number that identifies the Replication within an Experiment. 
+    _run_control: RunControl
+        The RunContro object that stores the start simulation time, the end 
+        simulation time, and the absolute time when the warmup period of 
+        the model has passed.  
     """
     
     def __init__(self, name: str, nr: int, start_time: TIME, 
                  warmup_period: TIME, run_length: TIME):
+        """
+        Create a replication with a replication number. Details about the
+        start time, end time, and warmup period will be stored in a
+        RunControl object.
+        
+        Attributes
+        ----------
+        name: str
+            A brief identifying name, that will be used as the name of the 
+            RunControl.
+        nr: int
+            The number that identifies the Replication within an Experiment. 
+        start_time: TIME
+            The (absolute) start simulation time (float or int), often zero. 
+            It will be stored in the RunControl.
+        warmup_period: TIME
+            The (relative) period when the warmup period of the model has 
+            passed, resulting in the reset of all simulation statistics objects 
+            such as the SimCounter, SimTally and SimPersistent used in the 
+            model. Ordinary statistics objects (e.g., the Tally) will not be 
+            reset. It will be stored in the RunControl. The absolute time
+            when the warump takes place is (start_time + warmup_period).
+        run_length: TIME
+            The (relative) duration of the run (float or int). The absolute
+            time when the simulation ends is equal to (start_time + run_length).
+            run_length and end_sim_time are the same when the start_time is zero.
+            The information about run length will be stored in the RunControl.
+        """
         self._run_control = RunControl(name, start_time, warmup_period,
                                       run_length)
         self._nr = nr
     
     @property
-    def run_control(self):
+    def run_control(self) -> RunControl:
+        """
+        Return the RunControl object that stores the start simulation time, 
+        the end simulation time, and warmup time, which is the absolute time 
+        when the warmup period of the model has passed.  
+        """
         return self._run_control
 
     @property
     def start_sim_time(self) -> TIME:
+        """
+        Return the absolute start simulation time (float or int). The value 
+        is stored in the RunControl. 
+        """
         return self.run_control._start_sim_time
 
     @property
     def warmup_sim_time(self) -> TIME:
+        """
+        Return the absolute time when the warmup period of the model has 
+        passed, resulting in the reset of all simulation statistics objects 
+        such as the SimCounter, SimTally and SimPersistent used in the model. 
+        Ordinary statistics objects (e.g., the Tally) will not be reset.
+        The value is stored in the RunControl.The (relative) warmup **period**
+        is (warmup_sim_time - start_sim_time).
+        """
         return self.run_control._warmup_sim_time
 
     @property
     def end_sim_time(self) -> TIME:
+        """
+        Return the absolute time when the simulation replication ends, and the 
+        statistics for the simulation replication are finalized, Note that 
+        when the start simulation time is not zero, _end_sim_time does **not** 
+        indicate the run length, but rather the absolute time when the 
+        simulation run stops. It is stored in the RunControl. The (relative) 
+        **duration** uf the replication is (end_sim_time - start_sim_time).
+        """
         return self.run_control._end_sim_time
+    
+    @property
+    def warmup_period(self) -> TIME:
+        """
+        Return the (relative) duration of the warmup period (float or int). 
+        The values ofwarmup_period and end_sim_time are the same when the 
+        start_time is zero.
+        """
+        return self.run_control._warmup_sim_time - self.run_control._start_sim_time
+
+    @property
+    def run_length(self) -> TIME:
+        """
+        Return the (relative) duration of the run (float or int). The values of
+        run_length and end_sim_time are the same when the start_time is zero.
+        """
+        return self.run_control._end_sim_time - self.run_control._start_sim_time
 
     
 class SingleReplication(Replication, Generic[TIME]):
 
     def __init__(self, name: str, start_time: TIME, warmup_period: TIME,
                  run_length: TIME):
+        """
+        Create a single replication that will have the replication number 0.
+        
+        Attributes
+        ----------
+        name: str
+            A brief identifying name, that will be used as the name of the 
+            RunControl.
+        start_time: TIME
+            The (absolute) start simulation time (float or int), often zero. 
+            It will be stored in the RunControl.
+        warmup_period: TIME
+            The (relative) period when the warmup period of the model has 
+            passed, resulting in the reset of all simulation statistics objects 
+            such as the SimCounter, SimTally and SimPersistent used in the 
+            model. Ordinary statistics objects (e.g., the Tally) will not be 
+            reset. It will be stored in the RunControl. The absolute time
+            when the warump takes place is (start_time + warmup_period).
+        run_length: TIME
+            The (relative) duration of the run (float or int). The absolute
+            time when the simulation ends is equal to (start_time + run_length).
+            run_length and end_sim_time are the same when the start_time is zero.
+            The information about run length will be stored in the RunControl.
+        """
         super().__init__(name, 0, start_time, warmup_period, run_length)
 
 
