@@ -19,7 +19,7 @@ module as the .h files in C++.
 """
 
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Dict
 
 from pydsol.core.pubsub import EventType
 from pydsol.core.utils import get_module_logger
@@ -403,7 +403,7 @@ class ModelInterface(ABC):
         """return the value of an input parameter."""
     
     @abstractmethod
-    def output_statistics(self) -> dict[str, "StatisticsInterface"]:
+    def output_statistics(self) -> Dict[str, "StatisticsInterface"]:
         """return the output statistics map."""
     
     @abstractmethod

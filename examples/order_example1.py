@@ -6,6 +6,7 @@ event-scheduling simulation with just a single replication.
 This example makes maximum use of Python structures and minimizes the
 use of objects. There is just one class: the OrderModel.
 """
+
 from pydsol.core.experiment import SingleReplication
 from pydsol.core.model import DSOLModel
 from pydsol.core.simulator import DEVSSimulatorFloat

@@ -34,7 +34,7 @@ siunit: str
 from abc import ABC, abstractmethod
 import math
 import re
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, List, Dict, Type
 
 from pydsol.core.distributions import Distribution
 from pydsol.core.utils import get_module_logger
@@ -679,7 +679,7 @@ class Quantity(Generic[Q], ABC, float):
         return Quantity.sidict_to_unit(cls._sidict, div, hat, dot)
     
     @classmethod
-    def sisig(cls) -> list[int]:
+    def sisig(cls) -> List[int]:
         """
         Return a list with the SI-exponents of this quantity, independent 
         of the unit. Speed will, e.g., return [0, 0, 0, 1, -1, 0, 0, 0, 0]. 
@@ -687,7 +687,7 @@ class Quantity(Generic[Q], ABC, float):
         methods were introduced in Python 3.9, where we want this library
         to be compatible with Python 3.8 for now.
         """
-        ret: list[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ret: List[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         sig = cls._sidict
         for i in range(0, 9): 
             unit = SI.SIUNITS[i]
@@ -696,7 +696,7 @@ class Quantity(Generic[Q], ABC, float):
         return ret
     
     @staticmethod
-    def sidict_to_unit(sistr: dict[str, int], div:bool=True, hat:str='',
+    def sidict_to_unit(sistr: Dict[str, int], div:bool=True, hat:str='',
                  dot:str='') -> str:
         """
         Static method to return a string with the SI-signature for a dict of
@@ -823,7 +823,7 @@ class SI(float):
         self._unit = self.siunit(True, '', '.')
 
     @staticmethod
-    def str_to_sisig(unitstr: str) -> list[int]:
+    def str_to_sisig(unitstr: str) -> List[int]:
         """
         Test and standardize the unit string, which can be of any of the
         following forms (used kgm2/s2 as an example): kgm2/s2, kgm^2/s^2,
@@ -846,7 +846,7 @@ class SI(float):
         ValueError
             when the string cannot be properly parsed.
         """
-        ret: list[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ret: List[int] = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         s = unitstr
         div = 1
         i = 0
@@ -910,7 +910,7 @@ class SI(float):
         """
         return self._unit
         
-    def sisig(self) -> list[int]:
+    def sisig(self) -> List[int]:
         """
         Return the internal SI signature as a list of exponents for the 
         SI units. m/s would return [0, 0, 0, 1, -1, 0, 0, 0, 0]. 
@@ -919,7 +919,7 @@ class SI(float):
         """
         return self._sisig
 
-    def as_quantity(self, quantity: type[Quantity]) -> Q:
+    def as_quantity(self, quantity: Type[Quantity]) -> Q:
         """
         Return a new quantity that has been transformed from the SI value.
         The SI exponents have to match. So you cannot change an SI value

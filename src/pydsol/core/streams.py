@@ -29,6 +29,7 @@ the model and experiment modules.
 from abc import ABC, abstractmethod
 from random import Random
 import time
+from typing import Dict, List
 
 from pydsol.core.utils import get_module_logger
 import math
@@ -346,7 +347,7 @@ class StreamInformation:
         TypeError
             when default_stream is not implementing StreamInterface
         """
-        self._streams: dict[str, StreamInterface] = {}
+        self._streams: Dict[str, StreamInterface] = {}
         if default_stream is None:
             self._streams["default"] = MersenneTwister(10)
         elif isinstance(default_stream, StreamInterface):
@@ -380,7 +381,7 @@ class StreamInformation:
             raise TypeError("stream is not a StreamInterface object")
         self._streams[stream_id] = stream
 
-    def get_streams(self) -> dict[str, StreamInterface]:
+    def get_streams(self) -> Dict[str, StreamInterface]:
         """
         Return the dict with streams of this model, where stream ids are
         mapped to the streams.
@@ -453,9 +454,9 @@ class StreamSeedInformation(StreamInformation):
             when default_stream is not implementing StreamInterface
         """
         super().__init__(default_stream)
-        self._seeds: dict[str, list[int]] = {}
+        self._seeds: Dict[str, List[int]] = {}
         
-    def add_seed_values(self, stream_id: str, seeds: list[int]):
+    def add_seed_values(self, stream_id: str, seeds: List[int]):
         """
         Add a new seed list for a stream, based on a stream id, possibly 
         overwriting a previous existing seed list with the same stream_id. 
@@ -488,7 +489,7 @@ class StreamSeedInformation(StreamInformation):
             raise ValueError(f"stream with stream_id {stream_id} not found")
         self._seeds[stream_id] = seeds
         
-    def get_seeds(self) -> dict[str, list[int]]:
+    def get_seeds(self) -> Dict[str, List[int]]:
         """
         Return the dict with seed lists of this model, where stream ids are
         mapped to the seed lists.
@@ -500,7 +501,7 @@ class StreamSeedInformation(StreamInformation):
         """
         return self._seeds
     
-    def get_seed_values(self, stream_id: str) -> list[int]:
+    def get_seed_values(self, stream_id: str) -> List[int]:
         """
         Return a specific set of seed values, based on a stream id, 
         or None when no seed values with that id are present.
@@ -527,7 +528,7 @@ class StreamUpdater(ABC):
     how to update the seed values for a replication.
     """
     
-    def update_seeds(self, streams: dict[str, StreamInterface],
+    def update_seeds(self, streams: Dict[str, StreamInterface],
                      replication_nr: int):
         """
         Update all seeds for the given replication number. The method should 
@@ -581,7 +582,7 @@ class StreamSeedUpdater(StreamUpdater):
         dict. 
     """
     
-    def __init__(self, stream_seeds: dict[str, list[int]]):
+    def __init__(self, stream_seeds: Dict[str, List[int]]):
         """
         Construct a new StreamSeedUpdater object an initialize it with
         the seed map.
@@ -699,7 +700,7 @@ class StreamSeedUpdater(StreamUpdater):
         """
         return self._fallback_stream_updater
     
-    def get_stream_seeds(self) -> dict[str, list[int]]:
+    def get_stream_seeds(self) -> Dict[str, List[int]]:
         """
         Return the dict that maps the stream names on the seed lists for this 
         model where the seed list is indexed on the replication number.

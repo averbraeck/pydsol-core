@@ -29,7 +29,7 @@ executed at a later point in time.
 
 from abc import ABC, abstractmethod
 import inspect
-from typing import Type, Optional, Any, Union
+from typing import Type, Optional, Any, Union, Set, Dict
 from pydsol.core.utils import get_module_logger
 
 __all__ = [
@@ -77,9 +77,8 @@ class EventType:
     
     # set of the defined types to check for name clashes
     # each item in the set has the form class_name.event_type_name
-    __defined_types: set[str] = set()
-    
-    def __init__(self, name: str, metadata: dict[str, Type]=None):
+    __defined_types: Set[str] = set()
+    def __init__(self, name: str, metadata: Dict[str, Type]=None):
         """
         Instantiate a new EventType, usually in a static manner. 
         
@@ -145,7 +144,7 @@ class EventType:
         return self._defining_class
     
     @property
-    def metadata(self) -> Optional[dict[str, Type]]:
+    def metadata(self) -> Optional[Dict[str, Type]]:
         """Return the metadata dict or None.
         
         The metadata dict contains the expected structure of the payload 

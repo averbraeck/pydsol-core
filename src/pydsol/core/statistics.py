@@ -94,7 +94,7 @@ Notes
 """
 
 import math
-from typing import Union
+from typing import Union, Tuple
 from statistics import NormalDist
 
 from pydsol.core.interfaces import StatEvents, SimulatorInterface, \
@@ -477,7 +477,7 @@ class Tally(StatisticsInterface):
             return self._m1
         return math.nan
 
-    def confidence_interval(self, alpha: float) -> tuple[float]:
+    def confidence_interval(self, alpha: float) -> Tuple[float]:
         r"""
         Return the confidence interval around the mean with the provided 
         alpha. When fewer than two observations were registered, (NaN, NaN) 

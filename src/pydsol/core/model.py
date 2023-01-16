@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Dict
 
 from pydsol.core.interfaces import SimulatorInterface, ModelInterface, \
     StatisticsInterface
@@ -14,12 +15,12 @@ logger = get_module_logger('model')
 
 class DSOLModel(ModelInterface):
     
-    def __init__(self, simulator: SimulatorInterface):  # TODO: streams
+    def __init__(self, simulator: SimulatorInterface, **kwargs):  # TODO: streams
         if not isinstance(simulator, SimulatorInterface):
             raise DSOLError(f"simulator {simulator} not valid")
         self._simulator = simulator
         self._input_parameters = InputParameterMap("root", "parameters", 1)
-        self._output_statistics: dict[str, StatisticsInterface] = {}
+        self._output_statistics: Dict[str, StatisticsInterface] = {}
 
     @abstractmethod
     def construct_model(self):
@@ -55,7 +56,7 @@ class DSOLModel(ModelInterface):
         """return the value of an input parameter."""
         return self._input_parameters.get(key).value
     
-    def output_statistics(self) -> dict[str, StatisticsInterface]:
+    def output_statistics(self) -> Dict[str, StatisticsInterface]:
         """return the output statistics map."""
         return self._output_statistics
     

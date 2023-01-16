@@ -16,7 +16,7 @@ class DSOLError(Exception):
     pass
 
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.CRITICAL,
         format='%(levelname)s: %(module)s.%(funcName)s: %(message)s')
 
 

@@ -18,7 +18,7 @@ file, or a JSON file.
 """
 
 import math
-from typing import Union
+from typing import Union, Dict, Type, List
 
 from pydsol.core.units import Quantity
 from pydsol.core.utils import get_module_logger
@@ -429,10 +429,10 @@ class InputParameterMap(InputParameter):
         super().__init__(key, name, None, display_priority,
                          parent=parent, description=description,
                          read_only=True)
-        self._value: dict[str, InputParameter] = {}
+        self._value: Dict[str, InputParameter] = {}
 
     @property    
-    def value(self) -> dict[str, InputParameter]:
+    def value(self) -> Dict[str, InputParameter]:
         """
         Returns the dict defined in this `InputParameterMap`, 
         which is the value.
@@ -1323,7 +1323,7 @@ class InputParameterQuantity(InputParameter):
         self._min_si: float = min_si
         self._max_si: float = max_si
         self._format: str = format_str
-        self._type: type[Quantity] = type(default_value)
+        self._type: Type[Quantity] = type(default_value)
 
     @property    
     def value(self) -> Quantity:
@@ -1377,7 +1377,7 @@ class InputParameterQuantity(InputParameter):
         return self._format
 
     @property
-    def type(self) -> type[Quantity]:
+    def type(self) -> Type[Quantity]:
         """
         Returns the Quantity type of the parameter value (Length, Mass, etc.).
         
@@ -1435,7 +1435,7 @@ class InputParameterSelectionList(InputParameter):
         The values that can be entered for this parameter.
     """
 
-    def __init__(self, key: str, name: str, options: list[str],
+    def __init__(self, key: str, name: str, options: List[str],
                  default_value: str, display_priority: float, *,
                  parent: "InputParameterMap"=None, description: str=None,
                  read_only: bool=False):
@@ -1585,7 +1585,7 @@ class InputParameterUnit(InputParameterSelectionList):
     type `str`.
     """
 
-    def __init__(self, key: str, name: str, quantity: type[Quantity],
+    def __init__(self, key: str, name: str, quantity: Type[Quantity],
                  default_value: str, display_priority: float, *,
                  parent: "InputParameterMap"=None, description: str=None,
                  read_only: bool=False):
@@ -1664,10 +1664,10 @@ class InputParameterUnit(InputParameterSelectionList):
         super().__init__(key, name, list(quantity._units.keys()),
                          default_value, display_priority, parent=parent,
                          description=description, read_only=read_only)
-        self._type: type[Quantity] = quantity 
+        self._type: Type[Quantity] = quantity
 
     @property    
-    def unittype(self) -> type[Quantity]:
+    def unittype(self) -> Type[Quantity]:
         """
         Returns the quantity type for which the units can be selected.
         
