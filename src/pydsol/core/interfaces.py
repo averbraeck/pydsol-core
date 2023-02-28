@@ -33,13 +33,13 @@ __all__ = [
     "StatisticsInterface",
     "SimStatisticsInterface",
     "StatEvents",
-    ]
+]
 
 logger = get_module_logger('interfaces')
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # SIMULATOR INTERFACES
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 # The TypeVar for time is used for type hinting for simulator time types
 TIME = TypeVar("TIME", float, int)
@@ -71,10 +71,10 @@ class SimulatorInterface(ABC, Generic[TIME]):
         event can be very useful, for instance, to draw time-dependent 
         graphs. 
     """
-    
-    STARTING_EVENT: EventType = EventType("STARTING_EVENT") 
-    START_EVENT: EventType = EventType("START_EVENT") 
-    STOPPING_EVENT: EventType = EventType("STOPPING_EVENT") 
+
+    STARTING_EVENT: EventType = EventType("STARTING_EVENT")
+    START_EVENT: EventType = EventType("START_EVENT")
+    STOPPING_EVENT: EventType = EventType("STOPPING_EVENT")
     STOP_EVENT: EventType = EventType("STOP_EVENT")
     TIME_CHANGED_EVENT: EventType = EventType("TIME_CHANGED_EVENT")
 
@@ -82,7 +82,7 @@ class SimulatorInterface(ABC, Generic[TIME]):
     @abstractmethod
     def name(self) -> str:
         """Return the name of the simulator."""
-        
+
     @property
     @abstractmethod
     def time_type(self) -> type:
@@ -98,13 +98,13 @@ class SimulatorInterface(ABC, Generic[TIME]):
     def replication(self) -> 'ReplicationInterface':
         """Return the replication with which the simulator has been 
         initialized, or None when initialize has not yet been called."""
-    
+
     @property
     @abstractmethod
     def model(self) -> 'ModelInterface':
         """Return the model that is being simulated, or None when 
         initialize for a model has not yet been called."""
-        
+
     @abstractmethod
     def initialize(self, model: 'ModelInterface',
                    replication: 'ReplicationInterface'):
@@ -118,7 +118,7 @@ class SimulatorInterface(ABC, Generic[TIME]):
         initialize has been called, and solved the problem that,
         for discrete event simulators, the scheduleEvent(...) methods 
         cannot be called before initialize()."""
-        
+
     @abstractmethod
     def cleanup(self):
         """Clean up after a replication has finished, and prepare for the
@@ -172,17 +172,17 @@ class SimulatorInterface(ABC, Generic[TIME]):
     def is_initialized(self) -> bool:
         """Return whether the simulator has been initialized with a 
         replication for a model."""
-    
+
     @abstractmethod
     def is_starting_or_running(self) -> bool:
-        """Return whether the simulator is starting or has started.""" 
-    
+        """Return whether the simulator is starting or has started."""
+
     @abstractmethod
     def is_stopping_or_stopped(self) -> bool:
         """Return whether the simulator is stopping or has been stopped. 
         This method also returns True when the simulator has not yet been
-        initialized, or when the model has not yet started.""" 
-    
+        initialized, or when the model has not yet started."""
+
 
 class ReplicationInterface(ABC, Generic[TIME]):
     """
@@ -203,11 +203,11 @@ class ReplicationInterface(ABC, Generic[TIME]):
     WARMUP_EVENT: EventType
         Will be fired when the warmup period has been reached, and the
         defined statistics in the model will be cleared.
-    """   
+    """
     START_REPLICATION_EVENT: EventType = EventType("START_REPLICATION_EVENT")
     END_REPLICATION_EVENT: EventType = EventType("END_REPLICATION_EVENT")
     WARMUP_EVENT: EventType = EventType("WARMUP_EVENT")
-    
+
     @property
     @abstractmethod
     def start_sim_time(self) -> TIME:
@@ -222,8 +222,8 @@ class ReplicationInterface(ABC, Generic[TIME]):
     @abstractmethod
     def end_sim_time(self) -> TIME:
         """Return the absolute end time of the replication"""
-    
-    
+
+
 class ExperimentInterface(ABC, Generic[TIME]):
     """
     The ExperimentInterface defines the method that an Experiment needs
@@ -263,7 +263,7 @@ class InputParameterInterface(ABC):
     properties that an InputParameter should have. The definition of the
     interface avoids circular references. 
     """
-    
+
     @property
     @abstractmethod
     def key(self) -> str:
@@ -273,7 +273,7 @@ class InputParameterInterface(ABC):
         does not contain the name of the parent. The key is set at time 
         of construction and it is immutable.
         """
-    
+
     @abstractmethod
     def extended_key(self):
         """
@@ -282,7 +282,7 @@ class InputParameterInterface(ABC):
         in the dot notation.
         """
 
-    @property    
+    @property
     @abstractmethod
     def name(self) -> str:
         """
@@ -290,7 +290,7 @@ class InputParameterInterface(ABC):
         be used in a GUI to identify the parameter to the user.
         """
 
-    @property    
+    @property
     @abstractmethod
     def description(self) -> str:
         """
@@ -299,7 +299,7 @@ class InputParameterInterface(ABC):
         for the user interface.
         """
 
-    @property    
+    @property
     @abstractmethod
     def default_value(self) -> object:
         """
@@ -308,7 +308,7 @@ class InputParameterInterface(ABC):
         The default value is immutable.
         """
 
-    @property    
+    @property
     @abstractmethod
     def value(self) -> object:
         """
@@ -326,9 +326,9 @@ class InputParameterInterface(ABC):
         based on the validity of the value.
         """
 
-    @property    
+    @property
     @abstractmethod
-    def display_priority(self) -> float: 
+    def display_priority(self) -> float:
         """
         Return the number indicating the order of display of the parameter 
         in the parent parameter map. Floats make it easy to insert an extra 
@@ -336,7 +336,7 @@ class InputParameterInterface(ABC):
         subsequent integer values.
         """
 
-    @property    
+    @property
     @abstractmethod
     def read_only(self) -> bool:
         """
@@ -371,7 +371,7 @@ class ModelInterface(ABC):
     in the `construct_model` method, but can be defined once in the `__init__`
     method instead.
     """
-    
+
     @abstractmethod
     def construct_model(self):
         """
@@ -397,15 +397,15 @@ class ModelInterface(ABC):
     @abstractmethod
     def set_parameter(self, key: str, value: object):
         """set the parameter value of an input parameter."""
-        
+
     @abstractmethod
     def get_parameter(self, key: str) -> object:
         """return the value of an input parameter."""
-    
+
     @abstractmethod
     def output_statistics(self) -> Dict[str, "StatisticsInterface"]:
         """return the output statistics map."""
-    
+
     @abstractmethod
     def add_output_statistic(self, key: str, statistic: "StatisticsInterface"):
         """add an output statistic to the output statistics map."""
@@ -414,9 +414,10 @@ class ModelInterface(ABC):
     def get_output_statistic(self, key: str) -> "StatisticsInterface":
         """retrieve an output statistic from the output statistics map."""
 
-#----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # STATISTICS INTERFACES
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 
 class StatisticsInterface(ABC):
@@ -425,7 +426,7 @@ class StatisticsInterface(ABC):
     It defines the minimum set of method that any statistic in the
     pydsol-framework needs to implement.
     """
-    
+
     @abstractmethod
     def initialize(self) -> None:
         """Initialize the statistic. This can happen at a the start and/or
@@ -447,7 +448,7 @@ class SimStatisticsInterface(StatisticsInterface):
     that are aware of the Simulator, and that can listen to events such as 
     the WARMUP_EVENT to (re)initialize the statistics. 
     """
-    
+
     @abstractmethod
     def notify(self, event) -> None:
         """EventListener behavior, so the statistic can be subscribed to 
@@ -459,9 +460,10 @@ class SimStatisticsInterface(StatisticsInterface):
     def simulator(self) -> SimulatorInterface:
         """Return the simulator."""
 
-#----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # STATISTICS EVENTS
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 
 class StatEvents:
@@ -481,7 +483,7 @@ class StatEvents:
     This event can be used by the EventBasedCounter and EventBasedTally 
     and its subclasses. The event is fired from outside to these statistics.
     """
-    
+
     WEIGHT_DATA_EVENT: EventType = EventType("WEIGHT_DATA_EVENT")
     """The WEIGHT_DATA_EVENT is the incoming event for weighted EventBased 
     statistics that contains a new weight-value pair for the statistics. 
@@ -495,12 +497,12 @@ class StatEvents:
     The payload is a tuple (timestamp, value). This event can be used by the 
     EventBasedTimestampWeightedTally and its subclasses.The event is fired 
     from outside to the statistics."""
-    
+
     INITIALIZED_EVENT: EventType = EventType("INITIALIZED_EVENT")
     """INITIALIZED_EVENT indicates that the statistic has been
     (re)initialized, and all counters have been reset to the original values.
     The event is fired by the statistic to its listeners."""
-     
+
     OBSERVATION_ADDED_EVENT: EventType = EventType("OBSERVATION_ADDED_EVENT")
     """OBSERVATION_ADDED_EVENT indicates that an observation has been 
     received, and contains the value of the observation as the payload.
@@ -614,28 +616,28 @@ class StatEvents:
     its subclasses to the listeners."""
 
     WEIGHTED_POPULATION_STDEV_EVENT: EventType = \
-            EventType("WEIGHTED_POPULATION_STDEV_EVENT")
+        EventType("WEIGHTED_POPULATION_STDEV_EVENT")
     """WEIGHTED_POPULATION_STDEV_EVENT indicates that the weighted population 
     standard deviation of the observations has changed, and contains the 
     new weighted standard deviation as the payload. This event is fired by 
     the EventBasedWeightedTally and its subclasses to the listeners."""
 
     WEIGHTED_POPULATION_VARIANCE_EVENT: EventType = \
-            EventType("WEIGHTED_POPULATION_VARIANCE_EVENT")
+        EventType("WEIGHTED_POPULATION_VARIANCE_EVENT")
     """WEIGHTED_POPULATION_VARIANCE_EVENT indicates that the weighted 
     population variance of the observations has changed, and contains the 
     new weighted variance as the payload. This event is fired by the 
     EventBasedWeightedTally and its subclasses to the listeners."""
 
     WEIGHTED_SAMPLE_STDEV_EVENT: EventType = \
-            EventType("WEIGHTED_SAMPLE_STDEV_EVENT")
+        EventType("WEIGHTED_SAMPLE_STDEV_EVENT")
     """WEIGHTED_SAMPLE_STDEV_EVENT indicates that the weighted sample 
     standard deviation of the observations has changed, and contains the 
     new weighted standard deviation as the payload. This event is fired by 
     the EventBasedWeightedTally and its subclasses to the listeners."""
 
     WEIGHTED_SAMPLE_VARIANCE_EVENT: EventType = \
-            EventType("WEIGHTED_SAMPLE_VARIANCE_EVENT")
+        EventType("WEIGHTED_SAMPLE_VARIANCE_EVENT")
     """WEIGHTED_SAMPLE_VARIANCE_EVENT indicates that the weighted sample 
     variance of the observations has changed, and contains the new weighted 
     variance as the payload. This event is fired by the EventBasedWeightedTally 

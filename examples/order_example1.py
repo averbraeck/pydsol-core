@@ -14,7 +14,7 @@ from pydsol.core.simulator import DEVSSimulatorFloat
 
 class OrderModel(DSOLModel):
     """Construction of the model: Scheduling order generation"""
-                
+
     def construct_model(self):
         print("\nReplication starts...")
         self.simulator.schedule_event_now(self, "generate_order")
@@ -27,8 +27,8 @@ class OrderModel(DSOLModel):
 
 """main creates the simulation and starts it"""
 if __name__ == "__main__":
-        simulator = DEVSSimulatorFloat("sim")
-        model = OrderModel(simulator)
-        replication = SingleReplication("rep1", 0.0, 0.0, 100.0)
-        simulator.initialize(model, replication)
-        simulator.start()
+    simulator = DEVSSimulatorFloat("sim")
+    model = OrderModel(simulator)
+    replication = SingleReplication("rep1", 0.0, 0.0, 100.0)
+    simulator.initialize(model, replication)
+    simulator.start()
