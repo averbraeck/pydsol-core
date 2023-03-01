@@ -1,3 +1,5 @@
+# __init__.py
+
 """
 pydsol_core contains the base classes for discrete-event simulation. The 
 project is based on the Java implementation of DSOL (Distributed 
@@ -48,3 +50,6 @@ pydsol_core is only dependent on standard Python libraries.
 For the unit tests, pytest is used, potentially with pytest-cov to assess 
 the test coverage.
 """
+
+# Version of the pydsol-core package
+__version__ = "4.0.0"
