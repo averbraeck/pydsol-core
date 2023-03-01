@@ -16,7 +16,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-keywords = ["simulation", "reader", "tutorial"]
+keywords = ["simulation", "discrete-event"]
 dependencies = [
 ]
 requires-python = ">=3.9"
@@ -25,6 +25,6 @@ requires-python = ">=3.9"
 dev = ["pytest"]
 
 [project.urls]
-homepage = "https://simulation,tudelft.nl"
+homepage = "https://simulation.tudelft.nl"
 documentation = "https://pydsol-core.readthedocs.io/en/latest/"
 repository = "https://github.com/averbraeck/pydsol-core"
