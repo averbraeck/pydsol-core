@@ -1,0 +1,30 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pydsol-core"
+version = "4.0.0"
+description = "Python discrete-event simulation object library"
+readme = "README.rst"
+authors = [{ name = "Alexander Verbraeck", email = "a.verbraeck@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: BSD-3-Clause",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["simulation", "reader", "tutorial"]
+dependencies = [
+]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.urls]
+homepage = "https://simulation,tudelft.nl"
+documentation = "https://pydsol-core.readthedocs.io/en/latest/"
+repository = "https://github.com/averbraeck/pydsol-core"
