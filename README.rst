@@ -33,6 +33,23 @@ are all possible as extensions and will be added shortly. In the Java version
 of DSOL, differential equations, process modeling, and various DEVS variants 
 were implemented, which will be ported to Python.
 
+An additional layer of pydsol-core is the package ``pydsol-model`` that provides standard model objects suitable for
+developing a discrete event simulation model. Standard model objects are source, server
+using resources, sink, node, link, entity and vehicle. Source code is available on
+https://github.com/imvs95/pydsol-model.
+
+Installation
+=============
+
+You can install the latest version of the ``pydsol-core`` package using pip::
+
+    pip install pydsol-core
+
+Alternatively, you can install the latest development version directly from GitHub::
+
+    pip install git+https://github.com/averbraeck/pydsol-core
+
+Documentation of ``pydsol-core`` is available at https://pydsol-core.readthedocs.io/en/latest/index.html.
 
 DSOL license
 ============

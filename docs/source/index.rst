@@ -34,6 +34,11 @@ inputs and outpus of the model. This framework links exactly to the formal
 definition of simulation models, e.g. according to `Zeigler et al. (2000)
 <https://dl.acm.org/doi/10.5555/580780>`__.  
 
+pydsol-core is used as a basis in other packages such as **pydsol-model** that provides standard model objects suitable for
+developing a discrete event simulation model. Standard model objects are source, server
+using resources, sink, node, link, entity and vehicle. For more information,
+see https://pydsol-model.readthedocs.io/en/latest/index.html.
+
 .. toctree::
    :maxdepth: 1
    :caption: Getting Started:
